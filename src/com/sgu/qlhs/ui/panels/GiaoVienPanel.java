@@ -1,0 +1,24 @@
+/*
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
+ */
+package com.sgu.qlhs.ui.panels;
+
+/**
+ *
+ * @author minho
+ */
+import com.sgu.qlhs.ui.components.RoundedPanel;
+import com.sgu.qlhs.ui.model.GiaoVienTableModel;
+import javax.swing.*; import javax.swing.border.EmptyBorder; import java.awt.*;
+import static com.sgu.qlhs.ui.MainDashboard.*;
+
+public class GiaoVienPanel extends JPanel {
+    public GiaoVienPanel(){ setLayout(new BorderLayout()); setOpaque(false);
+        var outer = new RoundedPanel(18, CARD_BG, CARD_BORDER); outer.setLayout(new BorderLayout());
+        var lbl = new JLabel("Giáo viên"); lbl.setBorder(new EmptyBorder(12,16,8,16)); lbl.setFont(lbl.getFont().deriveFont(Font.BOLD,18f));
+        outer.add(lbl, BorderLayout.NORTH);
+        var table = new JTable(new GiaoVienTableModel()); table.setAutoCreateRowSorter(true);
+        outer.add(new JScrollPane(table), BorderLayout.CENTER);
+        add(outer, BorderLayout.CENTER); }
+}
