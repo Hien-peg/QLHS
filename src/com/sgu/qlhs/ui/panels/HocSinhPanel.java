@@ -51,10 +51,10 @@ public class HocSinhPanel extends JPanel {
         txtHsSearch = new JTextField(18);
         txtHsSearch.setBorder(BorderFactory.createTitledBorder("Từ khóa"));
 
-        cboHsLop = new JComboBox<>(new String[]{"Tất cả", "10A1", "10A2", "11A1", "12A1"});
+        cboHsLop = new JComboBox<>(new String[] { "Tất cả", "10A1", "10A2", "11A1", "12A1" });
         cboHsLop.setBorder(BorderFactory.createTitledBorder("Lớp"));
 
-        cboHsGioiTinh = new JComboBox<>(new String[]{"Tất cả", "Nam", "Nữ", "Khác"});
+        cboHsGioiTinh = new JComboBox<>(new String[] { "Tất cả", "Nam", "Nữ", "Khác" });
         cboHsGioiTinh.setBorder(BorderFactory.createTitledBorder("Giới tính"));
 
         var btnClear = new JButton("Xóa lọc");
@@ -68,9 +68,17 @@ public class HocSinhPanel extends JPanel {
 
         // --- Sự kiện lọc ---
         txtHsSearch.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
-            public void insertUpdate(DocumentEvent e) { applyHsFilters(); }
-            public void removeUpdate(DocumentEvent e) { applyHsFilters(); }
-            public void changedUpdate(DocumentEvent e) { applyHsFilters(); }
+            public void insertUpdate(DocumentEvent e) {
+                applyHsFilters();
+            }
+
+            public void removeUpdate(DocumentEvent e) {
+                applyHsFilters();
+            }
+
+            public void changedUpdate(DocumentEvent e) {
+                applyHsFilters();
+            }
         });
 
         cboHsLop.addActionListener(e -> applyHsFilters());
@@ -127,12 +135,12 @@ public class HocSinhPanel extends JPanel {
         // Mở dialog chi tiết
         new HocSinhDetailDialog(
                 SwingUtilities.getWindowAncestor(this),
-                hocSinhData
-        ).setVisible(true);
+                hocSinhData).setVisible(true);
     }
 
     private void applyHsFilters() {
-        if (hsSorter == null) return;
+        if (hsSorter == null)
+            return;
 
         var filters = new ArrayList<RowFilter<TableModel, Object>>();
 

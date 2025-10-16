@@ -1,0 +1,49 @@
+package com.sgu.qlhs.ui.database;
+
+import com.sgu.qlhs.ui.database.DatabaseConnection;
+import java.sql.*;
+import java.util.ArrayList;
+import java.util.List;
+
+public class LopDAO {
+
+    public List<Object[]> getAllLop() {
+        List<Object[]> data = new ArrayList<>();
+        // Giữ lại JOIN để lấy tên phòng cho việc hiển thị
+        String sql = "SELECT l.MaLop, l.TenLop, l.Khoi, ph.TenPhong " +
+                     "FROM Lop l LEFT JOIN PhongHoc ph ON l.MaPhong = ph.MaPhong";
+        
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql);
+             ResultSet rs = pstmt.executeQuery()) {
+            
+            while (rs.next()) {
+                Object[] row = new Object[4];
+                row[0] = rs.getInt("MaLop");
+                row[1] = rs.getString("TenLop");
+                row[2] = rs.getInt("Khoi");
+                row[3] = rs.getString("TenPhong");
+                data.add(row);
+            }
+        } catch (SQLException e) {
+            System.err.println("Lỗi khi truy vấn dữ liệu lớp: " + e.getMessage());
+        }
+        return data;
+    }
+    
+    public void insertLop(String tenLop, int khoi, int maPhong) {
+        String sql = "INSERT INTO Lop (TenLop, Khoi, MaPhong) VALUES (?, ?, ?)";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            
+            pstmt.setString(1, tenLop);
+            pstmt.setInt(2, khoi);
+            pstmt.setInt(3, maPhong);
+            
+            pstmt.executeUpdate();
+            System.out.println("Thêm lớp thành công!");
+        } catch (SQLException e) {
+            System.err.println("Lỗi khi thêm lớp: " + e.getMessage());
+        }
+    }
+}
