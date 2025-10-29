@@ -10,7 +10,6 @@ import com.sgu.qlhs.ui.dialogs.MonQuanLyDialog;
 import com.sgu.qlhs.ui.dialogs.PhongQuanLyDialog;
 import com.sgu.qlhs.ui.dialogs.DiemNhapDialog;
 import com.sgu.qlhs.ui.dialogs.DiemTinhXepLoaiDialog;
-import com.sgu.qlhs.ui.dialogs.DiemExportPdfDialog;
 import com.sgu.qlhs.ui.dialogs.DiemXemTheoHocKyDialog;
 import com.sgu.qlhs.ui.dialogs.BangDiemChiTietDialog;
 import com.sgu.qlhs.ui.dialogs.HocSinhAddDialog;
@@ -43,8 +42,7 @@ public class DashboardPanel extends JPanel {
                 new SectionItem("Tính TB từng môn", IconType.TABLE),
                 new SectionItem("Tính TB tất cả môn", IconType.TABLE),
                 new SectionItem("Xem điểm HK/Năm", IconType.BARCHART),
-                new SectionItem("Bảng điểm chi tiết", IconType.ABC),
-                new SectionItem("Xuất PDF", IconType.PDF) }));
+                new SectionItem("Bảng điểm chi tiết", IconType.ABC) }));
         add(makeSection("Thống kê", new SectionItem[] {
                 new SectionItem("Thống kê giới tính", IconType.CHART),
                 new SectionItem("Thống kê điểm TB môn", IconType.BARCHART),
@@ -121,7 +119,6 @@ public class DashboardPanel extends JPanel {
                         new com.sgu.qlhs.ui.dialogs.DiemTrungBinhTatCaMonDialog(null).setVisible(true);
                     case "Xem điểm HK/Năm" -> new DiemXemTheoHocKyDialog(null).setVisible(true);
                     case "Bảng điểm chi tiết" -> new BangDiemChiTietDialog(null).setVisible(true);
-                    case "Xuất PDF" -> new DiemExportPdfDialog(null).setVisible(true);
 
                     case "Thống kê giới tính" -> new ThongKeGioiTinhDialog(null).setVisible(true);
                     case "Thống kê điểm TB môn" -> new ThongKeDiemMonDialog(null).setVisible(true);

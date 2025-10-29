@@ -15,7 +15,8 @@ import java.awt.*;
 
 public class DiemTinhXepLoaiDialog extends JDialog {
     private final JComboBox<String> cboLop = new JComboBox<>(new String[] { "10A1", "10A2", "11A1", "12A1" });
-    private final JComboBox<String> cboMon = new JComboBox<>(new String[] { "Toán", "Văn", "Anh" });
+    private final JComboBox<String> cboMon = new JComboBox<>(
+            new String[] { "Toán", "Văn", "Anh", "Lý", "Hóa", "Sinh" });
     private final JComboBox<String> cboHK = new JComboBox<>(new String[] { "HK1", "HK2" });
     private final DefaultTableModel model = new DefaultTableModel(
             new Object[] { "Mã HS", "Họ tên", "Miệng", "15p", "Giữa kỳ", "Cuối kỳ", "TB" }, 0) {

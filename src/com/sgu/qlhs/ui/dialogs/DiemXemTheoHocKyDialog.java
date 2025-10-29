@@ -1,12 +1,21 @@
 package com.sgu.qlhs.ui.dialogs;
 
 import com.sgu.qlhs.ui.database.DiemHocKyDAO;
+import com.sgu.qlhs.ui.database.DatabaseConnection;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Dialog để xem điểm trung bình theo học kỳ và cả năm
@@ -18,6 +27,8 @@ public class DiemXemTheoHocKyDialog extends JDialog {
     private DefaultTableModel model;
     private JTable table;
     private DiemHocKyDAO dao;
+    // lưu danh sách lớp để map index -> MaLop / TenLop
+    private List<Object[]> lopList = new ArrayList<>();
 
     public DiemXemTheoHocKyDialog(Window owner) {
         super(owner, "Xem điểm theo học kỳ / Cả năm", ModalityType.APPLICATION_MODAL);
@@ -115,10 +126,11 @@ public class DiemXemTheoHocKyDialog extends JDialog {
     private void loadLopData() {
         cboLop.removeAllItems();
         cboLop.addItem("-- Tất cả --");
-
-        var lopList = dao.getAllLop();
+        lopList = dao.getAllLop();
         for (Object[] lop : lopList) {
-            cboLop.addItem(lop[1] + " (Khối " + lop[2] + ")");
+            String tenLop = (String) lop[1];
+            int khoi = (int) lop[2];
+            cboLop.addItem(tenLop + " (Khối " + khoi + ")");
         }
     }
 
@@ -133,10 +145,23 @@ public class DiemXemTheoHocKyDialog extends JDialog {
 
         try {
             if (loaiXem.equals("Cả năm")) {
-                loadDiemCaNam(maNK);
+                int sel = cboLop.getSelectedIndex();
+                if (sel > 0) {
+                    // lọc theo lớp
+                    String tenLop = (String) lopList.get(sel - 1)[1];
+                    loadDiemCaNamFiltered(maNK, tenLop);
+                } else {
+                    loadDiemCaNam(maNK);
+                }
             } else {
                 int hocKy = loaiXem.equals("Học kỳ 1") ? 1 : 2;
-                loadDiemHocKy(hocKy, maNK);
+                int sel = cboLop.getSelectedIndex();
+                if (sel > 0) {
+                    int maLop = (int) lopList.get(sel - 1)[0];
+                    loadDiemHocKyForClass(maLop, hocKy, maNK);
+                } else {
+                    loadDiemHocKy(hocKy, maNK);
+                }
             }
 
             lblStats.setText("Tổng: " + model.getRowCount() + " học sinh");
@@ -169,6 +194,81 @@ public class DiemXemTheoHocKyDialog extends JDialog {
     }
 
     /**
+     * Load điểm học kỳ cho 1 lớp cụ thể: tính TBHK cho từng học sinh trong lớp
+     */
+    private void loadDiemHocKyForClass(int maLop, int hocKy, int maNK) {
+        model.setRowCount(0);
+        var data = dao.getDiemChiTietHocKy(maLop, hocKy, maNK);
+
+        // Aggregate per student: map MaHS -> {hoTen, sum, count}
+        Map<Integer, String> name = new HashMap<>();
+        Map<Integer, Double> sum = new HashMap<>();
+        Map<Integer, Integer> cnt = new HashMap<>();
+
+        for (Object[] r : data) {
+            int maHS = (int) r[0];
+            String hoTen = (String) r[1];
+            double diemTB = ((Number) r[7]).doubleValue();
+
+            name.put(maHS, hoTen);
+            sum.put(maHS, sum.getOrDefault(maHS, 0.0) + diemTB);
+            cnt.put(maHS, cnt.getOrDefault(maHS, 0) + 1);
+        }
+
+        for (Integer maHS : sum.keySet()) {
+            double avg = Math.round((sum.get(maHS) / cnt.get(maHS)) * 10) / 10.0;
+            String hoTen = name.get(maHS);
+            String xep = xepLoai(avg);
+            // TenLop: get from lopList by maLop
+            String tenLop = "";
+            for (Object[] l : lopList) {
+                if ((int) l[0] == maLop) {
+                    tenLop = (String) l[1];
+                    break;
+                }
+            }
+            model.addRow(new Object[] { maHS, hoTen, tenLop, avg, xep });
+        }
+    }
+
+    /**
+     * Load điểm cả năm nhưng chỉ hiển thị học sinh trong lớp tenLop
+     */
+    private void loadDiemCaNamFiltered(int maNK, String tenLop) {
+        model.setRowCount(0);
+        var data = dao.getDiemTrungBinhCaNam(maNK);
+        for (Object[] row : data) {
+            String lop = (String) row[2];
+            if (lop != null && lop.equals(tenLop)) {
+                model.addRow(new Object[] {
+                        row[0], // MaHS
+                        row[1], // HoTen
+                        row[2], // TenLop
+                        row[3], // DiemHK1
+                        row[4], // DiemHK2
+                        row[5], // DiemCaNam
+                        row[6] // XepLoai
+                });
+            }
+        }
+    }
+
+    private String getTenLopByMaHS(int maHS) {
+        String sql = "SELECT l.TenLop FROM HocSinh hs JOIN Lop l ON hs.MaLop = l.MaLop WHERE hs.MaHS = ?";
+        try (Connection conn = DatabaseConnection.getConnection();
+                PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, maHS);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                if (rs.next())
+                    return rs.getString(1);
+            }
+        } catch (SQLException ex) {
+            ex.printStackTrace();
+        }
+        return "";
+    }
+
+    /**
      * Load điểm cả năm
      */
     private void loadDiemCaNam(int maNK) {
@@ -185,6 +285,21 @@ public class DiemXemTheoHocKyDialog extends JDialog {
                     row[6] // XepLoai
             });
         }
+    }
+
+    // local xếp loại (same as DAO)
+    private static String xepLoai(double diemTB) {
+        if (diemTB >= 9.0)
+            return "Xuất sắc";
+        if (diemTB >= 8.0)
+            return "Giỏi";
+        if (diemTB >= 6.5)
+            return "Khá";
+        if (diemTB >= 5.0)
+            return "Trung bình";
+        if (diemTB >= 3.5)
+            return "Yếu";
+        return "Kém";
     }
 
     /**
