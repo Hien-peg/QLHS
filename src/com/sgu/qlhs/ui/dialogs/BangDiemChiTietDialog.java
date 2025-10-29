@@ -11,6 +11,10 @@ import java.awt.print.PrinterException;
 import java.awt.print.PrinterJob;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import com.sgu.qlhs.bus.HocSinhBUS;
+import com.sgu.qlhs.bus.DiemBUS;
+import com.sgu.qlhs.dto.DiemDTO;
+import com.sgu.qlhs.dto.HocSinhDTO;
 
 /**
  * Dialog hiển thị bảng điểm chi tiết của học sinh theo định dạng chính thức
@@ -26,6 +30,8 @@ public class BangDiemChiTietDialog extends JDialog {
     private String tenHocSinh = "";
     private String tenTruong = "ĐẠI HỌC SÀI GÒN - SGU";
     private String diaPhuong = "SỞ GD&ĐT HỒ CHÍ MINH";
+    private final HocSinhBUS hocSinhBUS = new HocSinhBUS();
+    private final DiemBUS diemBUS = new DiemBUS();
 
     public BangDiemChiTietDialog(Window owner) {
         super(owner, "Bảng điểm chi tiết học sinh", ModalityType.APPLICATION_MODAL);
@@ -83,10 +89,13 @@ public class BangDiemChiTietDialog extends JDialog {
     }
 
     private void loadHocSinh() {
-        // TODO: Load từ database
-        cboHocSinh.addItem("Hoàng Kiều Anh");
-        cboHocSinh.addItem("Nguyễn Văn A");
-        cboHocSinh.addItem("Trần Thị B");
+        // Load students from BUS
+        cboHocSinh.removeAllItems();
+        java.util.List<HocSinhDTO> list = hocSinhBUS.getAllHocSinh();
+        for (HocSinhDTO h : list) {
+            // store item as "<MaHS> - <HoTen>" so we can parse ID back
+            cboHocSinh.addItem(h.getMaHS() + " - " + h.getHoTen());
+        }
     }
 
     private void loadBangDiem() {
@@ -169,28 +178,37 @@ public class BangDiemChiTietDialog extends JDialog {
             }
         };
 
-        // Thêm dữ liệu mẫu (TODO: load từ database)
-        String[][] monHoc = {
-                { "1", "Toán học", "7", "5 5 5", "8 4 7 9", "5", "6.2", "" },
-                { "2", "Ngữ văn", "8", "7 8 6 7", "6 6 6", "7", "6.6", "" },
-                { "3", "Vật lý", "7", "9 4", "4 8", "6", "6.2", "" },
-                { "4", "Hóa học", "6", "7 7", "8 7", "6", "6.8", "" },
-                { "5", "Lịch sử", "6", "6 6", "6", "7", "6.4", "" },
-                { "6", "Địa lý", "6", "6 6", "7", "7", "6.6", "" },
-                { "7", "Sinh học", "7", "7 7", "7", "7", "7", "" },
-                { "8", "Ngoại ngữ", "6", "8 6 7", "8 6", "5", "6.4", "" },
-                { "9", "GDCD", "8", "7 7", "7", "6", "6.8", "" },
-                { "10", "Công nghệ", "8", "8 7", "7", "5", "6.5", "" },
-                { "11", "Tin học", "4", "8 6", "6 8", "9", "7.3", "" },
-                { "12", "GDQP", "1", "1", "1", "1", "1", "" },
-                { "13", "Thể dục", "Đ C", "", "", "", "Đ", "" }
-        };
+        // Build table rows from DiemBUS for the selected student and semester
+        Object sel = cboHocSinh.getSelectedItem();
+        if (sel == null) {
+            // nothing selected
+            table = new JTable(model);
+        } else {
+            String s = sel.toString();
+            int dash = s.indexOf(" - ");
+            int maHS = 0;
+            try {
+                maHS = Integer.parseInt(dash > 0 ? s.substring(0, dash).trim() : s);
+            } catch (Exception ex) {
+                maHS = 0;
+            }
+            int hkNum = cboHocKy.getSelectedIndex() + 1; // Học kỳ 1 -> 1
+            // determine current niên khóa from DB
+            int maNK = com.sgu.qlhs.bus.NienKhoaBUS.current();
 
-        for (String[] row : monHoc) {
-            model.addRow(row);
+            java.util.List<DiemDTO> diemList = diemBUS.getDiemByMaHS(maHS, hkNum, maNK);
+            int idx = 1;
+            for (DiemDTO d : diemList) {
+                double mieng = d.getDiemMieng();
+                double p15 = d.getDiem15p();
+                double gk = d.getDiemGiuaKy();
+                double ck = d.getDiemCuoiKy();
+                double tb = Math.round((mieng * 0.10 + p15 * 0.20 + gk * 0.30 + ck * 0.40) * 10.0) / 10.0;
+                model.addRow(new Object[] { String.valueOf(idx++), d.getTenMon(), mieng, p15, gk, ck, tb, "" });
+            }
+            table = new JTable(model);
         }
 
-        table = new JTable(model);
         table.setFont(new Font("Arial", Font.PLAIN, 12));
         table.setRowHeight(30);
         table.getTableHeader().setFont(new Font("Arial", Font.BOLD, 12));

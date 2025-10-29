@@ -15,6 +15,8 @@ import java.awt.*;
 import com.sgu.qlhs.bus.DiemBUS;
 import com.sgu.qlhs.bus.LopBUS;
 import com.sgu.qlhs.bus.HocSinhBUS;
+import com.sgu.qlhs.bus.MonBUS;
+import com.sgu.qlhs.bus.NienKhoaBUS;
 import com.sgu.qlhs.dto.HocSinhDTO;
 import com.sgu.qlhs.dto.LopDTO;
 
@@ -23,8 +25,7 @@ public class DiemNhapDialog extends JDialog {
     private final LopBUS lopBUS = new LopBUS();
     private final HocSinhBUS hocSinhBUS = new HocSinhBUS();
     private final JComboBox<String> cboLop = new JComboBox<>();
-    private final JComboBox<String> cboMon = new JComboBox<>(
-            new String[] { "Toán", "Văn", "Anh", "Lý", "Hóa", "Sinh" });
+    private final JComboBox<String> cboMon = new JComboBox<>();
     private final JComboBox<String> cboHK = new JComboBox<>(new String[] { "HK1", "HK2" });
     private final DefaultTableModel model = new DefaultTableModel(
             new Object[] { "Mã HS", "Họ tên", "Miệng", "15p", "Giữa kỳ", "Cuối kỳ" }, 0) {
@@ -44,6 +45,7 @@ public class DiemNhapDialog extends JDialog {
         setMinimumSize(new Dimension(860, 520));
         setLocationRelativeTo(owner);
         build();
+        loadMonData();
         loadLopData();
         pack();
     }
@@ -72,11 +74,18 @@ public class DiemNhapDialog extends JDialog {
         var btnPane = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         var btnClose = new JButton("Đóng");
         var btnSave = new JButton("Lưu");
-        btnSave.addActionListener(e -> {
-            // map selected môn -> maMon (simple mapping based on known subjects)
-            int maMon = mapMon(cboMon.getSelectedItem().toString());
+        btnSave.addActionListener((java.awt.event.ActionEvent __) -> {
+            if (__ == null) {
+            }
+            // map selected môn -> maMon using MonBUS
+            MonBUS monBUS = new MonBUS();
+            java.util.Map<String, Integer> monMap = new java.util.HashMap<>();
+            for (var m : monBUS.getAllMon())
+                monMap.put(m.getTenMon(), m.getMaMon());
+            Integer maMonObj = monMap.get(cboMon.getSelectedItem().toString());
+            int maMon = maMonObj == null ? 1 : maMonObj;
             int hocKy = cboHK.getSelectedIndex() + 1; // HK1 -> 1, HK2 -> 2
-            int maNK = 1; // assumption: current niên khóa id = 1 (adjust later)
+            int maNK = NienKhoaBUS.current();
 
             for (int r = 0; r < model.getRowCount(); r++) {
                 Object idObj = model.getValueAt(r, 0);
@@ -96,18 +105,36 @@ public class DiemNhapDialog extends JDialog {
                 double ck = valueToDouble(model.getValueAt(r, 5));
 
                 // Call BUS to save the record (delegates to DAO internally)
-                diemBUS.saveDiem(maHS, maMon, hocKy, maNK, mieng, p15, gk, ck);
+                diemBUS.saveOrUpdateDiem(maHS, maMon, hocKy, maNK, mieng, p15, gk, ck);
             }
 
             JOptionPane.showMessageDialog(this, "Lưu điểm xong");
             dispose();
         });
-        btnClose.addActionListener(e -> dispose());
+        btnClose.addActionListener((java.awt.event.ActionEvent __) -> {
+            if (__ == null) {
+            }
+            dispose();
+        });
         btnPane.add(btnClose);
         btnPane.add(btnSave);
         root.add(btnPane, BorderLayout.SOUTH);
 
         getRootPane().setDefaultButton(btnSave);
+    }
+
+    private void loadMonData() {
+        cboMon.removeAllItems();
+        try {
+            MonBUS monBUS = new MonBUS();
+            for (var m : monBUS.getAllMon()) {
+                cboMon.addItem(m.getTenMon());
+            }
+        } catch (Exception ex) {
+            // fallback: keep empty or default list
+            cboMon.addItem("Toán");
+            cboMon.addItem("Văn");
+        }
     }
 
     private void loadLopData() {
@@ -118,7 +145,9 @@ public class DiemNhapDialog extends JDialog {
             cboLop.addItem(l.getTenLop());
         }
 
-        cboLop.addActionListener(e -> {
+        cboLop.addActionListener((java.awt.event.ActionEvent __) -> {
+            if (__ == null) {
+            }
             int idx = cboLop.getSelectedIndex();
             if (idx <= 0) {
                 model.setRowCount(0);
@@ -137,26 +166,7 @@ public class DiemNhapDialog extends JDialog {
         }
     }
 
-    private int mapMon(String tenMon) {
-        if (tenMon == null)
-            return 1;
-        switch (tenMon) {
-            case "Toán":
-                return 1;
-            case "Văn":
-                return 2;
-            case "Anh":
-                return 3;
-            case "Lý":
-                return 4;
-            case "Hóa":
-                return 5;
-            case "Sinh":
-                return 6;
-            default:
-                return 1;
-        }
-    }
+    // subject mapping removed; MonBUS is used dynamically where needed
 
     private double valueToDouble(Object o) {
         if (o == null)

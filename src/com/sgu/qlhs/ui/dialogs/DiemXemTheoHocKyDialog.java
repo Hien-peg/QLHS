@@ -1,6 +1,6 @@
 package com.sgu.qlhs.ui.dialogs;
 
-import com.sgu.qlhs.bus.DiemHocKyBUS;
+import com.sgu.qlhs.DatabaseConnection;
 import com.sgu.qlhs.bus.LopBUS;
 import com.sgu.qlhs.bus.HocSinhBUS;
 import com.sgu.qlhs.dto.LopDTO;
@@ -29,7 +29,8 @@ public class DiemXemTheoHocKyDialog extends JDialog {
     private final JComboBox<String> cboNamHoc = new JComboBox<>(new String[] { "2024-2025", "2023-2024", "2022-2023" });
     private DefaultTableModel model;
     private JTable table;
-    private DiemHocKyBUS dao;
+    // Note: DiemHocKyDAO / DiemHocKyBUS removed; dialog will query DB directly
+    // using views/columns
     // BUS helpers
     private LopBUS lopBUS;
     private HocSinhBUS hocSinhBUS;
@@ -40,12 +41,152 @@ public class DiemXemTheoHocKyDialog extends JDialog {
         super(owner, "Xem điểm theo học kỳ / Cả năm", ModalityType.APPLICATION_MODAL);
         setMinimumSize(new Dimension(900, 600));
         setLocationRelativeTo(owner);
-        dao = new DiemHocKyBUS();
         lopBUS = new LopBUS();
         hocSinhBUS = new HocSinhBUS();
         build();
         loadLopData();
         pack();
+    }
+
+    // --- DB-backed helpers (replace previous DiemHocKyBUS methods) ---
+    private List<Object[]> queryDiemTrungBinhHocKy(int hocKy, int maNK) {
+        List<Object[]> result = new ArrayList<>();
+        String sql = "SELECT d.MaHS, hs.HoTen, ROUND(AVG(d.DiemTB),1) AS DiemTB "
+                + "FROM Diem d JOIN HocSinh hs ON hs.MaHS = d.MaHS "
+                + "WHERE d.HocKy = ? AND d.MaNK = ? "
+                + "GROUP BY d.MaHS, hs.HoTen "
+                + "ORDER BY hs.HoTen";
+
+        try (Connection conn = DatabaseConnection.getConnection();
+                PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setInt(1, hocKy);
+            pstmt.setInt(2, maNK);
+
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    Object[] row = new Object[4];
+                    row[0] = rs.getInt("MaHS");
+                    row[1] = rs.getString("HoTen");
+                    double diemTB = rs.getDouble("DiemTB");
+                    row[2] = diemTB;
+                    row[3] = xepLoai(diemTB);
+                    result.add(row);
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Lỗi khi truy vấn TB học kỳ: " + e.getMessage());
+            e.printStackTrace();
+        }
+
+        return result;
+    }
+
+    private List<Object[]> queryDiemChiTietHocKy(int maLop, int hocKy, int maNK) {
+        List<Object[]> result = new ArrayList<>();
+        String sql = "SELECT hs.MaHS, hs.HoTen, mh.TenMon, "
+                + "d.DiemMieng, d.Diem15p, d.DiemGiuaKy, d.DiemCuoiKy, d.DiemTB "
+                + "FROM Diem d "
+                + "JOIN HocSinh hs ON hs.MaHS = d.MaHS "
+                + "JOIN MonHoc mh ON mh.MaMon = d.MaMon "
+                + "WHERE hs.MaLop = ? AND d.HocKy = ? AND d.MaNK = ? "
+                + "ORDER BY hs.HoTen, mh.TenMon";
+
+        try (Connection conn = DatabaseConnection.getConnection();
+                PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setInt(1, maLop);
+            pstmt.setInt(2, hocKy);
+            pstmt.setInt(3, maNK);
+
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    Object[] row = new Object[8];
+                    row[0] = rs.getInt("MaHS");
+                    row[1] = rs.getString("HoTen");
+                    row[2] = rs.getString("TenMon");
+                    row[3] = rs.getDouble("DiemMieng");
+                    row[4] = rs.getDouble("Diem15p");
+                    row[5] = rs.getDouble("DiemGiuaKy");
+                    row[6] = rs.getDouble("DiemCuoiKy");
+                    row[7] = rs.getDouble("DiemTB");
+                    result.add(row);
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Lỗi khi lấy điểm chi tiết học kỳ: " + e.getMessage());
+            e.printStackTrace();
+        }
+
+        return result;
+    }
+
+    private List<Object[]> queryDiemTrungBinhCaNam(int maNK) {
+        List<Object[]> result = new ArrayList<>();
+
+        // get year weights
+        double w1 = 0.4, w2 = 0.6; // fallback
+        String sqlWs = "SELECT wHK1, wHK2 FROM TrongSoNam WHERE MaNK = ?";
+        try (Connection conn = DatabaseConnection.getConnection();
+                PreparedStatement psw = conn.prepareStatement(sqlWs)) {
+            psw.setInt(1, maNK);
+            try (ResultSet rsw = psw.executeQuery()) {
+                if (rsw.next()) {
+                    w1 = rsw.getDouble("wHK1");
+                    w2 = rsw.getDouble("wHK2");
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Không lấy được trọng số năm, dùng mặc định 0.4/0.6: " + e.getMessage());
+        }
+
+        String sql = "SELECT hs.MaHS, hs.HoTen, l.TenLop, "
+                + "AVG(CASE WHEN d.HocKy = 1 THEN d.DiemTB END) AS DiemHK1, "
+                + "AVG(CASE WHEN d.HocKy = 2 THEN d.DiemTB END) AS DiemHK2 "
+                + "FROM HocSinh hs "
+                + "JOIN Lop l ON hs.MaLop = l.MaLop "
+                + "JOIN Diem d ON hs.MaHS = d.MaHS "
+                + "WHERE d.MaNK = ? "
+                + "GROUP BY hs.MaHS, hs.HoTen, l.TenLop "
+                + "ORDER BY l.TenLop, hs.HoTen";
+
+        try (Connection conn = DatabaseConnection.getConnection();
+                PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setInt(1, maNK);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    double hk1 = rs.getDouble("DiemHK1");
+                    boolean hk1Null = rs.wasNull();
+                    double hk2 = rs.getDouble("DiemHK2");
+                    boolean hk2Null = rs.wasNull();
+
+                    double diemCaNam = 0.0;
+                    if (hk1Null && hk2Null) {
+                        diemCaNam = 0.0;
+                    } else {
+                        // if one HK is missing, assume the other weight normalization
+                        double denom = (w1 + w2);
+                        diemCaNam = Math.round(((hk1 * w1) + (hk2 * w2)) / denom * 10) / 10.0;
+                    }
+
+                    Object[] row = new Object[7];
+                    row[0] = rs.getInt("MaHS");
+                    row[1] = rs.getString("HoTen");
+                    row[2] = rs.getString("TenLop");
+                    row[3] = Math.round(hk1 * 10) / 10.0;
+                    row[4] = Math.round(hk2 * 10) / 10.0;
+                    row[5] = diemCaNam;
+                    row[6] = xepLoai(diemCaNam);
+                    result.add(row);
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Lỗi khi tính điểm TB cả năm: " + e.getMessage());
+            e.printStackTrace();
+        }
+
+        return result;
     }
 
     private void build() {
@@ -149,7 +290,7 @@ public class DiemXemTheoHocKyDialog extends JDialog {
         model.setRowCount(0);
 
         String loaiXem = (String) cboLoaiXem.getSelectedItem();
-        int maNK = 1; // Mặc định năm khóa 1, có thể lấy từ cboNamHoc
+        int maNK = com.sgu.qlhs.bus.NienKhoaBUS.current();
 
         try {
             if (loaiXem.equals("Cả năm")) {
@@ -187,7 +328,7 @@ public class DiemXemTheoHocKyDialog extends JDialog {
      * Load điểm theo học kỳ
      */
     private void loadDiemHocKy(int hocKy, int maNK) {
-        var data = dao.getDiemTrungBinhHocKy(hocKy, maNK);
+        var data = queryDiemTrungBinhHocKy(hocKy, maNK);
 
         for (Object[] row : data) {
             // Lấy thêm tên lớp (tạm thời để trống, có thể JOIN thêm)
@@ -206,7 +347,7 @@ public class DiemXemTheoHocKyDialog extends JDialog {
      */
     private void loadDiemHocKyForClass(int maLop, int hocKy, int maNK) {
         model.setRowCount(0);
-        var data = dao.getDiemChiTietHocKy(maLop, hocKy, maNK);
+        var data = queryDiemChiTietHocKy(maLop, hocKy, maNK);
 
         // Aggregate per student: map MaHS -> {hoTen, sum, count}
         Map<Integer, String> name = new HashMap<>();
@@ -244,7 +385,7 @@ public class DiemXemTheoHocKyDialog extends JDialog {
      */
     private void loadDiemCaNamFiltered(int maNK, String tenLop) {
         model.setRowCount(0);
-        var data = dao.getDiemTrungBinhCaNam(maNK);
+        var data = queryDiemTrungBinhCaNam(maNK);
         for (Object[] row : data) {
             String lop = (String) row[2];
             if (lop != null && lop.equals(tenLop)) {
@@ -272,7 +413,7 @@ public class DiemXemTheoHocKyDialog extends JDialog {
      * Load điểm cả năm
      */
     private void loadDiemCaNam(int maNK) {
-        var data = dao.getDiemTrungBinhCaNam(maNK);
+        var data = queryDiemTrungBinhCaNam(maNK);
 
         for (Object[] row : data) {
             model.addRow(new Object[] {

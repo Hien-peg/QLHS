@@ -17,8 +17,7 @@ import com.sgu.qlhs.dto.LopDTO;
 
 public class DiemExportPdfDialog extends JDialog {
     private final JComboBox<String> cboLop = new JComboBox<>();
-    private final JComboBox<String> cboMon = new JComboBox<>(
-            new String[] { "Toán", "Văn", "Anh", "Lý", "Hóa", "Sinh" });
+    private final JComboBox<String> cboMon = new JComboBox<>();
     private final JComboBox<String> cboHK = new JComboBox<>(new String[] { "HK1", "HK2" });
     private LopBUS lopBUS;
     private DiemBUS diemBUS;
@@ -29,31 +28,13 @@ public class DiemExportPdfDialog extends JDialog {
         setMinimumSize(new Dimension(520, 220));
         setLocationRelativeTo(owner);
         build();
+        loadMonData();
         initBuses();
         loadLopData();
         pack();
     }
 
-    private int mapMon(String tenMon) {
-        if (tenMon == null)
-            return 1;
-        switch (tenMon) {
-            case "Toán":
-                return 1;
-            case "Văn":
-                return 2;
-            case "Anh":
-                return 3;
-            case "Lý":
-                return 4;
-            case "Hóa":
-                return 5;
-            case "Sinh":
-                return 6;
-            default:
-                return 1;
-        }
-    }
+    // subject -> maMon mapping removed in favor of MonBUS lookups
 
     private void initBuses() {
         lopBUS = new LopBUS();
@@ -94,8 +75,13 @@ public class DiemExportPdfDialog extends JDialog {
             LopDTO lop = lops.get(sel - 1);
             int maLop = lop.getMaLop();
             int hocKy = cboHK.getSelectedIndex() + 1;
-            int maNK = 1;
-            int maMon = mapMon((String) cboMon.getSelectedItem());
+            int maNK = com.sgu.qlhs.bus.NienKhoaBUS.current();
+            // map subject name -> maMon
+            com.sgu.qlhs.bus.MonBUS monBus = new com.sgu.qlhs.bus.MonBUS();
+            java.util.Map<String, Integer> monMap = new java.util.HashMap<>();
+            for (var m : monBus.getAllMon())
+                monMap.put(m.getTenMon(), m.getMaMon());
+            // subject id not needed for this export path; we only filter by class/hk
             java.util.List<com.sgu.qlhs.dto.DiemDTO> rows = diemBUS.getDiemByLopHocKy(maLop, hocKy, maNK);
 
             var chooser = new JFileChooser();
@@ -107,9 +93,25 @@ public class DiemExportPdfDialog extends JDialog {
                 dispose();
             }
         });
-        btnClose.addActionListener(e -> dispose());
+        btnClose.addActionListener((java.awt.event.ActionEvent __) -> {
+            if (__ == null) {
+            }
+            dispose();
+        });
         btnPane.add(btnClose);
         btnPane.add(btnExport);
         root.add(btnPane, BorderLayout.SOUTH);
+    }
+
+    private void loadMonData() {
+        cboMon.removeAllItems();
+        try {
+            com.sgu.qlhs.bus.MonBUS monBus = new com.sgu.qlhs.bus.MonBUS();
+            for (var m : monBus.getAllMon())
+                cboMon.addItem(m.getTenMon());
+        } catch (Exception ex) {
+            cboMon.addItem("Toán");
+            cboMon.addItem("Văn");
+        }
     }
 }

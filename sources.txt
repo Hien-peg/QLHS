@@ -7,7 +7,6 @@ D:\huyngyuen\nam_5\Java\JavaCode\QLHS\src\com\sgu\qlhs\bus\HocSinhBUS.java
 D:\huyngyuen\nam_5\Java\JavaCode\QLHS\src\com\sgu\qlhs\bus\LopBUS.java
 D:\huyngyuen\nam_5\Java\JavaCode\QLHS\src\com\sgu\qlhs\bus\MonBUS.java
 D:\huyngyuen\nam_5\Java\JavaCode\QLHS\src\com\sgu\qlhs\bus\PhongBUS.java
-D:\huyngyuen\nam_5\Java\JavaCode\QLHS\src\com\sgu\qlhs\database\DatabaseConnection.java
 D:\huyngyuen\nam_5\Java\JavaCode\QLHS\src\com\sgu\qlhs\database\DiemDAO.java
 D:\huyngyuen\nam_5\Java\JavaCode\QLHS\src\com\sgu\qlhs\database\DiemHocKyDAO.java
 D:\huyngyuen\nam_5\Java\JavaCode\QLHS\src\com\sgu\qlhs\database\GiaoVienDAO.java

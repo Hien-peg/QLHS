@@ -7,12 +7,13 @@ import java.awt.*;
 import com.sgu.qlhs.bus.LopBUS;
 import com.sgu.qlhs.bus.HocSinhBUS;
 import com.sgu.qlhs.bus.DiemBUS;
+import com.sgu.qlhs.bus.MonBUS;
 import com.sgu.qlhs.dto.LopDTO;
 import com.sgu.qlhs.dto.HocSinhDTO;
 import com.sgu.qlhs.dto.DiemDTO;
 
 public class DiemTrungBinhTatCaMonDialog extends JDialog {
-    private final JComboBox<String> cboLop = new JComboBox<>(new String[] { "10A1", "10A2", "11A1", "12A1" });
+    private final JComboBox<String> cboLop = new JComboBox<>();
     private final JComboBox<String> cboHK = new JComboBox<>(new String[] { "HK1", "HK2", "Cả năm" });
     // Cột 0..1: mã, họ tên | 2..7: 6 môn | 8: TB | 9: Xếp loại
     private final DefaultTableModel model = new DefaultTableModel(
@@ -32,8 +33,8 @@ public class DiemTrungBinhTatCaMonDialog extends JDialog {
         }
     };
 
-    // Danh sách môn tương ứng các cột 2..7
-    private static final String[] MONS = { "Toán", "Văn", "Anh", "Lý", "Hóa", "Sinh" };
+    // Danh sách môn tương ứng các cột 2..7 (loaded from DB when possible)
+    private String[] mons = new String[] { "Toán", "Văn", "Anh", "Lý", "Hóa", "Sinh" };
     // Lưu điểm HK1/HK2 theo: Map<MãHS, Map<Môn, ĐiểmTBMonHK>>
     private final java.util.Map<String, java.util.Map<String, Double>> hk1 = new java.util.HashMap<>();
     private final java.util.Map<String, java.util.Map<String, Double>> hk2 = new java.util.HashMap<>();
@@ -43,8 +44,9 @@ public class DiemTrungBinhTatCaMonDialog extends JDialog {
         super(owner, "Tính điểm trung bình tất cả các môn", ModalityType.APPLICATION_MODAL);
         setMinimumSize(new Dimension(1000, 550));
         setLocationRelativeTo(owner);
-        build();
         initBuses();
+        loadMonData();
+        build();
         loadLopData();
         pack();
     }
@@ -52,12 +54,47 @@ public class DiemTrungBinhTatCaMonDialog extends JDialog {
     private LopBUS lopBUS;
     private HocSinhBUS hocSinhBUS;
     private DiemBUS diemBUS;
+    private MonBUS monBUS;
     private java.util.List<LopDTO> lops = new java.util.ArrayList<>();
 
     private void initBuses() {
         lopBUS = new LopBUS();
         hocSinhBUS = new HocSinhBUS();
         diemBUS = new DiemBUS();
+        monBUS = new MonBUS();
+    }
+
+    private void loadMonData() {
+        try {
+            java.util.List<com.sgu.qlhs.dto.MonHocDTO> list = new java.util.ArrayList<>();
+            if (monBUS == null) {
+                monBUS = new MonBUS();
+            }
+            list = monBUS.getAllMon();
+            if (list != null && list.size() >= 1) {
+                // take up to 6 subject names to match table columns
+                int n = Math.min(6, list.size());
+                String[] arr = new String[6];
+                for (int i = 0; i < 6; i++) {
+                    if (i < n)
+                        arr[i] = list.get(i).getTenMon();
+                    else
+                        arr[i] = mons[i];
+                }
+                mons = arr;
+                // update table column headers to reflect subject names
+                String[] cols = new String[10];
+                cols[0] = "Mã HS";
+                cols[1] = "Họ tên";
+                for (int i = 0; i < 6; i++)
+                    cols[2 + i] = mons[i];
+                cols[8] = "Trung bình";
+                cols[9] = "Xếp loại";
+                model.setColumnIdentifiers(cols);
+            }
+        } catch (Exception ex) {
+            // keep defaults if DB access fails
+        }
     }
 
     private void build() {
@@ -98,7 +135,7 @@ public class DiemTrungBinhTatCaMonDialog extends JDialog {
                 int r1 = e.getLastRow();
                 for (int r = r0; r <= r1; r++) {
                     String ma = String.valueOf(model.getValueAt(r, 0));
-                    String mon = MONS[c - 2];
+                    String mon = mons[c - 2];
                     Double val = model.getValueAt(r, c) == null ? null
                             : ((Number) model.getValueAt(r, c)).doubleValue();
                     setScore(target, ma, mon, val);
@@ -107,8 +144,16 @@ public class DiemTrungBinhTatCaMonDialog extends JDialog {
         });
 
         // class/hk selection
-        cboLop.addActionListener(ev -> reloadForSelection());
-        cboHK.addActionListener(ev -> reloadTableByHKSelection());
+        cboLop.addActionListener((java.awt.event.ActionEvent __) -> {
+            if (__ == null) {
+            }
+            reloadForSelection();
+        });
+        cboHK.addActionListener((java.awt.event.ActionEvent __) -> {
+            if (__ == null) {
+            }
+            reloadTableByHKSelection();
+        });
 
         // ===== Nút tính toán =====
         btnCalc.addActionListener(e -> {
@@ -120,7 +165,7 @@ public class DiemTrungBinhTatCaMonDialog extends JDialog {
                 double tong = 0;
                 int dem = 0;
                 for (int c = 2; c <= 7; c++) {
-                    String mon = MONS[c - 2];
+                    String mon = mons[c - 2];
                     double d;
                     if ("Cả năm".equals(sel)) {
                         Double d1 = getScore(hk1, ma, mon);
@@ -157,9 +202,84 @@ public class DiemTrungBinhTatCaMonDialog extends JDialog {
         btnSave.addActionListener(e -> {
             if (e == null)
                 return; // tránh cảnh báo tham số không dùng
-            // TODO: Ghi hk1/hk2 xuống DB theo lớp + học kỳ
-            JOptionPane.showMessageDialog(this, "(Demo) Đã lưu tạm thời trong bộ nhớ.");
-            dispose();
+            // Persist hk1/hk2 to DB per student+semester using DiemBUS.upsert
+            Object sel = cboHK.getSelectedItem();
+            // If user is viewing a specific HK, snapshot visible table into that HK store
+            if ("HK1".equals(sel))
+                snapshotCurrentTableTo(hk1);
+            else if ("HK2".equals(sel))
+                snapshotCurrentTableTo(hk2);
+
+            // Build subject name -> maMon map
+            java.util.Map<String, Integer> monMap = new java.util.HashMap<>();
+            try {
+                for (var m : monBUS.getAllMon())
+                    monMap.put(m.getTenMon(), m.getMaMon());
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(this, "Lỗi khi tải danh sách môn: " + ex.getMessage());
+                return;
+            }
+
+            int saved = 0;
+            int maNK = com.sgu.qlhs.bus.NienKhoaBUS.current();
+
+            // Save HK1
+            for (var entry : hk1.entrySet()) {
+                String maHSs = entry.getKey();
+                int maHS;
+                try {
+                    maHS = Integer.parseInt(maHSs);
+                } catch (NumberFormatException ex) {
+                    continue;
+                }
+                for (var e2 : entry.getValue().entrySet()) {
+                    String tenMon = e2.getKey();
+                    Double val = e2.getValue();
+                    if (val == null)
+                        continue;
+                    Integer maMon = monMap.get(tenMon);
+                    if (maMon == null)
+                        continue; // unknown subject name
+                    try {
+                        // Persist HK TB by populating all components with the same TB
+                        // This ensures the DB-generated DiemTB equals the TB value the user entered.
+                        double tbv = val.doubleValue();
+                        diemBUS.saveOrUpdateDiem(maHS, maMon, 1, maNK, tbv, tbv, tbv, tbv);
+                        saved++;
+                    } catch (Exception ex) {
+                        System.err.println("Lỗi khi lưu điểm HK1: " + ex.getMessage());
+                    }
+                }
+            }
+
+            // Save HK2
+            for (var entry : hk2.entrySet()) {
+                String maHSs = entry.getKey();
+                int maHS;
+                try {
+                    maHS = Integer.parseInt(maHSs);
+                } catch (NumberFormatException ex) {
+                    continue;
+                }
+                for (var e2 : entry.getValue().entrySet()) {
+                    String tenMon = e2.getKey();
+                    Double val = e2.getValue();
+                    if (val == null)
+                        continue;
+                    Integer maMon = monMap.get(tenMon);
+                    if (maMon == null)
+                        continue;
+                    try {
+                        double tbv = val.doubleValue();
+                        diemBUS.saveOrUpdateDiem(maHS, maMon, 2, maNK, tbv, tbv, tbv, tbv);
+                        saved++;
+                    } catch (Exception ex) {
+                        System.err.println("Lỗi khi lưu điểm HK2: " + ex.getMessage());
+                    }
+                }
+            }
+
+            JOptionPane.showMessageDialog(this, "Đã lưu " + saved + " mục điểm vào cơ sở dữ liệu.");
         });
         btnClose.addActionListener(e -> {
             if (e == null)
@@ -213,11 +333,11 @@ public class DiemTrungBinhTatCaMonDialog extends JDialog {
     private void snapshotCurrentTableTo(java.util.Map<String, java.util.Map<String, Double>> store) {
         for (int r = 0; r < model.getRowCount(); r++) {
             String ma = String.valueOf(model.getValueAt(r, 0));
-            for (int i = 0; i < MONS.length; i++) {
+            for (int i = 0; i < mons.length; i++) {
                 Object v = model.getValueAt(r, 2 + i);
                 Double d = (v instanceof Number) ? ((Number) v).doubleValue() : null;
                 if (d != null)
-                    setScore(store, ma, MONS[i], d);
+                    setScore(store, ma, mons[i], d);
             }
         }
     }
@@ -231,15 +351,15 @@ public class DiemTrungBinhTatCaMonDialog extends JDialog {
                 if ("HK1".equals(sel) || "HK2".equals(sel)) {
                     var src = "HK1".equals(sel) ? hk1 : hk2;
                     String ma = String.valueOf(model.getValueAt(r, 0));
-                    for (int i = 0; i < MONS.length; i++) {
-                        Double d = getScore(src, ma, MONS[i]);
+                    for (int i = 0; i < mons.length; i++) {
+                        Double d = getScore(src, ma, mons[i]);
                         model.setValueAt(d, r, 2 + i);
                     }
                 } else { // Cả năm -> hiển thị TB môn năm = TB(HK1,HK2)
                     String ma = String.valueOf(model.getValueAt(r, 0));
-                    for (int i = 0; i < MONS.length; i++) {
-                        Double d1 = getScore(hk1, ma, MONS[i]);
-                        Double d2 = getScore(hk2, ma, MONS[i]);
+                    for (int i = 0; i < mons.length; i++) {
+                        Double d1 = getScore(hk1, ma, mons[i]);
+                        Double d2 = getScore(hk2, ma, mons[i]);
                         int cnt = 0;
                         double sum = 0;
                         if (d1 != null) {
@@ -286,14 +406,19 @@ public class DiemTrungBinhTatCaMonDialog extends JDialog {
         for (HocSinhDTO hs : students) {
             model.addRow(new Object[] { hs.getMaHS(), hs.getHoTen(), null, null, null, null, null, null, null, null });
             // load HK1
-            java.util.List<DiemDTO> d1 = diemBUS.getDiemByMaHS(hs.getMaHS(), 1, 1);
+            java.util.List<DiemDTO> d1 = diemBUS.getDiemByMaHS(hs.getMaHS(), 1, com.sgu.qlhs.bus.NienKhoaBUS.current());
             for (DiemDTO d : d1) {
-                setScore(hk1, String.valueOf(hs.getMaHS()), d.getTenMon(), d.getDiemMieng());
+                // compute TB for the subject from components
+                double tb = round1(d.getDiemMieng() * 0.10 + d.getDiem15p() * 0.20 + d.getDiemGiuaKy() * 0.30
+                        + d.getDiemCuoiKy() * 0.40);
+                setScore(hk1, String.valueOf(hs.getMaHS()), d.getTenMon(), tb);
             }
             // load HK2
-            java.util.List<DiemDTO> d2 = diemBUS.getDiemByMaHS(hs.getMaHS(), 2, 1);
+            java.util.List<DiemDTO> d2 = diemBUS.getDiemByMaHS(hs.getMaHS(), 2, com.sgu.qlhs.bus.NienKhoaBUS.current());
             for (DiemDTO d : d2) {
-                setScore(hk2, String.valueOf(hs.getMaHS()), d.getTenMon(), d.getDiemMieng());
+                double tb = round1(d.getDiemMieng() * 0.10 + d.getDiem15p() * 0.20 + d.getDiemGiuaKy() * 0.30
+                        + d.getDiemCuoiKy() * 0.40);
+                setScore(hk2, String.valueOf(hs.getMaHS()), d.getTenMon(), tb);
             }
         }
         // refresh view

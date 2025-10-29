@@ -21,6 +21,7 @@ public class ThongKeDiemMonDialog extends JDialog {
     private final JComboBox<String> cboHK = new JComboBox<>(new String[] { "HK1", "HK2" });
     private LopBUS lopBUS;
     private DiemBUS diemBUS;
+    private com.sgu.qlhs.bus.MonBUS monBUS;
     private BarChartCanvas chart;
     private java.util.List<LopDTO> lops = new java.util.ArrayList<>();
 
@@ -42,20 +43,27 @@ public class ThongKeDiemMonDialog extends JDialog {
         top.add(btnLoad);
         root.add(top, BorderLayout.NORTH);
 
-        // placeholder chart
-        String[] mons = { "Toán", "Văn", "Anh", "Lý", "Hóa", "Sinh" };
-        int[] tbs = { 75, 78, 80, 72, 74, 76 }; // x10 (điểm 7.5 => 75) để trực quan
-        chart = new BarChartCanvas("Điểm TB theo môn (x10)", mons, tbs);
-        root.add(chart, BorderLayout.CENTER);
-
         // init buses
         lopBUS = new LopBUS();
         diemBUS = new DiemBUS();
+        monBUS = new com.sgu.qlhs.bus.MonBUS();
 
-        btnLoad.addActionListener(e -> {
+        // build initial chart from DB-backed subject list (fallback to defaults)
+        java.util.List<com.sgu.qlhs.dto.MonHocDTO> monList = monBUS.getAllMon();
+        String[] mons = monList.isEmpty() ? new String[] { "Toán", "Văn", "Anh", "Lý", "Hóa", "Sinh" }
+                : monList.stream().map(m -> m.getTenMon()).toArray(String[]::new);
+        int[] tbs = new int[mons.length];
+        for (int i = 0; i < tbs.length; i++)
+            tbs[i] = 0;
+        chart = new BarChartCanvas("Điểm TB theo môn (x10)", mons, tbs);
+        root.add(chart, BorderLayout.CENTER);
+
+        btnLoad.addActionListener((java.awt.event.ActionEvent __) -> {
+            if (__ == null) {
+            }
             int khoi = Integer.parseInt((String) cboKhoi.getSelectedItem());
             int hocKy = cboHK.getSelectedIndex() + 1;
-            int maNK = 1;
+            int maNK = com.sgu.qlhs.bus.NienKhoaBUS.current();
             // aggregate per subject
             java.util.Map<String, double[]> agg = new java.util.HashMap<>(); // tenMon -> {sum, cnt}
             lops = lopBUS.getAllLop();
@@ -91,7 +99,11 @@ public class ThongKeDiemMonDialog extends JDialog {
 
         var south = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         var close = new JButton("Đóng");
-        close.addActionListener(e -> dispose());
+        close.addActionListener((java.awt.event.ActionEvent __) -> {
+            if (__ == null) {
+            }
+            dispose();
+        });
         south.add(close);
         root.add(south, BorderLayout.SOUTH);
         pack();

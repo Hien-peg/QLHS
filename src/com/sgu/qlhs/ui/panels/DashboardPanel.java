@@ -124,7 +124,9 @@ public class DashboardPanel extends JPanel {
                     case "Thống kê điểm TB môn" -> new ThongKeDiemMonDialog(null).setVisible(true);
                     case "Thống kê sức chứa lớp" -> new ThongKeLopSucChuaDialog(null).setVisible(true);
 
-                    default -> JOptionPane.showMessageDialog(DashboardPanel.this, "[Demo] Chọn: " + item.text);
+                    default -> {
+                        // No-op for unhandled items. Previously showed a demo popup.
+                    }
                 }
             }
         });

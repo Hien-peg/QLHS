@@ -16,13 +16,14 @@ import com.sgu.qlhs.bus.LopBUS;
 import com.sgu.qlhs.bus.HocSinhBUS;
 import com.sgu.qlhs.bus.DiemBUS;
 import com.sgu.qlhs.dto.LopDTO;
+import com.sgu.qlhs.bus.MonBUS;
+import com.sgu.qlhs.bus.NienKhoaBUS;
 import com.sgu.qlhs.dto.HocSinhDTO;
 import com.sgu.qlhs.dto.DiemDTO;
 
 public class DiemTinhXepLoaiDialog extends JDialog {
     private final JComboBox<String> cboLop = new JComboBox<>();
-    private final JComboBox<String> cboMon = new JComboBox<>(
-            new String[] { "Toán", "Văn", "Anh", "Lý", "Hóa", "Sinh" });
+    private final JComboBox<String> cboMon = new JComboBox<>();
     private final JComboBox<String> cboHK = new JComboBox<>(new String[] { "HK1", "HK2" });
     private final DefaultTableModel model = new DefaultTableModel(
             new Object[] { "Mã HS", "Họ tên", "Miệng", "15p", "Giữa kỳ", "Cuối kỳ", "TB" }, 0) {
@@ -43,6 +44,7 @@ public class DiemTinhXepLoaiDialog extends JDialog {
         setLocationRelativeTo(owner);
         build();
         initBuses();
+        loadMonData();
         loadLopData();
         pack();
     }
@@ -103,8 +105,14 @@ public class DiemTinhXepLoaiDialog extends JDialog {
         btnSave.addActionListener(e -> {
             // Save edited scores via DiemBUS
             int hocKy = cboHK.getSelectedIndex() + 1;
-            int maNK = 1;
-            int maMon = mapMon((String) cboMon.getSelectedItem());
+            int maNK = NienKhoaBUS.current();
+            // map subject name -> maMon using MonBUS
+            MonBUS monBUS = new MonBUS();
+            java.util.Map<String, Integer> monMap = new java.util.HashMap<>();
+            for (var m : monBUS.getAllMon())
+                monMap.put(m.getTenMon(), m.getMaMon());
+            Integer maMonObj = monMap.get((String) cboMon.getSelectedItem());
+            int maMon = maMonObj == null ? 1 : maMonObj;
             for (int r = 0; r < model.getRowCount(); r++) {
                 Object idObj = model.getValueAt(r, 0);
                 if (idObj == null)
@@ -119,15 +127,31 @@ public class DiemTinhXepLoaiDialog extends JDialog {
                 double p15 = val(model.getValueAt(r, 3));
                 double gk = val(model.getValueAt(r, 4));
                 double ck = val(model.getValueAt(r, 5));
-                diemBUS.saveDiem(maHS, maMon, hocKy, maNK, mieng, p15, gk, ck);
+                diemBUS.saveOrUpdateDiem(maHS, maMon, hocKy, maNK, mieng, p15, gk, ck);
             }
             JOptionPane.showMessageDialog(this, "Đã lưu kết quả");
             dispose();
         });
-        btnClose.addActionListener(e -> dispose());
+        btnClose.addActionListener((java.awt.event.ActionEvent __) -> {
+            if (__ == null) {
+            }
+            dispose();
+        });
         btnPane.add(btnClose);
         btnPane.add(btnSave);
         root.add(btnPane, BorderLayout.SOUTH);
+    }
+
+    private void loadMonData() {
+        cboMon.removeAllItems();
+        try {
+            MonBUS monBUS = new MonBUS();
+            for (var m : monBUS.getAllMon())
+                cboMon.addItem(m.getTenMon());
+        } catch (Exception ex) {
+            cboMon.addItem("Toán");
+            cboMon.addItem("Văn");
+        }
     }
 
     private static double val(Object o) {
@@ -160,20 +184,27 @@ public class DiemTinhXepLoaiDialog extends JDialog {
         }
         LopDTO sel = lops.get(idx - 1);
         int maLop = sel.getMaLop();
+        String monName = (String) cboMon.getSelectedItem();
         int hocKy = cboHK.getSelectedIndex() + 1;
-        int maMon = mapMon((String) cboMon.getSelectedItem());
-        loadStudentsForLopAndMon(maLop, maMon, hocKy);
+        MonBUS monBUS = new MonBUS();
+        java.util.Map<String, Integer> monMap = new java.util.HashMap<>();
+        for (var m : monBUS.getAllMon())
+            monMap.put(m.getTenMon(), m.getMaMon());
+        Integer maMonObj = monMap.get(monName);
+        int maMon = maMonObj == null ? 1 : maMonObj;
+        loadStudentsForLopAndMon(maLop, maMon, monName, hocKy);
     }
 
-    private void loadStudentsForLopAndMon(int maLop, int maMon, int hocKy) {
+    private void loadStudentsForLopAndMon(int maLop, int maMon, String monName, int hocKy) {
         model.setRowCount(0);
         java.util.List<HocSinhDTO> students = hocSinhBUS.getHocSinhByMaLop(maLop);
         for (HocSinhDTO hs : students) {
             Double mieng = null, p15 = null, gk = null, ck = null;
-            java.util.List<DiemDTO> ds = diemBUS.getDiemByMaHS(hs.getMaHS(), hocKy, 1);
+            int maNK = NienKhoaBUS.current();
+            java.util.List<DiemDTO> ds = diemBUS.getDiemByMaHS(hs.getMaHS(), hocKy, maNK);
             for (DiemDTO d : ds) {
                 if ((d.getMaMon() != 0 && d.getMaMon() == maMon)
-                        || (d.getTenMon() != null && d.getTenMon().equalsIgnoreCase(getMonName(maMon)))) {
+                        || (d.getTenMon() != null && d.getTenMon().equalsIgnoreCase(monName))) {
                     mieng = d.getDiemMieng();
                     p15 = d.getDiem15p();
                     gk = d.getDiemGiuaKy();
@@ -185,42 +216,5 @@ public class DiemTinhXepLoaiDialog extends JDialog {
         }
     }
 
-    private int mapMon(String tenMon) {
-        if (tenMon == null)
-            return 1;
-        switch (tenMon) {
-            case "Toán":
-                return 1;
-            case "Văn":
-                return 2;
-            case "Anh":
-                return 3;
-            case "Lý":
-                return 4;
-            case "Hóa":
-                return 5;
-            case "Sinh":
-                return 6;
-            default:
-                return 1;
-        }
-    }
-
-    private String getMonName(int maMon) {
-        switch (maMon) {
-            case 1:
-                return "Toán";
-            case 2:
-                return "Văn";
-            case 3:
-                return "Anh";
-            case 4:
-                return "Lý";
-            case 5:
-                return "Hóa";
-            case 6:
-                return "Sinh";
-        }
-        return "";
-    }
+    // Subject mapping replaced by MonBUS lookups above
 }
