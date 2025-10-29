@@ -4,6 +4,8 @@ import javax.swing.*;
 import java.awt.*;
 import java.util.HashMap;
 import java.util.Map;
+import com.sgu.qlhs.bus.HocSinhBUS;
+import com.sgu.qlhs.dto.HocSinhDTO;
 
 public class HocSinhDeleteDialog extends JDialog {
     private JTextField txtMaHS;
@@ -12,6 +14,7 @@ public class HocSinhDeleteDialog extends JDialog {
 
     // Giả lập "database" (bạn thay bằng truy vấn thật sau)
     private Map<String, String[]> fakeData = new HashMap<>();
+    private final HocSinhBUS hocSinhBUS = new HocSinhBUS();
 
     public HocSinhDeleteDialog(Window owner) {
         super(owner, "Xóa học sinh", ModalityType.APPLICATION_MODAL);
@@ -20,9 +23,9 @@ public class HocSinhDeleteDialog extends JDialog {
         setLayout(new BorderLayout(10, 10));
 
         // ===== Dữ liệu mẫu =====
-        fakeData.put("HS001", new String[]{"Nguyễn Văn A", "10A1"});
-        fakeData.put("HS002", new String[]{"Trần Thị B", "11A2"});
-        fakeData.put("HS003", new String[]{"Lê Văn C", "12A1"});
+        fakeData.put("HS001", new String[] { "Nguyễn Văn A", "10A1" });
+        fakeData.put("HS002", new String[] { "Trần Thị B", "11A2" });
+        fakeData.put("HS003", new String[] { "Lê Văn C", "12A1" });
 
         buildForm();
     }
@@ -77,6 +80,22 @@ public class HocSinhDeleteDialog extends JDialog {
                 return;
             }
 
+            // Try BUS lookup by numeric id
+            try {
+                int maHSInt = Integer.parseInt(ma.replaceAll("[^0-9]", ""));
+                HocSinhDTO h = hocSinhBUS.getHocSinhByMaHS(maHSInt);
+                if (h != null) {
+                    lblHoTen.setText(h.getHoTen());
+                    lblLop.setText(h.getTenLop());
+                    lblKetQua.setText("Đã tìm thấy học sinh!");
+                    lblKetQua.setForeground(new Color(0, 128, 0));
+                    btnDelete.setEnabled(true);
+                    return;
+                }
+            } catch (NumberFormatException ex) {
+                // fall back to fake data below
+            }
+
             if (fakeData.containsKey(ma)) {
                 String[] info = fakeData.get(ma);
                 lblHoTen.setText(info[0]);
@@ -101,6 +120,18 @@ public class HocSinhDeleteDialog extends JDialog {
                     "Xác nhận xóa", JOptionPane.YES_NO_OPTION);
 
             if (confirm == JOptionPane.YES_OPTION) {
+                // try to delete via BUS if ma is numeric
+                try {
+                    int maHSInt = Integer.parseInt(ma.replaceAll("[^0-9]", ""));
+                    hocSinhBUS.deleteHocSinh(maHSInt);
+                    JOptionPane.showMessageDialog(this,
+                            "Đã xóa học sinh " + ten + " (" + ma + ") thành công! (qua BUS)");
+                    dispose();
+                    return;
+                } catch (NumberFormatException ex) {
+                    // fallback to fake data
+                }
+
                 fakeData.remove(ma);
                 JOptionPane.showMessageDialog(this, "Đã xóa học sinh " + ten + " (" + ma + ") thành công!");
                 dispose();

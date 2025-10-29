@@ -1,5 +1,6 @@
-package com.sgu.qlhs.ui.database;
+package com.sgu.qlhs.database;
 
+import com.sgu.qlhs.DatabaseConnection;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -9,18 +10,10 @@ import java.util.List;
  */
 public class DiemHocKyDAO {
 
-    /**
-     * Tính điểm trung bình của 1 môn theo học kỳ
-     * Công thức: (DiemMieng + Diem15p + DiemGiuaKy*2 + DiemCuoiKy*3) / 7
-     */
     private double tinhDiemTBMon(double mieng, double p15, double giuaKy, double cuoiKy) {
         return Math.round((mieng + p15 + giuaKy * 2 + cuoiKy * 3) / 7.0 * 10) / 10.0;
     }
 
-    /**
-     * Lấy điểm trung bình của học sinh theo học kỳ
-     * Trả về: MaHS, HoTen, [Điểm TB các môn], Điểm TB HK, Xếp loại
-     */
     public List<Object[]> getDiemTrungBinhHocKy(int hocKy, int maNK) {
         List<Object[]> result = new ArrayList<>();
 
@@ -57,9 +50,6 @@ public class DiemHocKyDAO {
         return result;
     }
 
-    /**
-     * Lấy điểm chi tiết của học sinh theo học kỳ (có điểm từng môn)
-     */
     public List<Object[]> getDiemChiTietHocKy(int maLop, int hocKy, int maNK) {
         List<Object[]> result = new ArrayList<>();
 
@@ -101,9 +91,6 @@ public class DiemHocKyDAO {
         return result;
     }
 
-    /**
-     * Lấy điểm trung bình cả năm (TB của HK1 và HK2)
-     */
     public List<Object[]> getDiemTrungBinhCaNam(int maNK) {
         List<Object[]> result = new ArrayList<>();
 
@@ -149,9 +136,6 @@ public class DiemHocKyDAO {
         return result;
     }
 
-    /**
-     * Lấy danh sách lớp
-     */
     public List<Object[]> getAllLop() {
         List<Object[]> result = new ArrayList<>();
         String sql = "SELECT MaLop, TenLop, Khoi FROM Lop ORDER BY TenLop";
@@ -174,9 +158,6 @@ public class DiemHocKyDAO {
         return result;
     }
 
-    /**
-     * Xếp loại học lực
-     */
     private String xepLoai(double diemTB) {
         if (diemTB >= 9.0)
             return "Xuất sắc";

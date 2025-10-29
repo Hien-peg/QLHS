@@ -1,4 +1,4 @@
-package com.sgu.qlhs.ui.database;
+package com.sgu.qlhs;
 
 import java.sql.Connection;
 import java.sql.DriverManager;

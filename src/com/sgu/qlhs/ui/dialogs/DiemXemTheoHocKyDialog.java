@@ -1,7 +1,10 @@
 package com.sgu.qlhs.ui.dialogs;
 
-import com.sgu.qlhs.ui.database.DiemHocKyDAO;
-import com.sgu.qlhs.ui.database.DatabaseConnection;
+import com.sgu.qlhs.bus.DiemHocKyBUS;
+import com.sgu.qlhs.bus.LopBUS;
+import com.sgu.qlhs.bus.HocSinhBUS;
+import com.sgu.qlhs.dto.LopDTO;
+import com.sgu.qlhs.dto.HocSinhDTO;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.DefaultTableModel;
@@ -26,15 +29,20 @@ public class DiemXemTheoHocKyDialog extends JDialog {
     private final JComboBox<String> cboNamHoc = new JComboBox<>(new String[] { "2024-2025", "2023-2024", "2022-2023" });
     private DefaultTableModel model;
     private JTable table;
-    private DiemHocKyDAO dao;
+    private DiemHocKyBUS dao;
+    // BUS helpers
+    private LopBUS lopBUS;
+    private HocSinhBUS hocSinhBUS;
     // lưu danh sách lớp để map index -> MaLop / TenLop
-    private List<Object[]> lopList = new ArrayList<>();
+    private List<LopDTO> lopList = new ArrayList<>();
 
     public DiemXemTheoHocKyDialog(Window owner) {
         super(owner, "Xem điểm theo học kỳ / Cả năm", ModalityType.APPLICATION_MODAL);
         setMinimumSize(new Dimension(900, 600));
         setLocationRelativeTo(owner);
-        dao = new DiemHocKyDAO();
+        dao = new DiemHocKyBUS();
+        lopBUS = new LopBUS();
+        hocSinhBUS = new HocSinhBUS();
         build();
         loadLopData();
         pack();
@@ -126,10 +134,10 @@ public class DiemXemTheoHocKyDialog extends JDialog {
     private void loadLopData() {
         cboLop.removeAllItems();
         cboLop.addItem("-- Tất cả --");
-        lopList = dao.getAllLop();
-        for (Object[] lop : lopList) {
-            String tenLop = (String) lop[1];
-            int khoi = (int) lop[2];
+        lopList = lopBUS.getAllLop();
+        for (LopDTO lop : lopList) {
+            String tenLop = lop.getTenLop();
+            int khoi = lop.getKhoi();
             cboLop.addItem(tenLop + " (Khối " + khoi + ")");
         }
     }
@@ -148,7 +156,7 @@ public class DiemXemTheoHocKyDialog extends JDialog {
                 int sel = cboLop.getSelectedIndex();
                 if (sel > 0) {
                     // lọc theo lớp
-                    String tenLop = (String) lopList.get(sel - 1)[1];
+                    String tenLop = lopList.get(sel - 1).getTenLop();
                     loadDiemCaNamFiltered(maNK, tenLop);
                 } else {
                     loadDiemCaNam(maNK);
@@ -157,7 +165,7 @@ public class DiemXemTheoHocKyDialog extends JDialog {
                 int hocKy = loaiXem.equals("Học kỳ 1") ? 1 : 2;
                 int sel = cboLop.getSelectedIndex();
                 if (sel > 0) {
-                    int maLop = (int) lopList.get(sel - 1)[0];
+                    int maLop = lopList.get(sel - 1).getMaLop();
                     loadDiemHocKyForClass(maLop, hocKy, maNK);
                 } else {
                     loadDiemHocKy(hocKy, maNK);
@@ -221,9 +229,9 @@ public class DiemXemTheoHocKyDialog extends JDialog {
             String xep = xepLoai(avg);
             // TenLop: get from lopList by maLop
             String tenLop = "";
-            for (Object[] l : lopList) {
-                if ((int) l[0] == maLop) {
-                    tenLop = (String) l[1];
+            for (LopDTO l : lopList) {
+                if (l.getMaLop() == maLop) {
+                    tenLop = l.getTenLop();
                     break;
                 }
             }
@@ -254,17 +262,9 @@ public class DiemXemTheoHocKyDialog extends JDialog {
     }
 
     private String getTenLopByMaHS(int maHS) {
-        String sql = "SELECT l.TenLop FROM HocSinh hs JOIN Lop l ON hs.MaLop = l.MaLop WHERE hs.MaHS = ?";
-        try (Connection conn = DatabaseConnection.getConnection();
-                PreparedStatement pstmt = conn.prepareStatement(sql)) {
-            pstmt.setInt(1, maHS);
-            try (ResultSet rs = pstmt.executeQuery()) {
-                if (rs.next())
-                    return rs.getString(1);
-            }
-        } catch (SQLException ex) {
-            ex.printStackTrace();
-        }
+        HocSinhDTO h = hocSinhBUS.getHocSinhByMaHS(maHS);
+        if (h != null)
+            return h.getTenLop();
         return "";
     }
 

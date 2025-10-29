@@ -1,30 +1,22 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package com.sgu.qlhs.ui.model;
 
-/**
- *
- * @author minho
- */
-
-import com.sgu.qlhs.ui.database.GiaoVienDAO;
+import com.sgu.qlhs.bus.GiaoVienBUS;
+import com.sgu.qlhs.dto.GiaoVienDTO;
 import javax.swing.table.AbstractTableModel;
-import java.util.*;
+import java.util.List;
 
 public class GiaoVienTableModel extends AbstractTableModel {
     private final String[] cols = { "Mã GV", "Họ tên", "SĐT", "Email" };
-    private final List<Object[]> data;
+    private final List<GiaoVienDTO> data;
 
     public GiaoVienTableModel() {
-        GiaoVienDAO dao = new GiaoVienDAO();
-        this.data = dao.getAllGiaoVien();
+        GiaoVienBUS bus = new GiaoVienBUS();
+        this.data = bus.getAllGiaoVien();
     }
 
     @Override
     public int getRowCount() {
-        return data.size();
+        return data == null ? 0 : data.size();
     }
 
     @Override
@@ -39,6 +31,18 @@ public class GiaoVienTableModel extends AbstractTableModel {
 
     @Override
     public Object getValueAt(int r, int c) {
-        return data.get(r)[c];
+        GiaoVienDTO g = data.get(r);
+        switch (c) {
+            case 0:
+                return g.getMaGV();
+            case 1:
+                return g.getHoTen();
+            case 2:
+                return g.getSoDienThoai();
+            case 3:
+                return g.getEmail();
+            default:
+                return null;
+        }
     }
 }

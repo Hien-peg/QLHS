@@ -7,6 +7,8 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
+import com.sgu.qlhs.bus.HocSinhBUS;
+import com.sgu.qlhs.bus.LopBUS;
 
 public class HocSinhEditDialog extends JDialog {
     private JTextField txtMa, txtHoTen, txtSdt, txtEmail;
@@ -22,6 +24,8 @@ public class HocSinhEditDialog extends JDialog {
     private JComboBox<String> cboPh2MoiQuanHe;
 
     private JButton btnLoad;
+    private final HocSinhBUS hocSinhBUS = new HocSinhBUS();
+    private final LopBUS lopBUS = new LopBUS();
 
     public HocSinhEditDialog(Window owner) {
         super(owner, "Sửa học sinh", ModalityType.APPLICATION_MODAL);
@@ -46,8 +50,8 @@ public class HocSinhEditDialog extends JDialog {
         txtHoTen = new JTextField();
         txtSdt = new JTextField();
         txtEmail = new JTextField();
-        cboGioiTinh = new JComboBox<>(new String[]{"Nam", "Nữ", "Khác"});
-        cboLop = new JComboBox<>(new String[]{"10A1", "10A2", "11A1", "12A1"});
+        cboGioiTinh = new JComboBox<>(new String[] { "Nam", "Nữ", "Khác" });
+        cboLop = new JComboBox<>(new String[] { "10A1", "10A2", "11A1", "12A1" });
 
         spNgaySinh = new JSpinner(new SpinnerDateModel());
         JSpinner.DateEditor editor = new JSpinner.DateEditor(spNgaySinh, "dd/MM/yyyy");
@@ -59,12 +63,18 @@ public class HocSinhEditDialog extends JDialog {
         pnlMa.add(btnLoad, BorderLayout.EAST);
         pnlHS.add(pnlMa);
 
-        pnlHS.add(new JLabel("Họ tên:")); pnlHS.add(txtHoTen);
-        pnlHS.add(new JLabel("Ngày sinh:")); pnlHS.add(spNgaySinh);
-        pnlHS.add(new JLabel("Giới tính:")); pnlHS.add(cboGioiTinh);
-        pnlHS.add(new JLabel("Lớp:")); pnlHS.add(cboLop);
-        pnlHS.add(new JLabel("SĐT:")); pnlHS.add(txtSdt);
-        pnlHS.add(new JLabel("Email:")); pnlHS.add(txtEmail);
+        pnlHS.add(new JLabel("Họ tên:"));
+        pnlHS.add(txtHoTen);
+        pnlHS.add(new JLabel("Ngày sinh:"));
+        pnlHS.add(spNgaySinh);
+        pnlHS.add(new JLabel("Giới tính:"));
+        pnlHS.add(cboGioiTinh);
+        pnlHS.add(new JLabel("Lớp:"));
+        pnlHS.add(cboLop);
+        pnlHS.add(new JLabel("SĐT:"));
+        pnlHS.add(txtSdt);
+        pnlHS.add(new JLabel("Email:"));
+        pnlHS.add(txtEmail);
 
         // ===== Phụ huynh 1 =====
         var pnlPh1 = new JPanel(new GridLayout(0, 2, 10, 10));
@@ -73,12 +83,16 @@ public class HocSinhEditDialog extends JDialog {
         txtPh1HoTen = new JTextField();
         txtPh1Sdt = new JTextField();
         txtPh1Email = new JTextField();
-        cboPh1MoiQuanHe = new JComboBox<>(new String[]{"Cha", "Mẹ", "Anh/Chị", "Giám hộ", "Khác"});
+        cboPh1MoiQuanHe = new JComboBox<>(new String[] { "Cha", "Mẹ", "Anh/Chị", "Giám hộ", "Khác" });
 
-        pnlPh1.add(new JLabel("Họ tên:")); pnlPh1.add(txtPh1HoTen);
-        pnlPh1.add(new JLabel("Mối quan hệ:")); pnlPh1.add(cboPh1MoiQuanHe);
-        pnlPh1.add(new JLabel("SĐT:")); pnlPh1.add(txtPh1Sdt);
-        pnlPh1.add(new JLabel("Email:")); pnlPh1.add(txtPh1Email);
+        pnlPh1.add(new JLabel("Họ tên:"));
+        pnlPh1.add(txtPh1HoTen);
+        pnlPh1.add(new JLabel("Mối quan hệ:"));
+        pnlPh1.add(cboPh1MoiQuanHe);
+        pnlPh1.add(new JLabel("SĐT:"));
+        pnlPh1.add(txtPh1Sdt);
+        pnlPh1.add(new JLabel("Email:"));
+        pnlPh1.add(txtPh1Email);
 
         // ===== Phụ huynh 2 =====
         var pnlPh2 = new JPanel(new GridLayout(0, 2, 10, 10));
@@ -87,12 +101,16 @@ public class HocSinhEditDialog extends JDialog {
         txtPh2HoTen = new JTextField();
         txtPh2Sdt = new JTextField();
         txtPh2Email = new JTextField();
-        cboPh2MoiQuanHe = new JComboBox<>(new String[]{"Cha", "Mẹ", "Anh/Chị", "Giám hộ", "Khác"});
+        cboPh2MoiQuanHe = new JComboBox<>(new String[] { "Cha", "Mẹ", "Anh/Chị", "Giám hộ", "Khác" });
 
-        pnlPh2.add(new JLabel("Họ tên:")); pnlPh2.add(txtPh2HoTen);
-        pnlPh2.add(new JLabel("Mối quan hệ:")); pnlPh2.add(cboPh2MoiQuanHe);
-        pnlPh2.add(new JLabel("SĐT:")); pnlPh2.add(txtPh2Sdt);
-        pnlPh2.add(new JLabel("Email:")); pnlPh2.add(txtPh2Email);
+        pnlPh2.add(new JLabel("Họ tên:"));
+        pnlPh2.add(txtPh2HoTen);
+        pnlPh2.add(new JLabel("Mối quan hệ:"));
+        pnlPh2.add(cboPh2MoiQuanHe);
+        pnlPh2.add(new JLabel("SĐT:"));
+        pnlPh2.add(txtPh2Sdt);
+        pnlPh2.add(new JLabel("Email:"));
+        pnlPh2.add(txtPh2Email);
 
         mainPanel.add(pnlHS);
         mainPanel.add(Box.createVerticalStrut(12));
@@ -109,8 +127,23 @@ public class HocSinhEditDialog extends JDialog {
 
         btnCancel.addActionListener(e -> dispose());
         btnSave.addActionListener(e -> {
-            JOptionPane.showMessageDialog(this, "Cập nhật thông tin học sinh thành công!");
-            dispose();
+            try {
+                int maHS = Integer.parseInt(txtMa.getText().trim());
+                String hoTen = txtHoTen.getText().trim();
+                SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
+                String ngaySinh = sdf.format((Date) spNgaySinh.getValue());
+                String gioiTinh = (String) cboGioiTinh.getSelectedItem();
+                String tenLop = (String) cboLop.getSelectedItem();
+                int maLop = mapTenLopToMaLop(tenLop);
+                String sdt = txtSdt.getText().trim();
+                String email = txtEmail.getText().trim();
+
+                hocSinhBUS.updateHocSinh(maHS, hoTen, ngaySinh, gioiTinh, maLop, sdt, email);
+                JOptionPane.showMessageDialog(this, "Cập nhật học sinh thành công (qua BUS)");
+                dispose();
+            } catch (NumberFormatException ex) {
+                JOptionPane.showMessageDialog(this, "Mã học sinh không hợp lệ");
+            }
         });
 
         btnPane.add(btnCancel);
@@ -204,5 +237,15 @@ public class HocSinhEditDialog extends JDialog {
     // ===== Main test nhanh =====
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> new HocSinhEditDialog(null).setVisible(true));
+    }
+
+    private int mapTenLopToMaLop(String tenLop) {
+        if (tenLop == null)
+            return 0;
+        for (var l : lopBUS.getAllLop()) {
+            if (tenLop.equals(l.getTenLop()))
+                return l.getMaLop();
+        }
+        return 0;
     }
 }

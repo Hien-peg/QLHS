@@ -4,27 +4,23 @@
  */
 package com.sgu.qlhs.ui.model;
 
-/**
- *
- * @author minho
- */
-
-import com.sgu.qlhs.ui.database.DiemDAO;
+import com.sgu.qlhs.bus.DiemBUS;
+import com.sgu.qlhs.dto.DiemDTO;
 import javax.swing.table.AbstractTableModel;
-import java.util.*;
+import java.util.List;
 
 public class DiemTableModel extends AbstractTableModel {
     private final String[] cols = { "Mã HS", "Họ tên", "Môn", "HK", "Miệng", "15p", "Giữa kỳ", "Cuối kỳ" };
-    private final List<Object[]> data;
+    private final List<DiemDTO> data;
 
     public DiemTableModel() {
-        DiemDAO dao = new DiemDAO();
-        this.data = dao.getAllDiem();
+        DiemBUS bus = new DiemBUS();
+        this.data = bus.getAllDiem();
     }
 
     @Override
     public int getRowCount() {
-        return data.size();
+        return data == null ? 0 : data.size();
     }
 
     @Override
@@ -39,6 +35,26 @@ public class DiemTableModel extends AbstractTableModel {
 
     @Override
     public Object getValueAt(int r, int c) {
-        return data.get(r)[c];
+        DiemDTO d = data.get(r);
+        switch (c) {
+            case 0:
+                return d.getMaHS();
+            case 1:
+                return d.getHoTen();
+            case 2:
+                return d.getTenMon();
+            case 3:
+                return d.getHocKy();
+            case 4:
+                return d.getDiemMieng();
+            case 5:
+                return d.getDiem15p();
+            case 6:
+                return d.getDiemGiuaKy();
+            case 7:
+                return d.getDiemCuoiKy();
+            default:
+                return null;
+        }
     }
 }

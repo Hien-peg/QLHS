@@ -1,4 +1,4 @@
-import com.sgu.qlhs.ui.database.DatabaseConnection;
+import com.sgu.qlhs.DatabaseConnection;
 import java.sql.Connection;
 
 public class TestConnection {

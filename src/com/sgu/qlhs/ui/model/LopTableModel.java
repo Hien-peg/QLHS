@@ -1,25 +1,26 @@
 package com.sgu.qlhs.ui.model;
 
-import com.sgu.qlhs.ui.database.HocSinhDAO;
-import com.sgu.qlhs.ui.database.LopDAO;
+import com.sgu.qlhs.bus.HocSinhBUS;
+import com.sgu.qlhs.bus.LopBUS;
+import com.sgu.qlhs.dto.HocSinhDTO;
+import com.sgu.qlhs.dto.LopDTO;
 import javax.swing.table.AbstractTableModel;
-import java.util.*;
+import java.util.List;
 
 public class LopTableModel extends AbstractTableModel {
     private final String[] cols = { "Mã lớp", "Tên lớp", "Khối", "Phòng" };
-    private final List<Object[]> data;
+    private final List<LopDTO> data;
 
-    // Tạo một instance của HocSinhDAO để sử dụng
-    private final HocSinhDAO hocSinhDAO = new HocSinhDAO();
+    private final HocSinhBUS hocSinhBUS = new HocSinhBUS();
 
     public LopTableModel() {
-        LopDAO lopDAO = new LopDAO();
-        this.data = lopDAO.getAllLop();
+        LopBUS lopBUS = new LopBUS();
+        this.data = lopBUS.getAllLop();
     }
 
     @Override
     public int getRowCount() {
-        return data.size();
+        return data == null ? 0 : data.size();
     }
 
     @Override
@@ -34,21 +35,30 @@ public class LopTableModel extends AbstractTableModel {
 
     @Override
     public Object getValueAt(int r, int c) {
-        return data.get(r)[c];
+        LopDTO l = data.get(r);
+        switch (c) {
+            case 0:
+                return l.getMaLop();
+            case 1:
+                return l.getTenLop();
+            case 2:
+                return l.getKhoi();
+            case 3:
+                return l.getTenPhong();
+            default:
+                return null;
+        }
     }
 
-    // Khôi phục và sửa đổi phương thức getMaLop()
     public int getMaLop(int row) {
-        return (int) data.get(row)[0];
+        return data.get(row).getMaLop();
     }
 
-    // Khôi phục và sửa đổi phương thức getTenLop()
     public String getTenLop(int row) {
-        return (String) data.get(row)[1];
+        return data.get(row).getTenLop();
     }
 
-    // Khôi phục và sửa đổi phương thức getHocSinhByLop()
-    public List<Object[]> getHocSinhByLop(int maLop) {
-        return hocSinhDAO.getHocSinhByMaLop(maLop);
+    public List<HocSinhDTO> getHocSinhByLop(int maLop) {
+        return hocSinhBUS.getHocSinhByMaLop(maLop);
     }
 }

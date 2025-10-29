@@ -1,6 +1,6 @@
-package com.sgu.qlhs.ui.database;
+package com.sgu.qlhs.database;
 
-import com.sgu.qlhs.ui.database.DatabaseConnection;
+import com.sgu.qlhs.DatabaseConnection;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -59,12 +59,6 @@ public class DiemDAO {
         }
     }
 
-    /**
-     * Lấy danh sách điểm (kèm tên học sinh, tên môn) cho 1 lớp trong 1 học kỳ và
-     * niên khóa
-     * Trả về List<Object[]> mỗi phần tử: {MaHS, HoTen, TenLop, MaMon, TenMon,
-     * DiemMieng, Diem15p, DiemGiuaKy, DiemCuoiKy}
-     */
     public List<Object[]> getDiemByLopHocKy(int maLop, int hocKy, int maNK) {
         List<Object[]> data = new ArrayList<>();
         String sql = "SELECT hs.MaHS, hs.HoTen, l.TenLop, mh.MaMon, mh.TenMon, d.DiemMieng, d.Diem15p, d.DiemGiuaKy, d.DiemCuoiKy "
@@ -100,11 +94,6 @@ public class DiemDAO {
         return data;
     }
 
-    /**
-     * Lấy danh sách điểm cho 1 học sinh trong 1 học kỳ và niên khóa
-     * Trả về List<Object[]> mỗi phần tử: {MaDiem, TenMon, DiemMieng, Diem15p,
-     * DiemGiuaKy, DiemCuoiKy}
-     */
     public List<Object[]> getDiemByMaHS(int maHS, int hocKy, int maNK) {
         List<Object[]> data = new ArrayList<>();
         String sql = "SELECT d.MaDiem, mh.TenMon, d.DiemMieng, d.Diem15p, d.DiemGiuaKy, d.DiemCuoiKy " +

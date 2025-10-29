@@ -12,9 +12,17 @@ import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
+import com.sgu.qlhs.bus.DiemBUS;
+import com.sgu.qlhs.bus.LopBUS;
+import com.sgu.qlhs.bus.HocSinhBUS;
+import com.sgu.qlhs.dto.HocSinhDTO;
+import com.sgu.qlhs.dto.LopDTO;
 
 public class DiemNhapDialog extends JDialog {
-    private final JComboBox<String> cboLop = new JComboBox<>(new String[] { "10A1", "10A2", "11A1", "12A1" });
+    private final DiemBUS diemBUS = new DiemBUS();
+    private final LopBUS lopBUS = new LopBUS();
+    private final HocSinhBUS hocSinhBUS = new HocSinhBUS();
+    private final JComboBox<String> cboLop = new JComboBox<>();
     private final JComboBox<String> cboMon = new JComboBox<>(
             new String[] { "Toán", "Văn", "Anh", "Lý", "Hóa", "Sinh" });
     private final JComboBox<String> cboHK = new JComboBox<>(new String[] { "HK1", "HK2" });
@@ -36,6 +44,7 @@ public class DiemNhapDialog extends JDialog {
         setMinimumSize(new Dimension(860, 520));
         setLocationRelativeTo(owner);
         build();
+        loadLopData();
         pack();
     }
 
@@ -57,16 +66,41 @@ public class DiemNhapDialog extends JDialog {
         tbl.setRowHeight(26);
         root.add(new JScrollPane(tbl), BorderLayout.CENTER);
 
-        // demo dữ liệu
-        model.addRow(new Object[] { 1, "Nguyễn Văn A", null, null, null, null });
-        model.addRow(new Object[] { 2, "Trần Thị B", null, null, null, null });
-        model.addRow(new Object[] { 3, "Phạm Minh C", null, null, null, null });
+        // initial demo or empty until a class is selected
+        // model rows will be loaded when user selects a class
 
         var btnPane = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         var btnClose = new JButton("Đóng");
         var btnSave = new JButton("Lưu");
         btnSave.addActionListener(e -> {
-            /* TODO: lưu vào DB/service */ dispose();
+            // map selected môn -> maMon (simple mapping based on known subjects)
+            int maMon = mapMon(cboMon.getSelectedItem().toString());
+            int hocKy = cboHK.getSelectedIndex() + 1; // HK1 -> 1, HK2 -> 2
+            int maNK = 1; // assumption: current niên khóa id = 1 (adjust later)
+
+            for (int r = 0; r < model.getRowCount(); r++) {
+                Object idObj = model.getValueAt(r, 0);
+                if (idObj == null)
+                    continue;
+                int maHS;
+                try {
+                    maHS = Integer.parseInt(idObj.toString());
+                } catch (NumberFormatException ex) {
+                    // skip rows where first column isn't an integer id
+                    continue;
+                }
+
+                double mieng = valueToDouble(model.getValueAt(r, 2));
+                double p15 = valueToDouble(model.getValueAt(r, 3));
+                double gk = valueToDouble(model.getValueAt(r, 4));
+                double ck = valueToDouble(model.getValueAt(r, 5));
+
+                // Call BUS to save the record (delegates to DAO internally)
+                diemBUS.saveDiem(maHS, maMon, hocKy, maNK, mieng, p15, gk, ck);
+            }
+
+            JOptionPane.showMessageDialog(this, "Lưu điểm xong");
+            dispose();
         });
         btnClose.addActionListener(e -> dispose());
         btnPane.add(btnClose);
@@ -74,5 +108,65 @@ public class DiemNhapDialog extends JDialog {
         root.add(btnPane, BorderLayout.SOUTH);
 
         getRootPane().setDefaultButton(btnSave);
+    }
+
+    private void loadLopData() {
+        cboLop.removeAllItems();
+        cboLop.addItem("-- Chọn lớp --");
+        java.util.List<LopDTO> lops = lopBUS.getAllLop();
+        for (LopDTO l : lops) {
+            cboLop.addItem(l.getTenLop());
+        }
+
+        cboLop.addActionListener(e -> {
+            int idx = cboLop.getSelectedIndex();
+            if (idx <= 0) {
+                model.setRowCount(0);
+                return;
+            }
+            LopDTO selected = lops.get(idx - 1);
+            loadStudentsForLop(selected.getMaLop());
+        });
+    }
+
+    private void loadStudentsForLop(int maLop) {
+        model.setRowCount(0);
+        java.util.List<HocSinhDTO> students = hocSinhBUS.getHocSinhByMaLop(maLop);
+        for (HocSinhDTO hs : students) {
+            model.addRow(new Object[] { hs.getMaHS(), hs.getHoTen(), null, null, null, null });
+        }
+    }
+
+    private int mapMon(String tenMon) {
+        if (tenMon == null)
+            return 1;
+        switch (tenMon) {
+            case "Toán":
+                return 1;
+            case "Văn":
+                return 2;
+            case "Anh":
+                return 3;
+            case "Lý":
+                return 4;
+            case "Hóa":
+                return 5;
+            case "Sinh":
+                return 6;
+            default:
+                return 1;
+        }
+    }
+
+    private double valueToDouble(Object o) {
+        if (o == null)
+            return 0.0;
+        if (o instanceof Number)
+            return ((Number) o).doubleValue();
+        try {
+            return Double.parseDouble(o.toString());
+        } catch (Exception ex) {
+            return 0.0;
+        }
     }
 }

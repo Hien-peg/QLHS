@@ -48,7 +48,7 @@ public class LopPhongPanel extends JPanel {
                 int modelRow = tblLop.convertRowIndexToModel(row);
                 int maLop = lopModel.getMaLop(modelRow);
                 String tenLop = lopModel.getTenLop(modelRow);
-                List<Object[]> dsHocSinh = lopModel.getHocSinhByLop(maLop);
+                java.util.List<com.sgu.qlhs.dto.HocSinhDTO> dsHocSinh = lopModel.getHocSinhByLop(maLop);
 
                 new ChiTietLopDialog(SwingUtilities.getWindowAncestor(this), maLop, tenLop, dsHocSinh)
                         .setVisible(true);
@@ -71,17 +71,18 @@ public class LopPhongPanel extends JPanel {
 
     // ===================== DIALOG CHI TIẾT LỚP =====================
     private static class ChiTietLopDialog extends JDialog {
-        private final DefaultTableModel model =
-                new DefaultTableModel(new Object[]{"Mã HS", "Họ tên", "Giới tính", "Ngày sinh"}, 0);
+        private final DefaultTableModel model = new DefaultTableModel(
+                new Object[] { "Mã HS", "Họ tên", "Giới tính", "Ngày sinh" }, 0);
 
-        public ChiTietLopDialog(Window owner, int maLop, String tenLop, List<Object[]> dsHocSinh) {
+        public ChiTietLopDialog(Window owner, int maLop, String tenLop,
+                java.util.List<com.sgu.qlhs.dto.HocSinhDTO> dsHocSinh) {
             super(owner, "Chi tiết lớp: " + tenLop, ModalityType.APPLICATION_MODAL);
             setMinimumSize(new Dimension(600, 400));
             setLocationRelativeTo(owner);
             buildUI(tenLop, dsHocSinh);
         }
 
-        private void buildUI(String tenLop, List<Object[]> dsHocSinh) {
+        private void buildUI(String tenLop, java.util.List<com.sgu.qlhs.dto.HocSinhDTO> dsHocSinh) {
             var root = new JPanel(new BorderLayout(12, 12));
             root.setBorder(new EmptyBorder(16, 16, 16, 16));
             setContentPane(root);
@@ -94,8 +95,8 @@ public class LopPhongPanel extends JPanel {
             root.add(new JScrollPane(tbl), BorderLayout.CENTER);
 
             // Nạp dữ liệu học sinh
-            for (Object[] hs : dsHocSinh) {
-                model.addRow(hs);
+            for (com.sgu.qlhs.dto.HocSinhDTO hs : dsHocSinh) {
+                model.addRow(new Object[] { hs.getMaHS(), hs.getHoTen(), hs.getGioiTinh(), hs.getNgaySinh() });
             }
         }
     }

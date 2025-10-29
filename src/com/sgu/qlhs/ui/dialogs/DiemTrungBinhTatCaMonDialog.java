@@ -4,6 +4,12 @@ import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
+import com.sgu.qlhs.bus.LopBUS;
+import com.sgu.qlhs.bus.HocSinhBUS;
+import com.sgu.qlhs.bus.DiemBUS;
+import com.sgu.qlhs.dto.LopDTO;
+import com.sgu.qlhs.dto.HocSinhDTO;
+import com.sgu.qlhs.dto.DiemDTO;
 
 public class DiemTrungBinhTatCaMonDialog extends JDialog {
     private final JComboBox<String> cboLop = new JComboBox<>(new String[] { "10A1", "10A2", "11A1", "12A1" });
@@ -38,7 +44,20 @@ public class DiemTrungBinhTatCaMonDialog extends JDialog {
         setMinimumSize(new Dimension(1000, 550));
         setLocationRelativeTo(owner);
         build();
+        initBuses();
+        loadLopData();
         pack();
+    }
+
+    private LopBUS lopBUS;
+    private HocSinhBUS hocSinhBUS;
+    private DiemBUS diemBUS;
+    private java.util.List<LopDTO> lops = new java.util.ArrayList<>();
+
+    private void initBuses() {
+        lopBUS = new LopBUS();
+        hocSinhBUS = new HocSinhBUS();
+        diemBUS = new DiemBUS();
     }
 
     private void build() {
@@ -61,13 +80,7 @@ public class DiemTrungBinhTatCaMonDialog extends JDialog {
         tbl.setRowHeight(26);
         root.add(new JScrollPane(tbl), BorderLayout.CENTER);
 
-        // === Dữ liệu mẫu ===
-        model.addRow(new Object[] { "HS01", "Nguyễn Văn A", 8.0, 7.5, 8.2, 7.8, 8.0, 7.9, null, null });
-        model.addRow(new Object[] { "HS02", "Trần Thị B", 9.0, 8.5, 8.0, 8.5, 9.0, 8.8, null, null });
-        model.addRow(new Object[] { "HS03", "Lê Văn C", 6.8, 7.2, 6.5, 7.0, 6.8, 7.1, null, null });
-
-        // Mặc định coi dữ liệu khởi tạo là điểm TB môn của HK1
-        snapshotCurrentTableTo(hk1);
+        // initially empty; will load when class selected
 
         // Theo dõi chỉnh sửa bảng để ghi vào map HK tương ứng
         model.addTableModelListener(e -> {
@@ -93,13 +106,9 @@ public class DiemTrungBinhTatCaMonDialog extends JDialog {
             }
         });
 
-        // Chuyển học kỳ -> nạp lại dữ liệu cột môn tương ứng
-        cboHK.addActionListener(ev -> {
-            if (ev == null)
-                return;
-            reloadTableByHKSelection();
-        });
-        reloadTableByHKSelection(); // nạp lần đầu
+        // class/hk selection
+        cboLop.addActionListener(ev -> reloadForSelection());
+        cboHK.addActionListener(ev -> reloadTableByHKSelection());
 
         // ===== Nút tính toán =====
         btnCalc.addActionListener(e -> {
@@ -253,5 +262,41 @@ public class DiemTrungBinhTatCaMonDialog extends JDialog {
         }
         // Làm mới quyền edit theo HK
         model.fireTableStructureChanged();
+    }
+
+    private void loadLopData() {
+        lops = lopBUS.getAllLop();
+        cboLop.removeAllItems();
+        cboLop.addItem("-- Chọn lớp --");
+        for (LopDTO l : lops)
+            cboLop.addItem(l.getTenLop());
+    }
+
+    private void reloadForSelection() {
+        int idx = cboLop.getSelectedIndex();
+        hk1.clear();
+        hk2.clear();
+        model.setRowCount(0);
+        if (idx <= 0)
+            return;
+        LopDTO sel = lops.get(idx - 1);
+        int maLop = sel.getMaLop();
+        // load students
+        java.util.List<HocSinhDTO> students = hocSinhBUS.getHocSinhByMaLop(maLop);
+        for (HocSinhDTO hs : students) {
+            model.addRow(new Object[] { hs.getMaHS(), hs.getHoTen(), null, null, null, null, null, null, null, null });
+            // load HK1
+            java.util.List<DiemDTO> d1 = diemBUS.getDiemByMaHS(hs.getMaHS(), 1, 1);
+            for (DiemDTO d : d1) {
+                setScore(hk1, String.valueOf(hs.getMaHS()), d.getTenMon(), d.getDiemMieng());
+            }
+            // load HK2
+            java.util.List<DiemDTO> d2 = diemBUS.getDiemByMaHS(hs.getMaHS(), 2, 1);
+            for (DiemDTO d : d2) {
+                setScore(hk2, String.valueOf(hs.getMaHS()), d.getTenMon(), d.getDiemMieng());
+            }
+        }
+        // refresh view
+        reloadTableByHKSelection();
     }
 }

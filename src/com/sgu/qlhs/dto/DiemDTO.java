@@ -1,0 +1,130 @@
+package com.sgu.qlhs.dto;
+
+public class DiemDTO {
+    private int maDiem;
+    private int maHS;
+    private String hoTen;
+    private int maMon;
+    private String tenMon;
+    private int hocKy;
+    private double diemMieng;
+    private double diem15p;
+    private double diemGiuaKy;
+    private double diemCuoiKy;
+
+    public DiemDTO() {
+    }
+
+    // constructor for full row (from getAllDiem)
+    public DiemDTO(int maDiem, String hoTen, String tenMon, int hocKy, double diemMieng, double diem15p,
+            double diemGiuaKy, double diemCuoiKy) {
+        this.maDiem = maDiem;
+        this.hoTen = hoTen;
+        this.tenMon = tenMon;
+        this.hocKy = hocKy;
+        this.diemMieng = diemMieng;
+        this.diem15p = diem15p;
+        this.diemGiuaKy = diemGiuaKy;
+        this.diemCuoiKy = diemCuoiKy;
+    }
+
+    // constructor for class-level rows (with MaHS and MaMon)
+    public DiemDTO(int maHS, String hoTen, int maMon, String tenMon, double diemMieng, double diem15p,
+            double diemGiuaKy, double diemCuoiKy) {
+        this.maHS = maHS;
+        this.hoTen = hoTen;
+        this.maMon = maMon;
+        this.tenMon = tenMon;
+        this.diemMieng = diemMieng;
+        this.diem15p = diem15p;
+        this.diemGiuaKy = diemGiuaKy;
+        this.diemCuoiKy = diemCuoiKy;
+    }
+
+    // getters/setters
+    public int getMaDiem() {
+        return maDiem;
+    }
+
+    public void setMaDiem(int maDiem) {
+        this.maDiem = maDiem;
+    }
+
+    public int getMaHS() {
+        return maHS;
+    }
+
+    public void setMaHS(int maHS) {
+        this.maHS = maHS;
+    }
+
+    public String getHoTen() {
+        return hoTen;
+    }
+
+    public void setHoTen(String hoTen) {
+        this.hoTen = hoTen;
+    }
+
+    public int getMaMon() {
+        return maMon;
+    }
+
+    public void setMaMon(int maMon) {
+        this.maMon = maMon;
+    }
+
+    public String getTenMon() {
+        return tenMon;
+    }
+
+    public void setTenMon(String tenMon) {
+        this.tenMon = tenMon;
+    }
+
+    public int getHocKy() {
+        return hocKy;
+    }
+
+    public void setHocKy(int hocKy) {
+        this.hocKy = hocKy;
+    }
+
+    public double getDiemMieng() {
+        return diemMieng;
+    }
+
+    public void setDiemMieng(double diemMieng) {
+        this.diemMieng = diemMieng;
+    }
+
+    public double getDiem15p() {
+        return diem15p;
+    }
+
+    public void setDiem15p(double diem15p) {
+        this.diem15p = diem15p;
+    }
+
+    public double getDiemGiuaKy() {
+        return diemGiuaKy;
+    }
+
+    public void setDiemGiuaKy(double diemGiuaKy) {
+        this.diemGiuaKy = diemGiuaKy;
+    }
+
+    public double getDiemCuoiKy() {
+        return diemCuoiKy;
+    }
+
+    public void setDiemCuoiKy(double diemCuoiKy) {
+        this.diemCuoiKy = diemCuoiKy;
+    }
+
+    @Override
+    public String toString() {
+        return "DiemDTO{" + "maDiem=" + maDiem + ", maHS=" + maHS + ", hoTen='" + hoTen + '\'' + ", maMon=" + maMon
+                + ", tenMon='" + tenMon + '\'' + ", hocKy=" + hocKy + '}';
+    }
+}

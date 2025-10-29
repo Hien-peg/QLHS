@@ -12,9 +12,15 @@ import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
+import com.sgu.qlhs.bus.LopBUS;
+import com.sgu.qlhs.bus.HocSinhBUS;
+import com.sgu.qlhs.bus.DiemBUS;
+import com.sgu.qlhs.dto.LopDTO;
+import com.sgu.qlhs.dto.HocSinhDTO;
+import com.sgu.qlhs.dto.DiemDTO;
 
 public class DiemTinhXepLoaiDialog extends JDialog {
-    private final JComboBox<String> cboLop = new JComboBox<>(new String[] { "10A1", "10A2", "11A1", "12A1" });
+    private final JComboBox<String> cboLop = new JComboBox<>();
     private final JComboBox<String> cboMon = new JComboBox<>(
             new String[] { "Toán", "Văn", "Anh", "Lý", "Hóa", "Sinh" });
     private final JComboBox<String> cboHK = new JComboBox<>(new String[] { "HK1", "HK2" });
@@ -36,7 +42,20 @@ public class DiemTinhXepLoaiDialog extends JDialog {
         setMinimumSize(new Dimension(900, 540));
         setLocationRelativeTo(owner);
         build();
+        initBuses();
+        loadLopData();
         pack();
+    }
+
+    private LopBUS lopBUS;
+    private HocSinhBUS hocSinhBUS;
+    private DiemBUS diemBUS;
+    private java.util.List<LopDTO> lops = new java.util.ArrayList<>();
+
+    private void initBuses() {
+        lopBUS = new LopBUS();
+        hocSinhBUS = new HocSinhBUS();
+        diemBUS = new DiemBUS();
     }
 
     private void build() {
@@ -59,9 +78,7 @@ public class DiemTinhXepLoaiDialog extends JDialog {
         tbl.setRowHeight(26);
         root.add(new JScrollPane(tbl), BorderLayout.CENTER);
 
-        // demo
-        model.addRow(new Object[] { 1, "Nguyễn Văn A", 8.5, 7.0, 8.0, 8.5, null });
-        model.addRow(new Object[] { 2, "Trần Thị B", 7.5, 8.0, 8.0, 8.5, null });
+        // initially empty; load when class/subject selected
 
         btnCalc.addActionListener(e -> {
             for (int r = 0; r < model.getRowCount(); r++) {
@@ -75,11 +92,37 @@ public class DiemTinhXepLoaiDialog extends JDialog {
             }
         });
 
+        // Load students + existing scores when class/subject/hk changes
+        cboLop.addActionListener(e -> reloadForSelection());
+        cboMon.addActionListener(e -> reloadForSelection());
+        cboHK.addActionListener(e -> reloadForSelection());
+
         var btnPane = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         var btnClose = new JButton("Đóng");
         var btnSave = new JButton("Lưu kết quả");
         btnSave.addActionListener(e -> {
-            /* TODO: ghi kết quả */ dispose();
+            // Save edited scores via DiemBUS
+            int hocKy = cboHK.getSelectedIndex() + 1;
+            int maNK = 1;
+            int maMon = mapMon((String) cboMon.getSelectedItem());
+            for (int r = 0; r < model.getRowCount(); r++) {
+                Object idObj = model.getValueAt(r, 0);
+                if (idObj == null)
+                    continue;
+                int maHS;
+                try {
+                    maHS = Integer.parseInt(idObj.toString());
+                } catch (Exception ex) {
+                    continue;
+                }
+                double mieng = val(model.getValueAt(r, 2));
+                double p15 = val(model.getValueAt(r, 3));
+                double gk = val(model.getValueAt(r, 4));
+                double ck = val(model.getValueAt(r, 5));
+                diemBUS.saveDiem(maHS, maMon, hocKy, maNK, mieng, p15, gk, ck);
+            }
+            JOptionPane.showMessageDialog(this, "Đã lưu kết quả");
+            dispose();
         });
         btnClose.addActionListener(e -> dispose());
         btnPane.add(btnClose);
@@ -100,4 +143,84 @@ public class DiemTinhXepLoaiDialog extends JDialog {
     // if(tb>=5.0) return "Trung bình";
     // return "Yếu";
     // }
+
+    private void loadLopData() {
+        lops = lopBUS.getAllLop();
+        cboLop.removeAllItems();
+        cboLop.addItem("-- Chọn lớp --");
+        for (LopDTO l : lops)
+            cboLop.addItem(l.getTenLop());
+    }
+
+    private void reloadForSelection() {
+        int idx = cboLop.getSelectedIndex();
+        if (idx <= 0) {
+            model.setRowCount(0);
+            return;
+        }
+        LopDTO sel = lops.get(idx - 1);
+        int maLop = sel.getMaLop();
+        int hocKy = cboHK.getSelectedIndex() + 1;
+        int maMon = mapMon((String) cboMon.getSelectedItem());
+        loadStudentsForLopAndMon(maLop, maMon, hocKy);
+    }
+
+    private void loadStudentsForLopAndMon(int maLop, int maMon, int hocKy) {
+        model.setRowCount(0);
+        java.util.List<HocSinhDTO> students = hocSinhBUS.getHocSinhByMaLop(maLop);
+        for (HocSinhDTO hs : students) {
+            Double mieng = null, p15 = null, gk = null, ck = null;
+            java.util.List<DiemDTO> ds = diemBUS.getDiemByMaHS(hs.getMaHS(), hocKy, 1);
+            for (DiemDTO d : ds) {
+                if ((d.getMaMon() != 0 && d.getMaMon() == maMon)
+                        || (d.getTenMon() != null && d.getTenMon().equalsIgnoreCase(getMonName(maMon)))) {
+                    mieng = d.getDiemMieng();
+                    p15 = d.getDiem15p();
+                    gk = d.getDiemGiuaKy();
+                    ck = d.getDiemCuoiKy();
+                    break;
+                }
+            }
+            model.addRow(new Object[] { hs.getMaHS(), hs.getHoTen(), mieng, p15, gk, ck, null });
+        }
+    }
+
+    private int mapMon(String tenMon) {
+        if (tenMon == null)
+            return 1;
+        switch (tenMon) {
+            case "Toán":
+                return 1;
+            case "Văn":
+                return 2;
+            case "Anh":
+                return 3;
+            case "Lý":
+                return 4;
+            case "Hóa":
+                return 5;
+            case "Sinh":
+                return 6;
+            default:
+                return 1;
+        }
+    }
+
+    private String getMonName(int maMon) {
+        switch (maMon) {
+            case 1:
+                return "Toán";
+            case 2:
+                return "Văn";
+            case 3:
+                return "Anh";
+            case 4:
+                return "Lý";
+            case 5:
+                return "Hóa";
+            case 6:
+                return "Sinh";
+        }
+        return "";
+    }
 }
