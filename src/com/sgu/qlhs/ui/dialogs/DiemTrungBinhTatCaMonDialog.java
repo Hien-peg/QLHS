@@ -5,6 +5,11 @@ import javax.swing.border.EmptyBorder;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import com.sgu.qlhs.bus.LopBUS;
+import com.sgu.qlhs.DatabaseConnection;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import com.sgu.qlhs.bus.HocSinhBUS;
 import com.sgu.qlhs.bus.DiemBUS;
 import com.sgu.qlhs.bus.MonBUS;
@@ -15,6 +20,8 @@ import com.sgu.qlhs.dto.DiemDTO;
 public class DiemTrungBinhTatCaMonDialog extends JDialog {
     private final JComboBox<String> cboLop = new JComboBox<>();
     private final JComboBox<String> cboHK = new JComboBox<>(new String[] { "HK1", "HK2", "Cả năm" });
+    private final JComboBox<String> cboNamHoc = new JComboBox<>();
+    private java.util.List<Integer> nienKhoaIds = new java.util.ArrayList<>();
     // Cột 0..1: mã, họ tên | 2..7: 6 môn | 8: TB | 9: Xếp loại
     private final DefaultTableModel model = new DefaultTableModel(
             new Object[] { "Mã HS", "Họ tên", "Toán", "Văn", "Anh", "Lý", "Hóa", "Sinh", "Trung bình", "Xếp loại" },
@@ -48,6 +55,7 @@ public class DiemTrungBinhTatCaMonDialog extends JDialog {
         loadMonData();
         build();
         loadLopData();
+        loadNienKhoa();
         pack();
     }
 
@@ -108,6 +116,8 @@ public class DiemTrungBinhTatCaMonDialog extends JDialog {
         bar.add(cboLop);
         bar.add(new JLabel("Học kỳ:"));
         bar.add(cboHK);
+        bar.add(new JLabel("Năm học:"));
+        bar.add(cboNamHoc);
         var btnCalc = new JButton("Tính điểm TB tất cả môn");
         bar.add(btnCalc);
         root.add(bar, BorderLayout.NORTH);
@@ -222,6 +232,9 @@ public class DiemTrungBinhTatCaMonDialog extends JDialog {
 
             int saved = 0;
             int maNK = com.sgu.qlhs.bus.NienKhoaBUS.current();
+            int selNk = cboNamHoc.getSelectedIndex();
+            if (selNk >= 0 && selNk < nienKhoaIds.size())
+                maNK = nienKhoaIds.get(selNk);
 
             // Save HK1
             for (var entry : hk1.entrySet()) {
@@ -392,6 +405,34 @@ public class DiemTrungBinhTatCaMonDialog extends JDialog {
             cboLop.addItem(l.getTenLop());
     }
 
+    private void loadNienKhoa() {
+        cboNamHoc.removeAllItems();
+        nienKhoaIds.clear();
+        String sql = "SELECT MaNK, NamBatDau, NamKetThuc FROM NienKhoa ORDER BY NamBatDau ASC, MaNK ASC";
+        try (Connection conn = DatabaseConnection.getConnection();
+                PreparedStatement pstmt = conn.prepareStatement(sql);
+                ResultSet rs = pstmt.executeQuery()) {
+            while (rs.next()) {
+                int maNK = rs.getInt("MaNK");
+                int nb = rs.getInt("NamBatDau");
+                int nk = rs.getInt("NamKetThuc");
+                String label = nb + "-" + nk;
+                cboNamHoc.addItem(label);
+                nienKhoaIds.add(maNK);
+            }
+        } catch (SQLException ex) {
+            cboNamHoc.addItem("2024-2025");
+            cboNamHoc.addItem("2023-2024");
+            cboNamHoc.addItem("2022-2023");
+        }
+        int current = com.sgu.qlhs.bus.NienKhoaBUS.current();
+        int idx = nienKhoaIds.indexOf(current);
+        if (idx >= 0)
+            cboNamHoc.setSelectedIndex(idx);
+        else if (cboNamHoc.getItemCount() > 0)
+            cboNamHoc.setSelectedIndex(0);
+    }
+
     private void reloadForSelection() {
         int idx = cboLop.getSelectedIndex();
         hk1.clear();
@@ -405,21 +446,33 @@ public class DiemTrungBinhTatCaMonDialog extends JDialog {
         java.util.List<HocSinhDTO> students = hocSinhBUS.getHocSinhByMaLop(maLop);
         for (HocSinhDTO hs : students) {
             model.addRow(new Object[] { hs.getMaHS(), hs.getHoTen(), null, null, null, null, null, null, null, null });
-            // load HK1
-            java.util.List<DiemDTO> d1 = diemBUS.getDiemByMaHS(hs.getMaHS(), 1, com.sgu.qlhs.bus.NienKhoaBUS.current());
+        }
+
+        // Fetch HK1 and HK2 DiemTB from DB for this class in batch using server-side
+        // filtering
+        int maNK = com.sgu.qlhs.bus.NienKhoaBUS.current();
+        int selNk2 = cboNamHoc.getSelectedIndex();
+        if (selNk2 >= 0 && selNk2 < nienKhoaIds.size())
+            maNK = nienKhoaIds.get(selNk2);
+        // HK1
+        try {
+            java.util.List<DiemDTO> d1 = diemBUS.getDiemFiltered(maLop, null, 1, maNK, null, null);
             for (DiemDTO d : d1) {
-                // compute TB for the subject from components
-                double tb = round1(d.getDiemMieng() * 0.10 + d.getDiem15p() * 0.20 + d.getDiemGiuaKy() * 0.30
-                        + d.getDiemCuoiKy() * 0.40);
-                setScore(hk1, String.valueOf(hs.getMaHS()), d.getTenMon(), tb);
+                // DiemDTO.diemTB comes from DB (stored/generated column)
+                setScore(hk1, String.valueOf(d.getMaHS()), d.getTenMon(), round1(d.getDiemTB()));
             }
-            // load HK2
-            java.util.List<DiemDTO> d2 = diemBUS.getDiemByMaHS(hs.getMaHS(), 2, com.sgu.qlhs.bus.NienKhoaBUS.current());
+        } catch (Exception ex) {
+            System.err.println("Lỗi khi tải Diem HK1: " + ex.getMessage());
+        }
+
+        // HK2
+        try {
+            java.util.List<DiemDTO> d2 = diemBUS.getDiemFiltered(maLop, null, 2, maNK, null, null);
             for (DiemDTO d : d2) {
-                double tb = round1(d.getDiemMieng() * 0.10 + d.getDiem15p() * 0.20 + d.getDiemGiuaKy() * 0.30
-                        + d.getDiemCuoiKy() * 0.40);
-                setScore(hk2, String.valueOf(hs.getMaHS()), d.getTenMon(), tb);
+                setScore(hk2, String.valueOf(d.getMaHS()), d.getTenMon(), round1(d.getDiemTB()));
             }
+        } catch (Exception ex) {
+            System.err.println("Lỗi khi tải Diem HK2: " + ex.getMessage());
         }
         // refresh view
         reloadTableByHKSelection();

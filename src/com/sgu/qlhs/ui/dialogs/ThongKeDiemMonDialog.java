@@ -82,7 +82,10 @@ public class ThongKeDiemMonDialog extends JDialog {
                     agg.put(mon, a);
                 }
             }
-            String[] monsList = new String[] { "Toán", "Văn", "Anh", "Lý", "Hóa", "Sinh" };
+            // determine subjects dynamically from DB (fallback to defaults)
+            java.util.List<com.sgu.qlhs.dto.MonHocDTO> monList2 = monBUS.getAllMon();
+            String[] monsList = monList2.isEmpty() ? new String[] { "Toán", "Văn", "Anh", "Lý", "Hóa", "Sinh" }
+                    : monList2.stream().map(m -> m.getTenMon()).toArray(String[]::new);
             int[] tbs2 = new int[monsList.length];
             for (int i = 0; i < monsList.length; i++) {
                 double[] a = agg.get(monsList[i]);

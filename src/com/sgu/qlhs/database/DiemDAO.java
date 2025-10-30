@@ -149,4 +149,108 @@ public class DiemDAO {
         }
         return data;
     }
+
+    /**
+     * Flexible server-side filtered query for Diem rows.
+     * Any filter parameter can be null to mean "no filter".
+     */
+    public List<com.sgu.qlhs.dto.DiemDTO> getDiemFiltered(Integer maLop, Integer maMon, Integer hocKy, Integer maNK,
+            Integer limit, Integer offset) {
+        List<com.sgu.qlhs.dto.DiemDTO> result = new ArrayList<>();
+
+        StringBuilder sb = new StringBuilder();
+        sb.append(
+                "SELECT d.MaDiem, d.MaHS, hs.HoTen, l.MaLop, l.TenLop, mh.MaMon, mh.TenMon, d.HocKy, d.DiemMieng, d.Diem15p, d.DiemGiuaKy, d.DiemCuoiKy, d.DiemTB, d.XepLoai ");
+        sb.append("FROM Diem d ");
+        sb.append("JOIN HocSinh hs ON d.MaHS = hs.MaHS ");
+        sb.append("LEFT JOIN Lop l ON hs.MaLop = l.MaLop ");
+        sb.append("JOIN MonHoc mh ON d.MaMon = mh.MaMon ");
+        sb.append("WHERE 1=1 ");
+
+        if (maNK != null) {
+            sb.append("AND d.MaNK = ? ");
+        }
+        if (maLop != null) {
+            sb.append("AND l.MaLop = ? ");
+        }
+        if (maMon != null) {
+            sb.append("AND mh.MaMon = ? ");
+        }
+        if (hocKy != null && hocKy > 0) {
+            sb.append("AND d.HocKy = ? ");
+        }
+
+        sb.append("ORDER BY l.TenLop, hs.HoTen, mh.TenMon ");
+
+        if (limit != null && limit > 0) {
+            sb.append(" LIMIT ? ");
+            if (offset != null && offset >= 0) {
+                sb.append(" OFFSET ? ");
+            }
+        }
+
+        try (Connection conn = DatabaseConnection.getConnection();
+                PreparedStatement pstmt = conn.prepareStatement(sb.toString())) {
+            int idx = 1;
+            if (maNK != null) {
+                pstmt.setInt(idx++, maNK);
+            }
+            if (maLop != null) {
+                pstmt.setInt(idx++, maLop);
+            }
+            if (maMon != null) {
+                pstmt.setInt(idx++, maMon);
+            }
+            if (hocKy != null && hocKy > 0) {
+                pstmt.setInt(idx++, hocKy);
+            }
+            if (limit != null && limit > 0) {
+                pstmt.setInt(idx++, limit);
+                if (offset != null && offset >= 0) {
+                    pstmt.setInt(idx++, offset);
+                }
+            }
+
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    com.sgu.qlhs.dto.DiemDTO d = new com.sgu.qlhs.dto.DiemDTO();
+                    d.setMaDiem(rs.getInt("MaDiem"));
+                    d.setMaHS(rs.getInt("MaHS"));
+                    d.setHoTen(rs.getString("HoTen"));
+                    d.setMaLop(rs.getInt("MaLop"));
+                    d.setTenLop(rs.getString("TenLop"));
+                    d.setMaMon(rs.getInt("MaMon"));
+                    d.setTenMon(rs.getString("TenMon"));
+                    d.setHocKy(rs.getInt("HocKy"));
+                    d.setDiemMieng(rs.getDouble("DiemMieng"));
+                    d.setDiem15p(rs.getDouble("Diem15p"));
+                    d.setDiemGiuaKy(rs.getDouble("DiemGiuaKy"));
+                    d.setDiemCuoiKy(rs.getDouble("DiemCuoiKy"));
+                    d.setDiemTB(rs.getDouble("DiemTB"));
+                    d.setXepLoai(rs.getString("XepLoai"));
+                    result.add(d);
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Lỗi khi truy vấn điểm (filtered): " + e.getMessage());
+            e.printStackTrace();
+        }
+
+        return result;
+    }
+
+    public void deleteDiem(int maHS, int maMon, int hocKy, int maNK) {
+        String sql = "DELETE FROM Diem WHERE MaHS = ? AND MaMon = ? AND HocKy = ? AND MaNK = ?";
+        try (Connection conn = DatabaseConnection.getConnection();
+                PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, maHS);
+            pstmt.setInt(2, maMon);
+            pstmt.setInt(3, hocKy);
+            pstmt.setInt(4, maNK);
+            pstmt.executeUpdate();
+        } catch (SQLException e) {
+            System.err.println("Lỗi khi xóa điểm: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
 }

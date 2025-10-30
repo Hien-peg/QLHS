@@ -91,4 +91,13 @@ public class DiemBUS {
             double ck) {
         dao.upsertDiem(maHS, maMon, hocKy, maNK, mieng, p15, gk, ck);
     }
+
+    public void deleteDiem(int maHS, int maMon, int hocKy, int maNK) {
+        dao.deleteDiem(maHS, maMon, hocKy, maNK);
+    }
+
+    public List<DiemDTO> getDiemFiltered(Integer maLop, Integer maMon, Integer hocKy, Integer maNK,
+            Integer limit, Integer offset) {
+        return dao.getDiemFiltered(maLop, maMon, hocKy, maNK, limit, offset);
+    }
 }

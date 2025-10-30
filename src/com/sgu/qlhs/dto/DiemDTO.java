@@ -6,11 +6,15 @@ public class DiemDTO {
     private String hoTen;
     private int maMon;
     private String tenMon;
+    private int maLop;
+    private String tenLop;
     private int hocKy;
     private double diemMieng;
     private double diem15p;
     private double diemGiuaKy;
     private double diemCuoiKy;
+    private double diemTB;
+    private String xepLoai;
 
     public DiemDTO() {
     }
@@ -120,6 +124,38 @@ public class DiemDTO {
 
     public void setDiemCuoiKy(double diemCuoiKy) {
         this.diemCuoiKy = diemCuoiKy;
+    }
+
+    public int getMaLop() {
+        return maLop;
+    }
+
+    public void setMaLop(int maLop) {
+        this.maLop = maLop;
+    }
+
+    public String getTenLop() {
+        return tenLop;
+    }
+
+    public void setTenLop(String tenLop) {
+        this.tenLop = tenLop;
+    }
+
+    public double getDiemTB() {
+        return diemTB;
+    }
+
+    public void setDiemTB(double diemTB) {
+        this.diemTB = diemTB;
+    }
+
+    public String getXepLoai() {
+        return xepLoai;
+    }
+
+    public void setXepLoai(String xepLoai) {
+        this.xepLoai = xepLoai;
     }
 
     @Override

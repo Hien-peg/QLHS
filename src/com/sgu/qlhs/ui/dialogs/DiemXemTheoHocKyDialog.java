@@ -3,6 +3,8 @@ package com.sgu.qlhs.ui.dialogs;
 import com.sgu.qlhs.DatabaseConnection;
 import com.sgu.qlhs.bus.LopBUS;
 import com.sgu.qlhs.bus.HocSinhBUS;
+import com.sgu.qlhs.bus.DiemBUS;
+import com.sgu.qlhs.dto.DiemDTO;
 import com.sgu.qlhs.dto.LopDTO;
 import com.sgu.qlhs.dto.HocSinhDTO;
 import javax.swing.*;
@@ -26,7 +28,9 @@ import java.util.Map;
 public class DiemXemTheoHocKyDialog extends JDialog {
     private final JComboBox<String> cboLoaiXem = new JComboBox<>(new String[] { "Học kỳ 1", "Học kỳ 2", "Cả năm" });
     private final JComboBox<String> cboLop = new JComboBox<>();
-    private final JComboBox<String> cboNamHoc = new JComboBox<>(new String[] { "2024-2025", "2023-2024", "2022-2023" });
+    private final JComboBox<String> cboNamHoc = new JComboBox<>();
+    // parallel list mapping combo index -> MaNK
+    private java.util.List<Integer> nienKhoaIds = new java.util.ArrayList<>();
     private DefaultTableModel model;
     private JTable table;
     // Note: DiemHocKyDAO / DiemHocKyBUS removed; dialog will query DB directly
@@ -34,6 +38,7 @@ public class DiemXemTheoHocKyDialog extends JDialog {
     // BUS helpers
     private LopBUS lopBUS;
     private HocSinhBUS hocSinhBUS;
+    private DiemBUS diemBUS;
     // lưu danh sách lớp để map index -> MaLop / TenLop
     private List<LopDTO> lopList = new ArrayList<>();
 
@@ -43,81 +48,92 @@ public class DiemXemTheoHocKyDialog extends JDialog {
         setLocationRelativeTo(owner);
         lopBUS = new LopBUS();
         hocSinhBUS = new HocSinhBUS();
+        diemBUS = new DiemBUS();
         build();
         loadLopData();
+        loadNamHocOptions();
         pack();
+    }
+
+    /**
+     * Load năm học (Niên khóa) options from DB into cboNamHoc and nienKhoaIds.
+     */
+    private void loadNamHocOptions() {
+        cboNamHoc.removeAllItems();
+        nienKhoaIds.clear();
+        // order ascending so combo shows older years first (2022-2023, 2023-2024,
+        // 2024-2025)
+        String sql = "SELECT MaNK, NamBatDau, NamKetThuc FROM NienKhoa ORDER BY NamBatDau ASC, MaNK ASC";
+        try (Connection conn = DatabaseConnection.getConnection();
+                PreparedStatement ps = conn.prepareStatement(sql);
+                ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                int maNK = rs.getInt("MaNK");
+                int nb = rs.getInt("NamBatDau");
+                int nk = rs.getInt("NamKetThuc");
+                String label = nb + "-" + nk;
+                cboNamHoc.addItem(label);
+                nienKhoaIds.add(maNK);
+            }
+        } catch (SQLException ex) {
+            System.err.println("Không thể load Niên khóa: " + ex.getMessage());
+        }
+
+        // select current MaNK if present
+        int current = com.sgu.qlhs.bus.NienKhoaBUS.current();
+        int idx = nienKhoaIds.indexOf(current);
+        if (idx >= 0) {
+            cboNamHoc.setSelectedIndex(idx);
+        } else if (cboNamHoc.getItemCount() > 0) {
+            cboNamHoc.setSelectedIndex(0);
+        }
     }
 
     // --- DB-backed helpers (replace previous DiemHocKyBUS methods) ---
     private List<Object[]> queryDiemTrungBinhHocKy(int hocKy, int maNK) {
         List<Object[]> result = new ArrayList<>();
-        String sql = "SELECT d.MaHS, hs.HoTen, ROUND(AVG(d.DiemTB),1) AS DiemTB "
-                + "FROM Diem d JOIN HocSinh hs ON hs.MaHS = d.MaHS "
-                + "WHERE d.HocKy = ? AND d.MaNK = ? "
-                + "GROUP BY d.MaHS, hs.HoTen "
-                + "ORDER BY hs.HoTen";
-
-        try (Connection conn = DatabaseConnection.getConnection();
-                PreparedStatement pstmt = conn.prepareStatement(sql)) {
-
-            pstmt.setInt(1, hocKy);
-            pstmt.setInt(2, maNK);
-
-            try (ResultSet rs = pstmt.executeQuery()) {
-                while (rs.next()) {
-                    Object[] row = new Object[4];
-                    row[0] = rs.getInt("MaHS");
-                    row[1] = rs.getString("HoTen");
-                    double diemTB = rs.getDouble("DiemTB");
-                    row[2] = diemTB;
-                    row[3] = xepLoai(diemTB);
-                    result.add(row);
-                }
-            }
-        } catch (SQLException e) {
-            System.err.println("Lỗi khi truy vấn TB học kỳ: " + e.getMessage());
-            e.printStackTrace();
+        // Use DiemBUS.getDiemFiltered to fetch all rows for the given hocKy and maNK,
+        // then aggregate DiemTB per student (MaHS).
+        List<DiemDTO> rows = diemBUS.getDiemFiltered(null, null, hocKy, maNK, null, null);
+        java.util.Map<Integer, java.util.List<Double>> m = new java.util.HashMap<>();
+        java.util.Map<Integer, String> names = new java.util.HashMap<>();
+        for (DiemDTO d : rows) {
+            names.put(d.getMaHS(), d.getHoTen());
+            m.computeIfAbsent(d.getMaHS(), k -> new java.util.ArrayList<>()).add(d.getDiemTB());
         }
-
+        java.util.List<Integer> keys = new java.util.ArrayList<>(m.keySet());
+        java.util.Collections.sort(keys, (a, b) -> names.get(a).compareToIgnoreCase(names.get(b)));
+        for (Integer maHS : keys) {
+            java.util.List<Double> vals = m.get(maHS);
+            double sum = 0;
+            for (Double v : vals)
+                sum += v;
+            double avg = vals.size() > 0 ? round1(sum / vals.size()) : 0.0;
+            Object[] row = new Object[4];
+            row[0] = maHS;
+            row[1] = names.get(maHS);
+            row[2] = avg;
+            row[3] = xepLoai(avg);
+            result.add(row);
+        }
         return result;
     }
 
     private List<Object[]> queryDiemChiTietHocKy(int maLop, int hocKy, int maNK) {
         List<Object[]> result = new ArrayList<>();
-        String sql = "SELECT hs.MaHS, hs.HoTen, mh.TenMon, "
-                + "d.DiemMieng, d.Diem15p, d.DiemGiuaKy, d.DiemCuoiKy, d.DiemTB "
-                + "FROM Diem d "
-                + "JOIN HocSinh hs ON hs.MaHS = d.MaHS "
-                + "JOIN MonHoc mh ON mh.MaMon = d.MaMon "
-                + "WHERE hs.MaLop = ? AND d.HocKy = ? AND d.MaNK = ? "
-                + "ORDER BY hs.HoTen, mh.TenMon";
-
-        try (Connection conn = DatabaseConnection.getConnection();
-                PreparedStatement pstmt = conn.prepareStatement(sql)) {
-
-            pstmt.setInt(1, maLop);
-            pstmt.setInt(2, hocKy);
-            pstmt.setInt(3, maNK);
-
-            try (ResultSet rs = pstmt.executeQuery()) {
-                while (rs.next()) {
-                    Object[] row = new Object[8];
-                    row[0] = rs.getInt("MaHS");
-                    row[1] = rs.getString("HoTen");
-                    row[2] = rs.getString("TenMon");
-                    row[3] = rs.getDouble("DiemMieng");
-                    row[4] = rs.getDouble("Diem15p");
-                    row[5] = rs.getDouble("DiemGiuaKy");
-                    row[6] = rs.getDouble("DiemCuoiKy");
-                    row[7] = rs.getDouble("DiemTB");
-                    result.add(row);
-                }
-            }
-        } catch (SQLException e) {
-            System.err.println("Lỗi khi lấy điểm chi tiết học kỳ: " + e.getMessage());
-            e.printStackTrace();
+        List<DiemDTO> rows = diemBUS.getDiemFiltered(maLop, null, hocKy, maNK, null, null);
+        for (DiemDTO d : rows) {
+            Object[] row = new Object[8];
+            row[0] = d.getMaHS();
+            row[1] = d.getHoTen();
+            row[2] = d.getTenMon();
+            row[3] = d.getDiemMieng();
+            row[4] = d.getDiem15p();
+            row[5] = d.getDiemGiuaKy();
+            row[6] = d.getDiemCuoiKy();
+            row[7] = d.getDiemTB();
+            result.add(row);
         }
-
         return result;
     }
 
@@ -140,50 +156,73 @@ public class DiemXemTheoHocKyDialog extends JDialog {
             System.err.println("Không lấy được trọng số năm, dùng mặc định 0.4/0.6: " + e.getMessage());
         }
 
-        String sql = "SELECT hs.MaHS, hs.HoTen, l.TenLop, "
-                + "AVG(CASE WHEN d.HocKy = 1 THEN d.DiemTB END) AS DiemHK1, "
-                + "AVG(CASE WHEN d.HocKy = 2 THEN d.DiemTB END) AS DiemHK2 "
-                + "FROM HocSinh hs "
-                + "JOIN Lop l ON hs.MaLop = l.MaLop "
-                + "JOIN Diem d ON hs.MaHS = d.MaHS "
-                + "WHERE d.MaNK = ? "
-                + "GROUP BY hs.MaHS, hs.HoTen, l.TenLop "
-                + "ORDER BY l.TenLop, hs.HoTen";
+        // Fetch HK1 and HK2 averages per student using DiemBUS
+        List<DiemDTO> hk1rows = diemBUS.getDiemFiltered(null, null, 1, maNK, null, null);
+        List<DiemDTO> hk2rows = diemBUS.getDiemFiltered(null, null, 2, maNK, null, null);
 
-        try (Connection conn = DatabaseConnection.getConnection();
-                PreparedStatement pstmt = conn.prepareStatement(sql)) {
+        java.util.Map<Integer, java.util.List<Double>> map1 = new java.util.HashMap<>();
+        java.util.Map<Integer, java.util.List<Double>> map2 = new java.util.HashMap<>();
+        java.util.Map<Integer, String> names = new java.util.HashMap<>();
+        java.util.Map<Integer, Integer> lopOf = new java.util.HashMap<>();
 
-            pstmt.setInt(1, maNK);
-            try (ResultSet rs = pstmt.executeQuery()) {
-                while (rs.next()) {
-                    double hk1 = rs.getDouble("DiemHK1");
-                    boolean hk1Null = rs.wasNull();
-                    double hk2 = rs.getDouble("DiemHK2");
-                    boolean hk2Null = rs.wasNull();
+        for (DiemDTO d : hk1rows) {
+            names.put(d.getMaHS(), d.getHoTen());
+            lopOf.put(d.getMaHS(), d.getMaLop());
+            map1.computeIfAbsent(d.getMaHS(), k -> new java.util.ArrayList<>()).add(d.getDiemTB());
+        }
+        for (DiemDTO d : hk2rows) {
+            names.put(d.getMaHS(), d.getHoTen());
+            lopOf.put(d.getMaHS(), d.getMaLop());
+            map2.computeIfAbsent(d.getMaHS(), k -> new java.util.ArrayList<>()).add(d.getDiemTB());
+        }
 
-                    double diemCaNam = 0.0;
-                    if (hk1Null && hk2Null) {
-                        diemCaNam = 0.0;
-                    } else {
-                        // if one HK is missing, assume the other weight normalization
-                        double denom = (w1 + w2);
-                        diemCaNam = Math.round(((hk1 * w1) + (hk2 * w2)) / denom * 10) / 10.0;
-                    }
+        // union keys
+        java.util.Set<Integer> keys = new java.util.HashSet<>();
+        keys.addAll(map1.keySet());
+        keys.addAll(map2.keySet());
 
-                    Object[] row = new Object[7];
-                    row[0] = rs.getInt("MaHS");
-                    row[1] = rs.getString("HoTen");
-                    row[2] = rs.getString("TenLop");
-                    row[3] = Math.round(hk1 * 10) / 10.0;
-                    row[4] = Math.round(hk2 * 10) / 10.0;
-                    row[5] = diemCaNam;
-                    row[6] = xepLoai(diemCaNam);
-                    result.add(row);
-                }
+        java.util.List<Integer> sorted = new java.util.ArrayList<>(keys);
+        java.util.Collections.sort(sorted,
+                (a, b) -> names.getOrDefault(a, "").compareToIgnoreCase(names.getOrDefault(b, "")));
+
+        for (Integer maHS : sorted) {
+            java.util.List<Double> v1 = map1.getOrDefault(maHS, java.util.Collections.emptyList());
+            java.util.List<Double> v2 = map2.getOrDefault(maHS, java.util.Collections.emptyList());
+            double avg1 = v1.size() > 0 ? round1(v1.stream().mapToDouble(Double::doubleValue).average().orElse(0.0))
+                    : 0.0;
+            double avg2 = v2.size() > 0 ? round1(v2.stream().mapToDouble(Double::doubleValue).average().orElse(0.0))
+                    : 0.0;
+            double denom = (w1 + w2);
+            double diemCaNam = 0.0;
+            if (v1.isEmpty() && v2.isEmpty()) {
+                diemCaNam = 0.0;
+            } else {
+                diemCaNam = Math.round(((avg1 * w1) + (avg2 * w2)) / denom * 10) / 10.0;
             }
-        } catch (SQLException e) {
-            System.err.println("Lỗi khi tính điểm TB cả năm: " + e.getMessage());
-            e.printStackTrace();
+            String tenLop = "";
+            Integer ml = lopOf.get(maHS);
+            if (ml != null) {
+                for (LopDTO l : lopList) {
+                    if (l.getMaLop() == ml) {
+                        tenLop = l.getTenLop();
+                        break;
+                    }
+                }
+            } else {
+                // fallback: query student
+                HocSinhDTO h = hocSinhBUS.getHocSinhByMaHS(maHS);
+                if (h != null)
+                    tenLop = h.getTenLop();
+            }
+            Object[] row = new Object[7];
+            row[0] = maHS;
+            row[1] = names.getOrDefault(maHS, "");
+            row[2] = tenLop;
+            row[3] = avg1;
+            row[4] = avg2;
+            row[5] = diemCaNam;
+            row[6] = xepLoai(diemCaNam);
+            result.add(row);
         }
 
         return result;
@@ -291,6 +330,11 @@ public class DiemXemTheoHocKyDialog extends JDialog {
 
         String loaiXem = (String) cboLoaiXem.getSelectedItem();
         int maNK = com.sgu.qlhs.bus.NienKhoaBUS.current();
+        // if user selected a specific Năm học from combo, use that MaNK mapping
+        int selNk = cboNamHoc.getSelectedIndex();
+        if (selNk >= 0 && selNk < nienKhoaIds.size()) {
+            maNK = nienKhoaIds.get(selNk);
+        }
 
         try {
             if (loaiXem.equals("Cả năm")) {
@@ -441,6 +485,10 @@ public class DiemXemTheoHocKyDialog extends JDialog {
         if (diemTB >= 3.5)
             return "Yếu";
         return "Kém";
+    }
+
+    private static double round1(double x) {
+        return Math.round(x * 10.0) / 10.0;
     }
 
     /**

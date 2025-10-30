@@ -15,6 +15,11 @@ import com.sgu.qlhs.bus.HocSinhBUS;
 import com.sgu.qlhs.bus.DiemBUS;
 import com.sgu.qlhs.dto.DiemDTO;
 import com.sgu.qlhs.dto.HocSinhDTO;
+import com.sgu.qlhs.DatabaseConnection;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 
 /**
  * Dialog hiển thị bảng điểm chi tiết của học sinh theo định dạng chính thức
@@ -22,7 +27,9 @@ import com.sgu.qlhs.dto.HocSinhDTO;
 public class BangDiemChiTietDialog extends JDialog {
     private final JComboBox<String> cboHocSinh = new JComboBox<>();
     private final JComboBox<String> cboHocKy = new JComboBox<>(new String[] { "Học kỳ 1", "Học kỳ 2" });
-    private final JComboBox<String> cboNamHoc = new JComboBox<>(new String[] { "2024-2025", "2023-2024", "2022-2023" });
+    private final JComboBox<String> cboNamHoc = new JComboBox<>();
+    // map combo index -> MaNK
+    private java.util.List<Integer> nienKhoaIds = new java.util.ArrayList<>();
     private JPanel pnlBangDiem;
     private DefaultTableModel model;
     private JTable table;
@@ -38,6 +45,8 @@ public class BangDiemChiTietDialog extends JDialog {
         setSize(1000, 800);
         setLocationRelativeTo(owner);
         build();
+        // load niên khóa list after UI built
+        loadNienKhoa();
     }
 
     private void build() {
@@ -86,6 +95,37 @@ public class BangDiemChiTietDialog extends JDialog {
 
         // Load danh sách học sinh
         loadHocSinh();
+    }
+
+    /** Load Niên khóa options from DB into cboNamHoc and nienKhoaIds */
+    private void loadNienKhoa() {
+        cboNamHoc.removeAllItems();
+        nienKhoaIds.clear();
+        String sql = "SELECT MaNK, NamBatDau, NamKetThuc FROM NienKhoa ORDER BY NamBatDau ASC, MaNK ASC";
+        try (Connection conn = DatabaseConnection.getConnection();
+                PreparedStatement pstmt = conn.prepareStatement(sql);
+                ResultSet rs = pstmt.executeQuery()) {
+            while (rs.next()) {
+                int maNK = rs.getInt("MaNK");
+                int nb = rs.getInt("NamBatDau");
+                int nk = rs.getInt("NamKetThuc");
+                String label = nb + "-" + nk;
+                cboNamHoc.addItem(label);
+                nienKhoaIds.add(maNK);
+            }
+        } catch (SQLException ex) {
+            // fallback to a few recent labels if DB read fails
+            cboNamHoc.addItem("2024-2025");
+            cboNamHoc.addItem("2023-2024");
+            cboNamHoc.addItem("2022-2023");
+        }
+        // select current MaNK if present
+        int current = com.sgu.qlhs.bus.NienKhoaBUS.current();
+        int idx = nienKhoaIds.indexOf(current);
+        if (idx >= 0)
+            cboNamHoc.setSelectedIndex(idx);
+        else if (cboNamHoc.getItemCount() > 0)
+            cboNamHoc.setSelectedIndex(0);
     }
 
     private void loadHocSinh() {
@@ -193,8 +233,13 @@ public class BangDiemChiTietDialog extends JDialog {
                 maHS = 0;
             }
             int hkNum = cboHocKy.getSelectedIndex() + 1; // Học kỳ 1 -> 1
-            // determine current niên khóa from DB
+            // determine niên khóa: use selected combo mapping if available, otherwise
+            // current()
             int maNK = com.sgu.qlhs.bus.NienKhoaBUS.current();
+            int selNk = cboNamHoc.getSelectedIndex();
+            if (selNk >= 0 && selNk < nienKhoaIds.size()) {
+                maNK = nienKhoaIds.get(selNk);
+            }
 
             java.util.List<DiemDTO> diemList = diemBUS.getDiemByMaHS(maHS, hkNum, maNK);
             int idx = 1;

@@ -1,10 +1,10 @@
 -- === KHỞI TẠO DB ===
-CREATE DATABASE IF NOT EXISTS QLHS_New CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE DATABASE QLHS CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
-USE QLHS_New;
+USE QLHS;
 
 -- === BẢNG DANH MỤC / THỰC THỂ CHÍNH ===
-CREATE TABLE IF NOT EXISTS PhongHoc (
+CREATE TABLE PhongHoc (
     MaPhong INT PRIMARY KEY AUTO_INCREMENT,
     TenPhong VARCHAR(50),
     LoaiPhong VARCHAR(50),
@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS PhongHoc (
     ViTri VARCHAR(100)
 );
 
-CREATE TABLE IF NOT EXISTS Lop (
+CREATE TABLE Lop (
     MaLop INT PRIMARY KEY AUTO_INCREMENT,
     TenLop VARCHAR(50),
     Khoi INT,
@@ -20,13 +20,13 @@ CREATE TABLE IF NOT EXISTS Lop (
     CONSTRAINT fk_lop_phong FOREIGN KEY (MaPhong) REFERENCES PhongHoc (MaPhong) ON DELETE SET NULL ON UPDATE CASCADE
 );
 
-CREATE TABLE IF NOT EXISTS NienKhoa (
+CREATE TABLE NienKhoa (
     MaNK INT PRIMARY KEY AUTO_INCREMENT,
     NamBatDau INT NOT NULL,
     NamKetThuc INT NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS GiaoVien (
+CREATE TABLE GiaoVien (
     MaGV INT PRIMARY KEY AUTO_INCREMENT,
     HoTen VARCHAR(100),
     NgaySinh DATE,
@@ -35,14 +35,14 @@ CREATE TABLE IF NOT EXISTS GiaoVien (
     Email VARCHAR(100)
 );
 
-CREATE TABLE IF NOT EXISTS MonHoc (
+CREATE TABLE MonHoc (
     MaMon INT PRIMARY KEY AUTO_INCREMENT,
     TenMon VARCHAR(100),
     SoTiet INT,
     GhiChu TEXT DEFAULT NULL
 );
 
-CREATE TABLE IF NOT EXISTS HocSinh (
+CREATE TABLE HocSinh (
     MaHS INT PRIMARY KEY AUTO_INCREMENT,
     HoTen VARCHAR(100),
     NgaySinh DATE,
@@ -55,7 +55,7 @@ CREATE TABLE IF NOT EXISTS HocSinh (
 );
 
 -- === QUAN HỆ / NGHIỆP VỤ ===
-CREATE TABLE IF NOT EXISTS PhuHuynh (
+CREATE TABLE PhuHuynh (
     MaPH INT PRIMARY KEY AUTO_INCREMENT,
     HoTen VARCHAR(100),
     SoDienThoai VARCHAR(15),
@@ -63,7 +63,7 @@ CREATE TABLE IF NOT EXISTS PhuHuynh (
     DiaChi VARCHAR(255)
 );
 
-CREATE TABLE IF NOT EXISTS HocSinh_PhuHuynh (
+CREATE TABLE HocSinh_PhuHuynh (
     MaHS INT,
     MaPH INT,
     QuanHe VARCHAR(50),
@@ -72,7 +72,7 @@ CREATE TABLE IF NOT EXISTS HocSinh_PhuHuynh (
     CONSTRAINT fk_hsph_ph FOREIGN KEY (MaPH) REFERENCES PhuHuynh (MaPH) ON DELETE CASCADE ON UPDATE CASCADE
 );
 
-CREATE TABLE IF NOT EXISTS DanhGia (
+CREATE TABLE DanhGia (
     MaDG INT PRIMARY KEY AUTO_INCREMENT,
     MaHS INT,
     Loai VARCHAR(50), -- 'KhenThuong' / 'KyLuat'
@@ -82,7 +82,7 @@ CREATE TABLE IF NOT EXISTS DanhGia (
     CONSTRAINT fk_dg_hs FOREIGN KEY (MaHS) REFERENCES HocSinh (MaHS) ON DELETE CASCADE ON UPDATE CASCADE
 );
 
-CREATE TABLE IF NOT EXISTS PhanCongDay (
+CREATE TABLE PhanCongDay (
     MaPC INT PRIMARY KEY AUTO_INCREMENT,
     MaGV INT,
     MaMon INT,
@@ -95,7 +95,7 @@ CREATE TABLE IF NOT EXISTS PhanCongDay (
     CONSTRAINT fk_pc_nk FOREIGN KEY (MaNK) REFERENCES NienKhoa (MaNK) ON DELETE CASCADE ON UPDATE CASCADE
 );
 
-CREATE TABLE IF NOT EXISTS ChuNhiem (
+CREATE TABLE ChuNhiem (
     MaCN INT PRIMARY KEY AUTO_INCREMENT,
     MaGV INT,
     MaLop INT,
@@ -107,18 +107,28 @@ CREATE TABLE IF NOT EXISTS ChuNhiem (
     CONSTRAINT fk_cn_nk FOREIGN KEY (MaNK) REFERENCES NienKhoa (MaNK) ON DELETE CASCADE ON UPDATE CASCADE
 );
 
-CREATE TABLE IF NOT EXISTS ThoiKhoaBieu (
-    MaTKB INT PRIMARY KEY AUTO_INCREMENT,
-    MaPC INT,
-    MaPhong INT,
-    ThuTrongTuan VARCHAR(10),
-    TietHoc INT,
-    CONSTRAINT fk_tkb_pc FOREIGN KEY (MaPC) REFERENCES PhanCongDay (MaPC) ON DELETE CASCADE ON UPDATE CASCADE,
-    CONSTRAINT fk_tkb_phong FOREIGN KEY (MaPhong) REFERENCES PhongHoc (MaPhong) ON DELETE CASCADE ON UPDATE CASCADE
+CREATE TABLE ThoiKhoaBieu (
+    MaTKB INT PRIMARY KEY AUTO_INCREMENT, -- Mã thời khóa biểu
+    MaLop INT NOT NULL, -- Lớp áp dụng (khóa ngoại -> Lop)
+    MaGV INT NOT NULL, -- Giáo viên dạy (khóa ngoại -> GiaoVien)
+    MaMon INT NOT NULL, -- Môn học (khóa ngoại -> MonHoc)
+    MaPhong INT NOT NULL, -- Phòng học (khóa ngoại -> PhongHoc)
+    HocKy VARCHAR(10) NOT NULL, -- Học kỳ (VD: HK1, HK2)
+    NamHoc VARCHAR(9) NOT NULL, -- Năm học (VD: 2024-2025)
+    ThuTrongTuan VARCHAR(10) NOT NULL, -- Thứ trong tuần (VD: Thứ 2, Thứ 3,...)
+    TietBatDau INT NOT NULL, -- Tiết bắt đầu (VD: 1)
+    TietKetThuc INT NOT NULL, -- Tiết kết thúc (VD: 3)
+    TrangThai TINYINT DEFAULT 1, -- 1: hoạt động, 0: xóa mềm
+    NgayTao DATETIME DEFAULT CURRENT_TIMESTAMP, -- Ngày tạo bản ghi
+    NgayCapNhat DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (MaLop) REFERENCES Lop (MaLop) ON UPDATE CASCADE,
+    FOREIGN KEY (MaGV) REFERENCES GiaoVien (MaGV) ON UPDATE CASCADE,
+    FOREIGN KEY (MaMon) REFERENCES MonHoc (MaMon) ON UPDATE CASCADE,
+    FOREIGN KEY (MaPhong) REFERENCES PhongHoc (MaPhong) ON UPDATE CASCADE
 );
 
 -- === BẢNG ĐIỂM (GỘP) + CỘT SINH ===
-CREATE TABLE IF NOT EXISTS Diem (
+CREATE TABLE Diem (
     MaDiem INT PRIMARY KEY AUTO_INCREMENT,
     MaHS INT,
     MaMon INT,
@@ -159,24 +169,16 @@ ADD COLUMN XepLoai VARCHAR(20) GENERATED ALWAYS AS (
 ) VIRTUAL;
 
 -- === TRỌNG SỐ NĂM (KHÔNG DÙNG BIẾN PHIÊN) ===
-CREATE TABLE IF NOT EXISTS TrongSoNam (
+CREATE TABLE TrongSoNam (
     MaNK INT PRIMARY KEY,
     wHK1 DECIMAL(4, 3) NOT NULL,
     wHK2 DECIMAL(4, 3) NOT NULL,
     CONSTRAINT fk_ts_nk FOREIGN KEY (MaNK) REFERENCES NienKhoa (MaNK) ON DELETE CASCADE ON UPDATE CASCADE
 );
 
--- BACKFILL: gán mặc định 40/60 cho TẤT CẢ niên khóa đã tồn tại mà chưa có trọng số
-INSERT INTO
-    TrongSoNam (MaNK, wHK1, wHK2)
-SELECT nk.MaNK, 0.4, 0.6
-FROM NienKhoa nk
-    LEFT JOIN TrongSoNam ts ON ts.MaNK = nk.MaNK
-WHERE
-    ts.MaNK IS NULL;
-
 -- TRIGGER: mọi niên khóa mới thêm vào sẽ tự có 40/60
-DELIMITER / /
+DELIMITER /
+/
 
 CREATE TRIGGER trg_NienKhoa_DefaultTrongSo
 AFTER INSERT ON NienKhoa
@@ -185,9 +187,15 @@ BEGIN
   INSERT INTO TrongSoNam (MaNK, wHK1, wHK2)
   VALUES (NEW.MaNK, 0.4, 0.6)
   ON DUPLICATE KEY UPDATE wHK1 = VALUES(wHK1), wHK2 = VALUES(wHK2);
-END//
+END
+/
+/
 
 DELIMITER;
+
+-- =================================================================================================================================================
+-- === DỮ LIỆU MẪU (ĐÃ LỌC CHO CẤP 3 VÀ THAY TÊN A, B, C...) ===
+-- =================================================================================================================================================
 
 -- === DỮ LIỆU MẪU NGẮN GỌN ===
 INSERT INTO
@@ -239,8 +247,12 @@ INSERT INTO
 VALUES (1, '10A1', 10, 101),
     (2, '10A2', 10, 102),
     (3, '11A1', 11, 201),
-    (4, '12A1', 12, 301);
+    (4, '12A1', 12, 301),
+    (5, '10A3', 10, 102),
+    (6, '11A2', 11, 201),
+    (7, '12A2', 12, 301);
 
+-- *** ĐÃ SỬA LẠI TÊN GIÁO VIÊN CHO THỰC TẾ ***
 INSERT INTO
     GiaoVien (
         MaGV,
@@ -252,26 +264,122 @@ INSERT INTO
     )
 VALUES (
         101,
-        'Phạm Văn C',
+        'Trần Quốc Tuấn',
         '0901111222',
-        'c@gv.example.com',
+        'tuantq@gv.example.com',
         '1980-05-20',
         'Nam'
     ),
     (
         102,
-        'Lê Thị D',
+        'Lê Thị Kim Ngân',
         '0902222333',
-        'd@gv.example.com',
+        'nganltk@gv.example.com',
         '1985-11-15',
         'Nữ'
     ),
     (
         103,
-        'Nguyễn Hữu E',
+        'Nguyễn Hữu Thắng',
         '0903333444',
-        'e@gv.example.com',
+        'thangnh@gv.example.com',
         '1978-02-28',
+        'Nam'
+    ),
+    (
+        104,
+        'Hoàng Minh Dũng',
+        '0904444555',
+        'dunghm@gv.example.com',
+        '1982-09-09',
+        'Nam'
+    ),
+    (
+        105,
+        'Bùi Thanh Mai',
+        '0905555666',
+        'maibt@gv.example.com',
+        '1987-03-12',
+        'Nữ'
+    ),
+    (
+        106,
+        'Đặng Mai Lan',
+        '0906666777',
+        'landm@gv.example.com',
+        '1986-07-30',
+        'Nữ'
+    ),
+    (
+        107,
+        'Phan Việt Anh',
+        '0907777888',
+        'anhpv@gv.example.com',
+        '1979-01-18',
+        'Nam'
+    ),
+    (
+        108,
+        'Ngô Hải Long',
+        '0908888999',
+        'longnh@gv.example.com',
+        '1983-04-22',
+        'Nam'
+    ),
+    (
+        109,
+        'Võ Thu Thảo',
+        '0910000111',
+        'thaovt@gv.example.com',
+        '1984-12-05',
+        'Nữ'
+    ),
+    (
+        110,
+        'Hồ Minh Quân',
+        '0911111222',
+        'quanhm@gv.example.com',
+        '1990-02-10',
+        'Nam'
+    ),
+    (
+        111,
+        'Đoàn Công Thành',
+        '0912222333',
+        'thanhdc@gv.example.com',
+        '1985-05-15',
+        'Nam'
+    ),
+    (
+        112,
+        'Lý Anh Dũng',
+        '0913333444',
+        'dungla@gv.example.com',
+        '1981-08-08',
+        'Nam'
+    ),
+    (
+        113,
+        'Nguyễn Đức Quang',
+        '0914444777',
+        'quangnd@gv.example.com',
+        '1988-02-10',
+        'Nam'
+    ),
+    (
+        114,
+        'Phạm Thị Hòa',
+        '0915555888',
+        'hoapt@gv.example.com',
+        '1989-06-12',
+        'Nữ'
+    ),
+    (
+        115,
+        'Trần Văn Lực',
+        '0916666999',
+        'luctv@gv.example.com',
+        '1984-03-15',
         'Nam'
     );
 
@@ -288,60 +396,124 @@ INSERT INTO
     )
 VALUES (
         1,
-        'Nguyễn Văn A',
+        'Bùi Tấn Trường',
         '2007-09-01',
         'Nam',
         1,
         '123 Đường ABC, Quận 1',
         '0123456789',
-        'nguyenvana@example.com'
+        'truongbt@example.com'
     ),
     (
         2,
-        'Trần Thị B',
+        'Trần Thùy Linh',
         '2007-12-11',
         'Nữ',
         1,
         '456 Đường XYZ, Quận 2',
         '0987654321',
-        'tranthib@example.com'
+        'linhtt@example.com'
     ),
     (
         3,
-        'Phạm Minh C',
+        'Phạm Minh Khang',
         '2007-05-10',
         'Nam',
         2,
         '789 Đường DEF, Quận 3',
         '0901234567',
-        'phamminhc@example.com'
+        'khangpm@example.com'
     ),
     (
         4,
-        'Lê Thu D',
+        'Lê Thu Thảo',
         '2007-03-22',
         'Nữ',
         3,
         '111 Đường GHI, Quận 4',
         '0912345678',
-        'lethud@example.com'
+        'thaolt@example.com'
     ),
     (
         5,
-        'Đỗ Hải E',
+        'Đỗ Hải Phong',
         '2006-10-09',
         'Khác',
         4,
         '222 Đường JKL, Quận 5',
         '0923456789',
-        'dohaie@example.com'
+        'phongdh@example.com'
+    ),
+    (
+        6,
+        'Phạm Gia Hân',
+        '2007-04-20',
+        'Nữ',
+        5,
+        'Q1',
+        '0933333001',
+        'hanpg@example.com'
+    ),
+    (
+        7,
+        'Ngô Nhật Quang',
+        '2007-09-15',
+        'Nam',
+        5,
+        'Q2',
+        '0933333002',
+        'quangnn@example.com'
+    ),
+    (
+        8,
+        'Vũ Hoàng Khang',
+        '2006-10-10',
+        'Nam',
+        6,
+        'Q3',
+        '0933333003',
+        'khangvh@example.com'
+    ),
+    (
+        9,
+        'Trần Minh Khôi',
+        '2005-12-12',
+        'Nam',
+        7,
+        'Q5',
+        '0933333004',
+        'khoitm@example.com'
     );
 
 INSERT INTO
-    MonHoc (MaMon, TenMon, SoTiet)
-VALUES (101, 'Toán', 90),
-    (102, 'Văn', 90),
-    (103, 'Anh', 90);
+    MonHoc (MaMon, TenMon, SoTiet, GhiChu)
+VALUES (101, 'Toán', 90, NULL),
+    (102, 'Văn', 90, NULL),
+    (103, 'Anh', 90, NULL),
+    (104, 'Vật lý', 70, NULL),
+    (
+        105,
+        'Hóa học',
+        70,
+        'Bắt đầu từ khối 8'
+    ),
+    (106, 'Sinh học', 70, NULL),
+    (107, 'Lịch sử', 70, NULL),
+    (108, 'Địa lý', 70, NULL),
+    (
+        109,
+        'Giáo dục công dân',
+        52,
+        'GDCD'
+    ),
+    (110, 'Tin học', 70, NULL),
+    (111, 'Công nghệ', 70, NULL),
+    (
+        112,
+        'Thể dục',
+        70,
+        'Giáo dục thể chất'
+    );
 
 INSERT INTO
     NienKhoa (MaNK, NamBatDau, NamKetThuc)
@@ -387,6 +559,209 @@ VALUES (
         8.0,
         8.0,
         9.0
+    ),
+    -- 10A3 (MaLop=5), học sinh 6 và 7
+    (
+        6,
+        101,
+        1,
+        1,
+        8.0,
+        8.0,
+        7.5,
+        8.5
+    ),
+    (
+        6,
+        102,
+        1,
+        1,
+        7.5,
+        8.0,
+        8.0,
+        8.0
+    ),
+    (
+        7,
+        101,
+        1,
+        1,
+        7.0,
+        7.0,
+        7.0,
+        7.5
+    ),
+    (
+        7,
+        102,
+        1,
+        1,
+        8.5,
+        8.0,
+        8.0,
+        8.5
+    ),
+    (
+        6,
+        101,
+        2,
+        1,
+        8.5,
+        8.0,
+        8.0,
+        9.0
+    ),
+    (
+        6,
+        102,
+        2,
+        1,
+        8.0,
+        8.0,
+        8.0,
+        8.5
+    ),
+    (
+        7,
+        101,
+        2,
+        1,
+        7.5,
+        7.0,
+        7.5,
+        8.0
+    ),
+    (
+        7,
+        102,
+        2,
+        1,
+        8.0,
+        8.0,
+        8.0,
+        8.5
+    ),
+    -- 11A2 (MaLop=6), học sinh 8
+    (
+        8,
+        101,
+        1,
+        1,
+        7.5,
+        7.0,
+        7.0,
+        8.0
+    ),
+    (
+        8,
+        102,
+        1,
+        1,
+        8.0,
+        8.0,
+        8.0,
+        8.5
+    ),
+    (
+        8,
+        103,
+        1,
+        1,
+        7.0,
+        7.0,
+        7.5,
+        8.0
+    ),
+    (
+        8,
+        101,
+        2,
+        1,
+        8.0,
+        7.5,
+        8.0,
+        8.5
+    ),
+    (
+        8,
+        102,
+        2,
+        1,
+        8.5,
+        8.0,
+        8.5,
+        9.0
+    ),
+    (
+        8,
+        103,
+        2,
+        1,
+        7.5,
+        7.0,
+        7.5,
+        8.0
+    ),
+    -- 12A2 (MaLop=7), học sinh 9
+    (
+        9,
+        101,
+        1,
+        1,
+        7.5,
+        8.0,
+        8.0,
+        8.5
+    ),
+    (
+        9,
+        102,
+        1,
+        1,
+        8.0,
+        8.0,
+        8.0,
+        8.5
+    ),
+    (
+        9,
+        103,
+        1,
+        1,
+        7.0,
+        7.5,
+        7.5,
+        8.0
+    ),
+    (
+        9,
+        101,
+        2,
+        1,
+        8.5,
+        8.5,
+        8.0,
+        9.0
+    ),
+    (
+        9,
+        102,
+        2,
+        1,
+        8.0,
+        8.0,
+        8.0,
+        8.5
+    ),
+    (
+        9,
+        103,
+        2,
+        1,
+        8.0,
+        7.5,
+        8.0,
+        8.5
     );
 
 INSERT INTO
@@ -397,22 +772,43 @@ INSERT INTO
         DiaChi
     )
 VALUES (
-        'Bà Nguyễn Thị X',
+        'Bà Nguyễn Thị Lan',
         '0899999000',
-        'phx@example.com',
+        'phlan@example.com',
         'Địa chỉ A'
     ),
     (
-        'Ông Trần Văn Y',
+        'Ông Trần Văn Hùng',
         '0899999111',
-        'phy@example.com',
+        'phhung@example.com',
         'Địa chỉ B'
+    ),
+    (
+        'Bà Lê Thị Xuân',
+        '0935555001',
+        'xuanlt@example.com',
+        'Q1'
+    ),
+    (
+        'Ông Phan Văn Tài',
+        '0935555002',
+        'taipv@example.com',
+        'Q2'
+    ),
+    (
+        'Bà Nguyễn Mỹ An',
+        '0935555003',
+        'anmy@example.com',
+        'Q3'
     );
 
 INSERT INTO
     HocSinh_PhuHuynh (MaHS, MaPH, QuanHe)
 VALUES (1, 1, 'Mẹ'),
-    (2, 2, 'Bố');
+    (2, 2, 'Bố'),
+    (6, 3, 'Mẹ'),
+    (7, 4, 'Bố'),
+    (8, 5, 'Mẹ');
 
 INSERT INTO
     ChuNhiem (
@@ -421,7 +817,10 @@ INSERT INTO
         MaNK,
         NgayNhanNhiem
     )
-VALUES (101, 1, 1, '2024-08-01');
+VALUES (101, 1, 1, '2024-08-01'),
+    (113, 5, 1, '2024-08-01'),
+    (114, 6, 1, '2024-08-01'),
+    (115, 7, 1, '2024-08-01');
 
 INSERT INTO
     PhanCongDay (
@@ -432,1085 +831,305 @@ INSERT INTO
         HocKy
     )
 VALUES (101, 101, 1, 1, 1),
-    (102, 102, 1, 1, 1);
-
-INSERT INTO
-    ThoiKhoaBieu (
-        MaPC,
-        MaPhong,
-        ThuTrongTuan,
-        TietHoc
-    )
-VALUES (1, 101, 'Thứ 2', 1),
-    (2, 102, 'Thứ 3', 2);
-
-/* =========================
-1) BỔ SUNG PHÒNG HỌC
-========================= */
-INSERT INTO
-    PhongHoc (
-        MaPhong,
-        TenPhong,
-        LoaiPhong,
-        SucChua,
-        ViTri
-    )
-VALUES (
-        103,
-        'P103',
-        'Lý thuyết',
-        45,
-        'Tầng 1'
-    ),
-    (
-        104,
-        'P104',
-        'Lý thuyết',
-        45,
-        'Tầng 1'
-    ),
-    (
-        105,
-        'P105',
-        'Lý thuyết',
-        45,
-        'Tầng 1'
-    ),
-    (
-        203,
-        'P203',
-        'Lý thuyết',
-        45,
-        'Tầng 2'
-    ),
-    (
-        204,
-        'P204',
-        'Lý thuyết',
-        45,
-        'Tầng 2'
-    ),
-    (
-        302,
-        'P302',
-        'Lý thuyết',
-        45,
-        'Tầng 3'
-    ),
-    (
-        303,
-        'P303',
-        'Lý thuyết',
-        45,
-        'Tầng 3'
-    );
-
-/* =========================
-2) BỔ SUNG LỚP THCS (6–9)
-========================= */
-INSERT INTO
-    Lop (MaLop, TenLop, Khoi, MaPhong)
-VALUES (5, '6A1', 6, 103),
-    (6, '6A2', 6, 104),
-    (7, '7A1', 7, 105),
-    (8, '7A2', 7, 201), -- dùng phòng sẵn có
-    (9, '8A1', 8, 203),
-    (10, '8A2', 8, 202), -- P202 thí nghiệm cũng tạm dùng
-    (11, '9A1', 9, 302),
-    (12, '9A2', 9, 303);
-
-/* =======================================
-3) BỔ SUNG MÔN THCS (đủ nhóm phổ biến)
-======================================= */
--- Đã có: (101 Toán), (102 Văn), (103 Anh)
-INSERT INTO
-    MonHoc (MaMon, TenMon, SoTiet, GhiChu)
-VALUES (104, 'Vật lý', 70, NULL),
-    (
-        105,
-        'Hóa học',
-        70,
-        'Bắt đầu từ khối 8'
-    ),
-    (106, 'Sinh học', 70, NULL),
-    (107, 'Lịch sử', 70, NULL),
-    (108, 'Địa lý', 70, NULL),
-    (
-        109,
-        'Giáo dục công dân',
-        52,
-        'GDCD'
-    ),
-    (110, 'Tin học', 70, NULL),
-    (111, 'Công nghệ', 70, NULL),
-    (
-        112,
-        'Thể dục',
-        70,
-        'Giáo dục thể chất'
-    ),
-    (113, 'Âm nhạc', 35, NULL),
-    (114, 'Mỹ thuật', 35, NULL);
-
-/* =========================
-4) BỔ SUNG GIÁO VIÊN
-========================= */
-INSERT INTO
-    GiaoVien (
-        MaGV,
-        HoTen,
-        SoDienThoai,
-        Email,
-        NgaySinh,
-        GioiTinh
-    )
-VALUES (
-        104,
-        'Trần Quốc Lý',
-        '0904444555',
-        'ly@gv.example.com',
-        '1982-09-09',
-        'Nam'
-    ), -- Vật lý
-    (
-        105,
-        'Bùi Thanh Hóa',
-        '0905555666',
-        'hoa@gv.example.com',
-        '1987-03-12',
-        'Nữ'
-    ), -- Hóa
-    (
-        106,
-        'Đặng Mai Sinh',
-        '0906666777',
-        'sinh@gv.example.com',
-        '1986-07-30',
-        'Nữ'
-    ), -- Sinh
-    (
-        107,
-        'Phan Việt Sử',
-        '0907777888',
-        'su@gv.example.com',
-        '1979-01-18',
-        'Nam'
-    ), -- Lịch sử
-    (
-        108,
-        'Ngô Hải Địa',
-        '0908888999',
-        'dia@gv.example.com',
-        '1983-04-22',
-        'Nam'
-    ), -- Địa lý
-    (
-        109,
-        'Võ Thu GDCD',
-        '0910000111',
-        'gdcd@gv.example.com',
-        '1984-12-05',
-        'Nữ'
-    ), -- GDCD
-    (
-        110,
-        'Hồ Minh IT',
-        '0911111222',
-        'it@gv.example.com',
-        '1990-02-10',
-        'Nam'
-    ), -- Tin
-    (
-        111,
-        'Đoàn Công Nghệ',
-        '0912222333',
-        'cn@gv.example.com',
-        '1985-05-15',
-        'Nam'
-    ), -- Công nghệ
-    (
-        112,
-        'Lý An Thể',
-        '0913333444',
-        'td@gv.example.com',
-        '1981-08-08',
-        'Nam'
-    ), -- Thể dục
-    (
-        113,
-        'Tạ Bảo Nhạc',
-        '0914444555',
-        'amnhac@gv.example.com',
-        '1991-11-11',
-        'Nữ'
-    ), -- Âm nhạc
-    (
-        114,
-        'La Mỹ Thuật',
-        '0915555666',
-        'mythuat@gv.example.com',
-        '1989-06-06',
-        'Nữ'
-    );
--- Mỹ thuật
-
-/* =========================
-5) BỔ SUNG HỌC SINH  (6–9)
-========================= */
-INSERT INTO
-    HocSinh (
-        MaHS,
-        HoTen,
-        NgaySinh,
-        GioiTinh,
-        MaLop,
-        DiaChi,
-        SoDienThoai,
-        Email
-    )
-VALUES (
-        6,
-        'Ngô Minh K',
-        '2012-05-01',
-        'Nam',
-        5,
-        'Q1',
-        '0916000001',
-        'k6a1@example.com'
-    ),
-    (
-        7,
-        'Phạm Gia L',
-        '2012-08-12',
-        'Nữ',
-        5,
-        'Q1',
-        '0916000002',
-        'l6a1@example.com'
-    ),
-    (
-        8,
-        'Lê Thành M',
-        '2012-02-20',
-        'Nam',
-        6,
-        'Q2',
-        '0916000003',
-        'm6a2@example.com'
-    ),
-    (
-        9,
-        'Đinh Nhật N',
-        '2011-10-10',
-        'Nam',
-        7,
-        'Q3',
-        '0916000004',
-        'n7a1@example.com'
-    ),
-    (
-        10,
-        'Trần Thu O',
-        '2011-12-09',
-        'Nữ',
-        7,
-        'Q3',
-        '0916000005',
-        'o7a1@example.com'
-    ),
-    (
-        11,
-        'Vũ Quốc P',
-        '2011-07-22',
-        'Nam',
-        8,
-        'Q4',
-        '0916000006',
-        'p7a2@example.com'
-    ),
-    (
-        12,
-        'Hoàng Mai Q',
-        '2010-04-14',
-        'Nữ',
-        9,
-        'Q5',
-        '0916000007',
-        'q8a1@example.com'
-    ),
-    (
-        13,
-        'Đào Bảo R',
-        '2010-09-19',
-        'Nam',
-        10,
-        'Q5',
-        '0916000008',
-        'r8a2@example.com'
-    ),
-    (
-        14,
-        'Nguyễn Thái S',
-        '2009-03-03',
-        'Nam',
-        11,
-        'Q6',
-        '0916000009',
-        's9a1@example.com'
-    ),
-    (
-        15,
-        'Phan Mỹ T',
-        '2009-06-25',
-        'Nữ',
-        12,
-        'Q6',
-        '0916000010',
-        't9a2@example.com'
-    );
-
-/* =========================
-6) CHỦ NHIỆM CHO LỚP 6–9
-========================= */
-INSERT INTO
-    ChuNhiem (
-        MaGV,
-        MaLop,
-        MaNK,
-        NgayNhanNhiem
-    )
-VALUES (101, 5, 1, '2024-08-01'), -- 6A1
-    (102, 6, 1, '2024-08-01'), -- 6A2
-    (103, 7, 1, '2024-08-01'), -- 7A1
-    (104, 8, 1, '2024-08-01'), -- 7A2
-    (105, 9, 1, '2024-08-01'), -- 8A1
-    (106, 10, 1, '2024-08-01'), -- 8A2
-    (107, 11, 1, '2024-08-01'), -- 9A1
-    (108, 12, 1, '2024-08-01');
--- 9A2
-
-/* =========================
-7) PHÂN CÔNG DẠY (một số môn chính)
-========================= */
--- Cho 6A1 (MaLop=5), 6A2 (6)
-INSERT INTO
-    PhanCongDay (
-        MaGV,
-        MaMon,
-        MaLop,
-        MaNK,
-        HocKy
-    )
-VALUES (101, 101, 5, 1, 1),
+    (102, 102, 1, 1, 1),
+    (101, 101, 5, 1, 1),
     (102, 102, 5, 1, 1),
     (103, 103, 5, 1, 1),
-    (104, 104, 5, 1, 1),
-    (106, 106, 5, 1, 1),
-    (110, 110, 5, 1, 1),
     (101, 101, 6, 1, 1),
     (102, 102, 6, 1, 1),
     (103, 103, 6, 1, 1),
-    (104, 104, 6, 1, 1),
-    (106, 106, 6, 1, 1),
-    (110, 110, 6, 1, 1),
-    (101, 101, 5, 1, 2),
-    (102, 102, 5, 1, 2),
-    (103, 103, 5, 1, 2),
-    (104, 104, 5, 1, 2),
-    (106, 106, 5, 1, 2),
-    (110, 110, 5, 1, 2),
-    (101, 101, 6, 1, 2),
-    (102, 102, 6, 1, 2),
-    (103, 103, 6, 1, 2),
-    (104, 104, 6, 1, 2),
-    (106, 106, 6, 1, 2),
-    (110, 110, 6, 1, 2);
-
--- Cho 7A1 (7), 7A2 (8) – thêm Lịch sử/Địa lý
-INSERT INTO
-    PhanCongDay (
-        MaGV,
-        MaMon,
-        MaLop,
-        MaNK,
-        HocKy
-    )
-VALUES (101, 101, 7, 1, 1),
+    (101, 101, 7, 1, 1),
     (102, 102, 7, 1, 1),
-    (103, 103, 7, 1, 1),
-    (104, 104, 7, 1, 1),
-    (106, 106, 7, 1, 1),
-    (107, 107, 7, 1, 1),
-    (108, 108, 7, 1, 1),
-    (101, 101, 8, 1, 1),
-    (102, 102, 8, 1, 1),
-    (103, 103, 8, 1, 1),
-    (104, 104, 8, 1, 1),
-    (106, 106, 8, 1, 1),
-    (107, 107, 8, 1, 1),
-    (108, 108, 8, 1, 1),
-    (101, 101, 7, 1, 2),
-    (102, 102, 7, 1, 2),
-    (103, 103, 7, 1, 2),
-    (104, 104, 7, 1, 2),
-    (106, 106, 7, 1, 2),
-    (107, 107, 7, 1, 2),
-    (108, 108, 7, 1, 2),
-    (101, 101, 8, 1, 2),
-    (102, 102, 8, 1, 2),
-    (103, 103, 8, 1, 2),
-    (104, 104, 8, 1, 2),
-    (106, 106, 8, 1, 2),
-    (107, 107, 8, 1, 2),
-    (108, 108, 8, 1, 2);
+    (103, 103, 7, 1, 1);
 
--- Cho 8A1 (9), 8A2 (10) – thêm Hóa từ khối 8
-INSERT INTO
-    PhanCongDay (
-        MaGV,
-        MaMon,
-        MaLop,
-        MaNK,
-        HocKy
-    )
-VALUES (101, 101, 9, 1, 1),
-    (102, 102, 9, 1, 1),
-    (103, 103, 9, 1, 1),
-    (104, 104, 9, 1, 1),
-    (105, 105, 9, 1, 1),
-    (106, 106, 9, 1, 1),
-    (101, 101, 10, 1, 1),
-    (102, 102, 10, 1, 1),
-    (103, 103, 10, 1, 1),
-    (104, 104, 10, 1, 1),
-    (105, 105, 10, 1, 1),
-    (106, 106, 10, 1, 1),
-    (101, 101, 9, 1, 2),
-    (102, 102, 9, 1, 2),
-    (103, 103, 9, 1, 2),
-    (104, 104, 9, 1, 2),
-    (105, 105, 9, 1, 2),
-    (106, 106, 9, 1, 2),
-    (101, 101, 10, 1, 2),
-    (102, 102, 10, 1, 2),
-    (103, 103, 10, 1, 2),
-    (104, 104, 10, 1, 2),
-    (105, 105, 10, 1, 2),
-    (106, 106, 10, 1, 2);
-
--- Cho 9A1 (11), 9A2 (12)
-INSERT INTO
-    PhanCongDay (
-        MaGV,
-        MaMon,
-        MaLop,
-        MaNK,
-        HocKy
-    )
-VALUES (101, 101, 11, 1, 1),
-    (102, 102, 11, 1, 1),
-    (103, 103, 11, 1, 1),
-    (104, 104, 11, 1, 1),
-    (105, 105, 11, 1, 1),
-    (106, 106, 11, 1, 1),
-    (101, 101, 12, 1, 1),
-    (102, 102, 12, 1, 1),
-    (103, 103, 12, 1, 1),
-    (104, 104, 12, 1, 1),
-    (105, 105, 12, 1, 1),
-    (106, 106, 12, 1, 1),
-    (101, 101, 11, 1, 2),
-    (102, 102, 11, 1, 2),
-    (103, 103, 11, 1, 2),
-    (104, 104, 11, 1, 2),
-    (105, 105, 11, 1, 2),
-    (106, 106, 11, 1, 2),
-    (101, 101, 12, 1, 2),
-    (102, 102, 12, 1, 2),
-    (103, 103, 12, 1, 2),
-    (104, 104, 12, 1, 2),
-    (105, 105, 12, 1, 2),
-    (106, 106, 12, 1, 2);
-
-/* =========================
-8) THỜI KHÓA BIỂU MẪU
-========================= */
--- Một vài dòng minh họa cho 6A1/6A2 HK1
 INSERT INTO
     ThoiKhoaBieu (
-        MaPC,
+        MaLop,
+        MaGV,
+        MaMon,
         MaPhong,
+        HocKy,
+        NamHoc,
         ThuTrongTuan,
-        TietHoc
+        TietBatDau,
+        TietKetThuc
     )
-VALUES (
-        (
-            SELECT MaPC
-            FROM PhanCongDay
-            WHERE
-                MaLop = 5
-                AND MaMon = 101
-                AND HocKy = 1
-            LIMIT 1
-        ),
-        103,
-        'Thứ 2',
-        1
-    ),
+VALUES
+    -- HK I
+    -- 10A1 (MaLop=1)
     (
-        (
-            SELECT MaPC
-            FROM PhanCongDay
-            WHERE
-                MaLop = 5
-                AND MaMon = 102
-                AND HocKy = 1
-            LIMIT 1
-        ),
-        103,
-        'Thứ 2',
-        2
-    ),
-    (
-        (
-            SELECT MaPC
-            FROM PhanCongDay
-            WHERE
-                MaLop = 6
-                AND MaMon = 101
-                AND HocKy = 1
-            LIMIT 1
-        ),
-        104,
-        'Thứ 3',
-        1
-    ),
-    (
-        (
-            SELECT MaPC
-            FROM PhanCongDay
-            WHERE
-                MaLop = 6
-                AND MaMon = 103
-                AND HocKy = 1
-            LIMIT 1
-        ),
-        104,
-        'Thứ 3',
-        2
-    );
-
-/* =========================
-9) ĐIỂM MẪU HK1 & HK2 (để test view)
-========================= */
--- 6A1 (MaLop=5): HS 6,7 | Môn: Toán(101), Văn(102), Anh(103), Lý(104), Sinh(106)
-INSERT INTO
-    Diem (
-        MaHS,
-        MaMon,
-        HocKy,
-        MaNK,
-        DiemMieng,
-        Diem15p,
-        DiemGiuaKy,
-        DiemCuoiKy
-    )
-VALUES (
-        6,
+        1,
         101,
-        1,
-        1,
-        7.5,
-        7.0,
-        7.0,
-        8.0
-    ),
-    (
-        6,
-        102,
-        1,
-        1,
-        8.0,
-        7.5,
-        7.5,
-        8.0
-    ),
-    (
-        6,
-        103,
-        1,
-        1,
-        7.0,
-        7.0,
-        7.5,
-        8.0
-    ),
-    (
-        6,
-        104,
-        1,
-        1,
-        6.5,
-        7.0,
-        7.0,
-        7.5
-    ),
-    (
-        6,
-        106,
-        1,
-        1,
-        8.5,
-        8.0,
-        8.0,
-        8.5
-    ),
-    (
-        7,
         101,
+        101,
+        'HK1',
+        '2024-2025',
+        'Thứ 2',
         1,
-        1,
-        8.0,
-        8.0,
-        7.5,
-        8.5
-    ),
+        2
+    ), -- Toán
     (
-        7,
+        1,
         102,
-        1,
-        1,
-        7.5,
-        7.0,
-        7.0,
-        7.5
-    ),
+        102,
+        101,
+        'HK1',
+        '2024-2025',
+        'Thứ 2',
+        3,
+        4
+    ), -- Văn
     (
-        7,
+        1,
         103,
+        103,
+        101,
+        'HK1',
+        '2024-2025',
+        'Thứ 3',
         1,
-        1,
-        8.0,
-        8.0,
-        7.5,
-        8.0
-    ),
+        2
+    ), -- Anh
     (
-        7,
+        1,
         104,
-        1,
-        1,
-        7.0,
-        7.0,
-        7.0,
-        7.5
-    ),
+        104,
+        101,
+        'HK1',
+        '2024-2025',
+        'Thứ 3',
+        3,
+        4
+    ), -- Vật lý
     (
-        7,
+        1,
         106,
+        106,
+        101,
+        'HK1',
+        '2024-2025',
+        'Thứ 4',
         1,
+        2
+    ), -- Sinh
+    -- 10A2 (MaLop=2)
+    (
+        2,
+        101,
+        101,
+        102,
+        'HK1',
+        '2024-2025',
+        'Thứ 2',
         1,
-        8.5,
-        8.0,
-        8.0,
-        9.0
-    ),
+        2
+    ), -- Toán
+    (
+        2,
+        102,
+        102,
+        102,
+        'HK1',
+        '2024-2025',
+        'Thứ 2',
+        3,
+        4
+    ), -- Văn
+    (
+        2,
+        103,
+        103,
+        102,
+        'HK1',
+        '2024-2025',
+        'Thứ 3',
+        1,
+        2
+    ), -- Anh
+    (
+        2,
+        104,
+        104,
+        102,
+        'HK1',
+        '2024-2025',
+        'Thứ 3',
+        3,
+        4
+    ), -- Vật lý
+    (
+        2,
+        105,
+        105,
+        102,
+        'HK1',
+        '2024-2025',
+        'Thứ 4',
+        1,
+        2
+    ), -- Hóa
+    -- 11A1 (MaLop=3)
+    (
+        3,
+        101,
+        101,
+        201,
+        'HK1',
+        '2024-2025',
+        'Thứ 2',
+        1,
+        2
+    ), -- Toán
+    (
+        3,
+        102,
+        102,
+        201,
+        'HK1',
+        '2024-2025',
+        'Thứ 2',
+        3,
+        4
+    ), -- Văn
+    (
+        3,
+        103,
+        103,
+        201,
+        'HK1',
+        '2024-2025',
+        'Thứ 3',
+        1,
+        2
+    ), -- Anh
+    (
+        3,
+        104,
+        104,
+        201,
+        'HK1',
+        '2024-2025',
+        'Thứ 3',
+        3,
+        4
+    ), -- Vật lý
+    (
+        3,
+        105,
+        105,
+        201,
+        'HK1',
+        '2024-2025',
+        'Thứ 4',
+        1,
+        2
+    ), -- Hóa
 
--- HK2 cùng HS/môn
+-- HK II
+-- 10A1 (MaLop=1)
 (
-    6,
+    1,
     101,
-    2,
-    1,
-    8.0,
-    7.5,
-    7.5,
-    8.5
-),
-(
-    6,
-    102,
-    2,
-    1,
-    8.0,
-    8.0,
-    8.0,
-    8.5
-),
-(
-    6,
-    103,
-    2,
-    1,
-    7.5,
-    7.5,
-    7.5,
-    8.0
-),
-(
-    6,
-    104,
-    2,
-    1,
-    7.0,
-    7.0,
-    7.5,
-    8.0
-),
-(
-    6,
-    106,
-    2,
-    1,
-    8.5,
-    8.5,
-    8.0,
-    9.0
-),
-(
-    7,
     101,
-    2,
+    101,
+    'HK2',
+    '2024-2025',
+    'Thứ 2',
     1,
-    8.5,
-    8.0,
-    8.0,
-    9.0
+    2
 ),
 (
-    7,
+    1,
     102,
-    2,
-    1,
-    7.5,
-    7.5,
-    7.5,
-    8.0
+    102,
+    101,
+    'HK2',
+    '2024-2025',
+    'Thứ 3',
+    3,
+    4
 ),
 (
-    7,
+    1,
     103,
-    2,
+    103,
+    101,
+    'HK2',
+    '2024-2025',
+    'Thứ 4',
     1,
-    8.0,
-    8.0,
-    8.0,
-    8.5
+    2
 ),
+
+-- 10A2 (MaLop=2)
 (
-    7,
+    2,
     104,
-    2,
+    104,
+    102,
+    'HK2',
+    '2024-2025',
+    'Thứ 2',
     1,
-    7.5,
-    7.0,
-    7.5,
-    8.0
+    2
 ),
 (
-    7,
-    106,
     2,
+    105,
+    105,
+    102,
+    'HK2',
+    '2024-2025',
+    'Thứ 3',
+    3,
+    4
+),
+(
+    2,
+    103,
+    103,
+    102,
+    'HK2',
+    '2024-2025',
+    'Thứ 4',
     1,
-    8.5,
-    8.5,
-    8.5,
-    9.0
+    2
+),
+
+-- 11A1 (MaLop=3)
+(
+    3,
+    101,
+    101,
+    201,
+    'HK2',
+    '2024-2025',
+    'Thứ 2',
+    1,
+    2
+),
+(
+    3,
+    102,
+    102,
+    201,
+    'HK2',
+    '2024-2025',
+    'Thứ 3',
+    3,
+    4
+),
+(
+    3,
+    103,
+    103,
+    201,
+    'HK2',
+    '2024-2025',
+    'Thứ 4',
+    1,
+    2
 );
-
--- 9A1 (MaLop=11): HS 14 | Môn: Toán(101), Văn(102), Anh(103), Lý(104), Hóa(105), Sinh(106)
-INSERT INTO
-    Diem (
-        MaHS,
-        MaMon,
-        HocKy,
-        MaNK,
-        DiemMieng,
-        Diem15p,
-        DiemGiuaKy,
-        DiemCuoiKy
-    )
-VALUES (
-        14,
-        101,
-        1,
-        1,
-        7.5,
-        7.5,
-        7.0,
-        8.0
-    ),
-    (
-        14,
-        102,
-        1,
-        1,
-        7.0,
-        7.0,
-        7.0,
-        7.5
-    ),
-    (
-        14,
-        103,
-        1,
-        1,
-        8.0,
-        8.0,
-        7.5,
-        8.5
-    ),
-    (
-        14,
-        104,
-        1,
-        1,
-        7.5,
-        7.0,
-        7.0,
-        7.5
-    ),
-    (
-        14,
-        105,
-        1,
-        1,
-        7.0,
-        7.0,
-        7.0,
-        7.5
-    ),
-    (
-        14,
-        106,
-        1,
-        1,
-        8.0,
-        8.0,
-        8.0,
-        8.5
-    ),
-    (
-        14,
-        101,
-        2,
-        1,
-        8.0,
-        8.0,
-        7.5,
-        8.5
-    ),
-    (
-        14,
-        102,
-        2,
-        1,
-        7.5,
-        7.5,
-        7.5,
-        8.0
-    ),
-    (
-        14,
-        103,
-        2,
-        1,
-        8.0,
-        8.0,
-        8.0,
-        8.5
-    ),
-    (
-        14,
-        104,
-        2,
-        1,
-        7.5,
-        7.5,
-        7.5,
-        8.0
-    ),
-    (
-        14,
-        105,
-        2,
-        1,
-        7.0,
-        7.5,
-        7.5,
-        8.0
-    ),
-    (
-        14,
-        106,
-        2,
-        1,
-        8.5,
-        8.0,
-        8.0,
-        9.0
-    );
-
--- 8A2 (MaLop=10): HS 13 | Môn: Toán, Văn, Anh, Lý, Hóa, Sinh
-INSERT INTO
-    Diem (
-        MaHS,
-        MaMon,
-        HocKy,
-        MaNK,
-        DiemMieng,
-        Diem15p,
-        DiemGiuaKy,
-        DiemCuoiKy
-    )
-VALUES (
-        13,
-        101,
-        1,
-        1,
-        8.0,
-        7.5,
-        7.5,
-        8.0
-    ),
-    (
-        13,
-        102,
-        1,
-        1,
-        7.0,
-        7.0,
-        7.0,
-        7.5
-    ),
-    (
-        13,
-        103,
-        1,
-        1,
-        7.5,
-        7.5,
-        7.5,
-        8.0
-    ),
-    (
-        13,
-        104,
-        1,
-        1,
-        7.0,
-        7.0,
-        7.0,
-        7.5
-    ),
-    (
-        13,
-        105,
-        1,
-        1,
-        7.0,
-        7.0,
-        7.0,
-        7.5
-    ),
-    (
-        13,
-        106,
-        1,
-        1,
-        8.0,
-        8.0,
-        7.5,
-        8.5
-    ),
-    (
-        13,
-        101,
-        2,
-        1,
-        8.5,
-        8.0,
-        8.0,
-        8.5
-    ),
-    (
-        13,
-        102,
-        2,
-        1,
-        7.5,
-        7.5,
-        7.5,
-        8.0
-    ),
-    (
-        13,
-        103,
-        2,
-        1,
-        7.5,
-        8.0,
-        8.0,
-        8.5
-    ),
-    (
-        13,
-        104,
-        2,
-        1,
-        7.5,
-        7.5,
-        7.5,
-        8.0
-    ),
-    (
-        13,
-        105,
-        2,
-        1,
-        7.5,
-        7.5,
-        7.5,
-        8.0
-    ),
-    (
-        13,
-        106,
-        2,
-        1,
-        8.0,
-        8.0,
-        8.0,
-        8.5
-    );
-
-/* =========================
-10) PHỤ HUYNH LIÊN KẾT (mẫu)
-========================= */
-INSERT INTO
-    PhuHuynh (
-        HoTen,
-        SoDienThoai,
-        Email,
-        DiaChi
-    )
-VALUES (
-        'Bà Võ Thị U',
-        '0917000001',
-        'u_ph@example.com',
-        'Q1'
-    ),
-    (
-        'Ông Lý Văn V',
-        '0917000002',
-        'v_ph@example.com',
-        'Q3'
-    );
-
-INSERT INTO
-    HocSinh_PhuHuynh (MaHS, MaPH, QuanHe)
-VALUES (6, 3, 'Mẹ'), -- giả sử MaPH=3,4 tiếp nối 1,2 đã có
-    (7, 4, 'Bố');
 
 -- === VIEW PHỤC VỤ HIỂN THỊ/BÁO CÁO ===
 

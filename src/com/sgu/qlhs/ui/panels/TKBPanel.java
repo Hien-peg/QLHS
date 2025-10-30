@@ -9,10 +9,8 @@ import static com.sgu.qlhs.ui.MainDashboard.*;
 
 public class TKBPanel extends JPanel {
 
-    private static final String[] MON_HOC = {
-        "Toán", "Văn", "Anh", "Lý", "Hóa", "Sinh", "Sử", "Địa",
-        "GDCD", "Tin học", "Công nghệ", "Thể dục", "Âm nhạc", "Mỹ thuật", "SHCN"
-    };
+    // Load subject names from DB when possible, otherwise fallback to defaults
+    private String[] MON_HOC;
 
     private JTable table;
     private static final int SO_TIET = 8;
@@ -21,6 +19,20 @@ public class TKBPanel extends JPanel {
     public TKBPanel() {
         setLayout(new BorderLayout());
         setOpaque(false);
+        // attempt to load subject list from MonBUS
+        try {
+            com.sgu.qlhs.bus.MonBUS monBUS = new com.sgu.qlhs.bus.MonBUS();
+            var list = monBUS.getAllMon();
+            if (list != null && !list.isEmpty()) {
+                MON_HOC = list.stream().map(m -> m.getTenMon()).toArray(String[]::new);
+            }
+        } catch (Exception ex) {
+            // ignore and fallback below
+        }
+        if (MON_HOC == null) {
+            MON_HOC = new String[] { "Toán", "Văn", "Anh", "Lý", "Hóa", "Sinh", "Sử", "Địa",
+                    "GDCD", "Tin học", "Công nghệ", "Thể dục", "Âm nhạc", "Mỹ thuật", "SHCN" };
+        }
 
         // ==== PANEL NGOÀI ====
         var outer = new RoundedPanel(18, CARD_BG, CARD_BORDER);
@@ -37,8 +49,8 @@ public class TKBPanel extends JPanel {
         topPanel.setBorder(new EmptyBorder(5, 16, 10, 16));
 
         JLabel lblLop = new JLabel("Chọn lớp:");
-        JComboBox<String> cbLop = new JComboBox<>(new String[]{
-            "10A1", "10A2", "11A1", "12A1"
+        JComboBox<String> cbLop = new JComboBox<>(new String[] {
+                "10A1", "10A2", "11A1", "12A1"
         });
         cbLop.setPreferredSize(new Dimension(100, 28));
 
@@ -55,7 +67,7 @@ public class TKBPanel extends JPanel {
         topPanel.add(btnTai);
 
         // ==== BẢNG THỜI KHÓA BIỂU ====
-        String[] columns = {"Tiết", "Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6"};
+        String[] columns = { "Tiết", "Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6" };
         Object[][] data = taoThoiKhoaBieuNgauNhien(SO_TIET, SO_THU);
 
         table = new JTable(data, columns);

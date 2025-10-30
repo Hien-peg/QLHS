@@ -14,11 +14,18 @@ import java.awt.*;
 import com.sgu.qlhs.bus.LopBUS;
 import com.sgu.qlhs.bus.DiemBUS;
 import com.sgu.qlhs.dto.LopDTO;
+import com.sgu.qlhs.DatabaseConnection;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 
 public class DiemExportPdfDialog extends JDialog {
     private final JComboBox<String> cboLop = new JComboBox<>();
     private final JComboBox<String> cboMon = new JComboBox<>();
     private final JComboBox<String> cboHK = new JComboBox<>(new String[] { "HK1", "HK2" });
+    private final JComboBox<String> cboNamHoc = new JComboBox<>();
+    private java.util.List<Integer> nienKhoaIds = new java.util.ArrayList<>();
     private LopBUS lopBUS;
     private DiemBUS diemBUS;
     private java.util.List<LopDTO> lops = new java.util.ArrayList<>();
@@ -31,6 +38,7 @@ public class DiemExportPdfDialog extends JDialog {
         loadMonData();
         initBuses();
         loadLopData();
+        loadNienKhoa();
         pack();
     }
 
@@ -61,6 +69,8 @@ public class DiemExportPdfDialog extends JDialog {
         form.add(cboMon);
         form.add(new JLabel("Học kỳ:"));
         form.add(cboHK);
+        form.add(new JLabel("Năm học:"));
+        form.add(cboNamHoc);
         root.add(form, BorderLayout.CENTER);
 
         var btnPane = new JPanel(new FlowLayout(FlowLayout.RIGHT));
@@ -76,6 +86,9 @@ public class DiemExportPdfDialog extends JDialog {
             int maLop = lop.getMaLop();
             int hocKy = cboHK.getSelectedIndex() + 1;
             int maNK = com.sgu.qlhs.bus.NienKhoaBUS.current();
+            int selYear = cboNamHoc.getSelectedIndex();
+            if (selYear >= 0 && selYear < nienKhoaIds.size())
+                maNK = nienKhoaIds.get(selYear);
             // map subject name -> maMon
             com.sgu.qlhs.bus.MonBUS monBus = new com.sgu.qlhs.bus.MonBUS();
             java.util.Map<String, Integer> monMap = new java.util.HashMap<>();
@@ -113,5 +126,33 @@ public class DiemExportPdfDialog extends JDialog {
             cboMon.addItem("Toán");
             cboMon.addItem("Văn");
         }
+    }
+
+    private void loadNienKhoa() {
+        cboNamHoc.removeAllItems();
+        nienKhoaIds.clear();
+        String sql = "SELECT MaNK, NamBatDau, NamKetThuc FROM NienKhoa ORDER BY NamBatDau ASC, MaNK ASC";
+        try (Connection conn = DatabaseConnection.getConnection();
+                PreparedStatement pstmt = conn.prepareStatement(sql);
+                ResultSet rs = pstmt.executeQuery()) {
+            while (rs.next()) {
+                int maNK = rs.getInt("MaNK");
+                int nb = rs.getInt("NamBatDau");
+                int nk = rs.getInt("NamKetThuc");
+                String label = nb + "-" + nk;
+                cboNamHoc.addItem(label);
+                nienKhoaIds.add(maNK);
+            }
+        } catch (SQLException ex) {
+            cboNamHoc.addItem("2024-2025");
+            cboNamHoc.addItem("2023-2024");
+            cboNamHoc.addItem("2022-2023");
+        }
+        int current = com.sgu.qlhs.bus.NienKhoaBUS.current();
+        int idx = nienKhoaIds.indexOf(current);
+        if (idx >= 0)
+            cboNamHoc.setSelectedIndex(idx);
+        else if (cboNamHoc.getItemCount() > 0)
+            cboNamHoc.setSelectedIndex(0);
     }
 }
