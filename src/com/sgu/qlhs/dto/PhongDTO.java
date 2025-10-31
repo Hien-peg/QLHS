@@ -66,9 +66,13 @@ public class PhongDTO {
         this.viTri = viTri;
     }
 
+    // THAY ĐỔI: Thêm hàm này để JComboBox hiển thị tên
     @Override
     public String toString() {
-        return "PhongDTO{" + "maPhong=" + maPhong + ", tenPhong='" + tenPhong + '\'' + ", loaiPhong='" + loaiPhong
-                + '\'' + ", sucChua=" + sucChua + ", viTri='" + viTri + '\'' + '}';
+        // Nếu tên phòng trống thì hiển thị mã
+        if (tenPhong == null || tenPhong.trim().isEmpty()) {
+            return "Phòng " + maPhong;
+        }
+        return tenPhong; // JComboBox sẽ tự động gọi hàm này
     }
 }

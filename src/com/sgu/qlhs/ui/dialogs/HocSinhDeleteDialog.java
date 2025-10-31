@@ -2,30 +2,29 @@ package com.sgu.qlhs.ui.dialogs;
 
 import javax.swing.*;
 import java.awt.*;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Map;
 import com.sgu.qlhs.bus.HocSinhBUS;
+import com.sgu.qlhs.database.HocSinhDAO;
 import com.sgu.qlhs.dto.HocSinhDTO;
+import com.sgu.qlhs.DatabaseConnection;
 
 public class HocSinhDeleteDialog extends JDialog {
     private JTextField txtMaHS;
     private JLabel lblHoTen, lblLop, lblKetQua;
     private JButton btnTim, btnDelete, btnCancel;
 
-    // Giả lập "database" (bạn thay bằng truy vấn thật sau)
-    private Map<String, String[]> fakeData = new HashMap<>();
-    private final HocSinhBUS hocSinhBUS = new HocSinhBUS();
+    private HocSinhDAO hocSinhDAO = new HocSinhDAO();
 
     public HocSinhDeleteDialog(Window owner) {
         super(owner, "Xóa học sinh", ModalityType.APPLICATION_MODAL);
         setSize(420, 300);
         setLocationRelativeTo(owner);
         setLayout(new BorderLayout(10, 10));
-
-        // ===== Dữ liệu mẫu =====
-        fakeData.put("HS001", new String[] { "Nguyễn Văn A", "10A1" });
-        fakeData.put("HS002", new String[] { "Trần Thị B", "11A2" });
-        fakeData.put("HS003", new String[] { "Lê Văn C", "12A1" });
 
         buildForm();
     }
@@ -64,7 +63,7 @@ public class HocSinhDeleteDialog extends JDialog {
         JPanel pnlButtons = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         btnCancel = new JButton("Hủy");
         btnDelete = new JButton("Xóa");
-        btnDelete.setEnabled(false); // chỉ bật sau khi tìm thấy
+        btnDelete.setEnabled(false);
 
         pnlButtons.add(btnCancel);
         pnlButtons.add(btnDelete);
@@ -73,70 +72,74 @@ public class HocSinhDeleteDialog extends JDialog {
         // ===== Sự kiện =====
         btnCancel.addActionListener(e -> dispose());
 
-        btnTim.addActionListener(e -> {
-            String ma = txtMaHS.getText().trim();
-            if (ma.isEmpty()) {
-                JOptionPane.showMessageDialog(this, "Vui lòng nhập mã học sinh!");
-                return;
-            }
+        // 🔍 Nút TÌM — tìm học sinh theo mã (từ database)
+        btnTim.addActionListener(e -> timHocSinh());
 
-            // Try BUS lookup by numeric id
-            try {
-                int maHSInt = Integer.parseInt(ma.replaceAll("[^0-9]", ""));
-                HocSinhDTO h = hocSinhBUS.getHocSinhByMaHS(maHSInt);
-                if (h != null) {
-                    lblHoTen.setText(h.getHoTen());
-                    lblLop.setText(h.getTenLop());
-                    lblKetQua.setText("Đã tìm thấy học sinh!");
-                    lblKetQua.setForeground(new Color(0, 128, 0));
-                    btnDelete.setEnabled(true);
-                    return;
+        // ❌ Nút XÓA — xóa học sinh khỏi database
+        btnDelete.addActionListener(e -> xoaHocSinh());
+    }
+
+    private void timHocSinh() {
+        String maText = txtMaHS.getText().trim();
+        if (maText.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Vui lòng nhập mã học sinh!");
+            return;
+        }
+
+        try {
+            int maHS = Integer.parseInt(maText);
+
+            // Truy vấn trực tiếp để lấy thông tin
+            String sql = "SELECT hs.HoTen, l.TenLop FROM HocSinh hs JOIN Lop l ON hs.MaLop = l.MaLop WHERE hs.MaHS = ?";
+            try (Connection conn = DatabaseConnection.getConnection();
+                    PreparedStatement ps = conn.prepareStatement(sql)) {
+                ps.setInt(1, maHS);
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (rs.next()) {
+                        lblHoTen.setText(rs.getString("HoTen"));
+                        lblLop.setText(rs.getString("TenLop"));
+                        lblKetQua.setText("Đã tìm thấy học sinh!");
+                        lblKetQua.setForeground(new Color(0, 128, 0));
+                        btnDelete.setEnabled(true);
+                    } else {
+                        lblHoTen.setText("-");
+                        lblLop.setText("-");
+                        lblKetQua.setText("Không tìm thấy học sinh có mã " + maHS);
+                        lblKetQua.setForeground(Color.RED);
+                        btnDelete.setEnabled(false);
+                    }
                 }
-            } catch (NumberFormatException ex) {
-                // fall back to fake data below
             }
+        } catch (NumberFormatException ex) {
+            JOptionPane.showMessageDialog(this, "Mã học sinh phải là số!");
+        } catch (SQLException e) {
+            JOptionPane.showMessageDialog(this, "Lỗi khi truy vấn học sinh: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
 
-            if (fakeData.containsKey(ma)) {
-                String[] info = fakeData.get(ma);
-                lblHoTen.setText(info[0]);
-                lblLop.setText(info[1]);
-                lblKetQua.setText("Đã tìm thấy học sinh!");
-                lblKetQua.setForeground(new Color(0, 128, 0));
-                btnDelete.setEnabled(true);
-            } else {
-                lblHoTen.setText("-");
-                lblLop.setText("-");
-                lblKetQua.setText("Không tìm thấy học sinh có mã " + ma);
-                lblKetQua.setForeground(Color.RED);
-                btnDelete.setEnabled(false);
-            }
-        });
+    private void xoaHocSinh() {
+        String maText = txtMaHS.getText().trim();
+        String ten = lblHoTen.getText();
+        if (maText.isEmpty() || ten.equals("-")) {
+            JOptionPane.showMessageDialog(this, "Chưa có học sinh để xóa!");
+            return;
+        }
 
-        btnDelete.addActionListener(e -> {
-            String ma = txtMaHS.getText().trim();
-            String ten = lblHoTen.getText();
-            int confirm = JOptionPane.showConfirmDialog(this,
-                    "Bạn có chắc chắn muốn xóa học sinh:\n" + ten + " (" + ma + ")?",
-                    "Xác nhận xóa", JOptionPane.YES_NO_OPTION);
+        int confirm = JOptionPane.showConfirmDialog(this,
+                "Bạn có chắc chắn muốn xóa học sinh:\n" + ten + " (Mã: " + maText + ")?",
+                "Xác nhận xóa", JOptionPane.YES_NO_OPTION);
 
-            if (confirm == JOptionPane.YES_OPTION) {
-                // try to delete via BUS if ma is numeric
-                try {
-                    int maHSInt = Integer.parseInt(ma.replaceAll("[^0-9]", ""));
-                    hocSinhBUS.deleteHocSinh(maHSInt);
-                    JOptionPane.showMessageDialog(this,
-                            "Đã xóa học sinh " + ten + " (" + ma + ") thành công! (qua BUS)");
-                    dispose();
-                    return;
-                } catch (NumberFormatException ex) {
-                    // fallback to fake data
-                }
-
-                fakeData.remove(ma);
-                JOptionPane.showMessageDialog(this, "Đã xóa học sinh " + ten + " (" + ma + ") thành công!");
+        if (confirm == JOptionPane.YES_OPTION) {
+            int maHS = Integer.parseInt(maText);
+            boolean success = hocSinhDAO.deleteHocSinh(maHS);
+            if (success) {
+                JOptionPane.showMessageDialog(this, "✅ Đã xóa học sinh thành công!");
                 dispose();
+            } else {
+                JOptionPane.showMessageDialog(this, "❌ Xóa thất bại! Học sinh có thể không tồn tại.");
             }
-        });
+        }
     }
 
     // Để test riêng

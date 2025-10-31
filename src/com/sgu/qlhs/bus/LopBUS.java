@@ -19,8 +19,14 @@ public class LopBUS {
             int maLop = (r[0] instanceof Integer) ? (Integer) r[0] : Integer.parseInt(r[0].toString());
             String tenLop = r[1] != null ? r[1].toString() : "";
             int khoi = (r[2] instanceof Integer) ? (Integer) r[2] : Integer.parseInt(r[2].toString());
-            String tenPhong = r[3] != null ? r[3].toString() : "";
-            list.add(new LopDTO(maLop, tenLop, khoi, tenPhong));
+
+            // THAY ĐỔI: Đọc maPhong và tenPhong từ vị trí mới
+            int maPhong = (r[3] != null)
+                    ? (r[3] instanceof Integer ? (Integer) r[3] : Integer.parseInt(r[3].toString()))
+                    : 0;
+            String tenPhong = r[4] != null ? r[4].toString() : "";
+
+            list.add(new LopDTO(maLop, tenLop, khoi, maPhong, tenPhong));
         }
         return list;
     }

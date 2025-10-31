@@ -49,7 +49,7 @@ public class ThongKeDiemMonDialog extends JDialog {
         monBUS = new com.sgu.qlhs.bus.MonBUS();
 
         // build initial chart from DB-backed subject list (fallback to defaults)
-        java.util.List<com.sgu.qlhs.dto.MonHocDTO> monList = monBUS.getAllMon();
+        java.util.List<com.sgu.qlhs.dto.MonHocDTO> monList = monBUS.getAllMon(); // <--- Lấy tất cả môn
         String[] mons = monList.isEmpty() ? new String[] { "Toán", "Văn", "Anh", "Lý", "Hóa", "Sinh" }
                 : monList.stream().map(m -> m.getTenMon()).toArray(String[]::new);
         int[] tbs = new int[mons.length];
@@ -71,11 +71,19 @@ public class ThongKeDiemMonDialog extends JDialog {
                 if (l.getKhoi() != khoi)
                     continue;
                 int maLop = l.getMaLop();
+
+                // ================== SỬA LỖI ==================
+                // 1. Dùng lại getDiemByLopHocKy để lấy các điểm thành phần
                 java.util.List<com.sgu.qlhs.dto.DiemDTO> list = diemBUS.getDiemByLopHocKy(maLop, hocKy, maNK);
+
                 for (com.sgu.qlhs.dto.DiemDTO d : list) {
                     String mon = d.getTenMon();
+
+                    // 2. Tự tính toán TB vì d.getDiemTB() trả về 0
                     double tb = Math.round((d.getDiemMieng() * 0.1 + d.getDiem15p() * 0.2 + d.getDiemGiuaKy() * 0.3
                             + d.getDiemCuoiKy() * 0.4) * 10.0) / 10.0;
+                    // ==========================================
+
                     double[] a = agg.getOrDefault(mon, new double[2]);
                     a[0] += tb;
                     a[1]++;
@@ -83,7 +91,7 @@ public class ThongKeDiemMonDialog extends JDialog {
                 }
             }
             // determine subjects dynamically from DB (fallback to defaults)
-            java.util.List<com.sgu.qlhs.dto.MonHocDTO> monList2 = monBUS.getAllMon();
+            java.util.List<com.sgu.qlhs.dto.MonHocDTO> monList2 = monBUS.getAllMon(); // <--- Lấy tất cả môn
             String[] monsList = monList2.isEmpty() ? new String[] { "Toán", "Văn", "Anh", "Lý", "Hóa", "Sinh" }
                     : monList2.stream().map(m -> m.getTenMon()).toArray(String[]::new);
             int[] tbs2 = new int[monsList.length];

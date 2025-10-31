@@ -3,33 +3,32 @@ package com.sgu.qlhs.ui.dialogs;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 import com.sgu.qlhs.bus.HocSinhBUS;
 import com.sgu.qlhs.bus.LopBUS;
+import com.sgu.qlhs.database.HocSinhDAO;
+import com.sgu.qlhs.DatabaseConnection;
 
 public class HocSinhEditDialog extends JDialog {
-    private JTextField txtMa, txtHoTen, txtSdt, txtEmail;
+    private JTextField txtMa, txtHoTen, txtSdt, txtEmail, txtDiaChi;
     private JComboBox<String> cboGioiTinh, cboLop;
     private JSpinner spNgaySinh;
+    private JButton btnLoad, btnSave, btnCancel;
 
-    // Phụ huynh 1
-    private JTextField txtPh1HoTen, txtPh1Sdt, txtPh1Email;
-    private JComboBox<String> cboPh1MoiQuanHe;
-
-    // Phụ huynh 2
-    private JTextField txtPh2HoTen, txtPh2Sdt, txtPh2Email;
-    private JComboBox<String> cboPh2MoiQuanHe;
-
-    private JButton btnLoad;
-    private final HocSinhBUS hocSinhBUS = new HocSinhBUS();
-    private final LopBUS lopBUS = new LopBUS();
+    private HocSinhDAO hocSinhDAO = new HocSinhDAO();
+    private LopBUS lopBUS = new LopBUS();
+    private java.util.List<Integer> lopIds = new java.util.ArrayList<>();
 
     public HocSinhEditDialog(Window owner) {
-        super(owner, "Sửa học sinh", ModalityType.APPLICATION_MODAL);
-        setSize(600, 720);
+        super(owner, "Sửa thông tin học sinh", ModalityType.APPLICATION_MODAL);
+        setSize(600, 500);
         setLocationRelativeTo(owner);
         setLayout(new BorderLayout(12, 12));
         buildForm();
@@ -49,9 +48,24 @@ public class HocSinhEditDialog extends JDialog {
 
         txtHoTen = new JTextField();
         txtSdt = new JTextField();
+        txtDiaChi = new JTextField();
         txtEmail = new JTextField();
         cboGioiTinh = new JComboBox<>(new String[] { "Nam", "Nữ", "Khác" });
-        cboLop = new JComboBox<>(new String[] { "10A1", "10A2", "11A1", "12A1" });
+        cboLop = new JComboBox<>();
+
+        // load lop list
+        try {
+            var lops = lopBUS.getAllLop();
+            for (var l : lops) {
+                cboLop.addItem(l.getTenLop());
+                lopIds.add(l.getMaLop());
+            }
+        } catch (Exception ex) {
+            cboLop.addItem("10A1");
+            cboLop.addItem("10A2");
+            cboLop.addItem("11A1");
+            cboLop.addItem("12A1");
+        }
 
         spNgaySinh = new JSpinner(new SpinnerDateModel());
         JSpinner.DateEditor editor = new JSpinner.DateEditor(spNgaySinh, "dd/MM/yyyy");
@@ -71,181 +85,124 @@ public class HocSinhEditDialog extends JDialog {
         pnlHS.add(cboGioiTinh);
         pnlHS.add(new JLabel("Lớp:"));
         pnlHS.add(cboLop);
+        pnlHS.add(new JLabel("Địa chỉ:"));
+        pnlHS.add(txtDiaChi);
         pnlHS.add(new JLabel("SĐT:"));
         pnlHS.add(txtSdt);
         pnlHS.add(new JLabel("Email:"));
         pnlHS.add(txtEmail);
 
-        // ===== Phụ huynh 1 =====
-        var pnlPh1 = new JPanel(new GridLayout(0, 2, 10, 10));
-        pnlPh1.setBorder(BorderFactory.createTitledBorder("Phụ huynh 1"));
-
-        txtPh1HoTen = new JTextField();
-        txtPh1Sdt = new JTextField();
-        txtPh1Email = new JTextField();
-        cboPh1MoiQuanHe = new JComboBox<>(new String[] { "Cha", "Mẹ", "Anh/Chị", "Giám hộ", "Khác" });
-
-        pnlPh1.add(new JLabel("Họ tên:"));
-        pnlPh1.add(txtPh1HoTen);
-        pnlPh1.add(new JLabel("Mối quan hệ:"));
-        pnlPh1.add(cboPh1MoiQuanHe);
-        pnlPh1.add(new JLabel("SĐT:"));
-        pnlPh1.add(txtPh1Sdt);
-        pnlPh1.add(new JLabel("Email:"));
-        pnlPh1.add(txtPh1Email);
-
-        // ===== Phụ huynh 2 =====
-        var pnlPh2 = new JPanel(new GridLayout(0, 2, 10, 10));
-        pnlPh2.setBorder(BorderFactory.createTitledBorder("Phụ huynh 2"));
-
-        txtPh2HoTen = new JTextField();
-        txtPh2Sdt = new JTextField();
-        txtPh2Email = new JTextField();
-        cboPh2MoiQuanHe = new JComboBox<>(new String[] { "Cha", "Mẹ", "Anh/Chị", "Giám hộ", "Khác" });
-
-        pnlPh2.add(new JLabel("Họ tên:"));
-        pnlPh2.add(txtPh2HoTen);
-        pnlPh2.add(new JLabel("Mối quan hệ:"));
-        pnlPh2.add(cboPh2MoiQuanHe);
-        pnlPh2.add(new JLabel("SĐT:"));
-        pnlPh2.add(txtPh2Sdt);
-        pnlPh2.add(new JLabel("Email:"));
-        pnlPh2.add(txtPh2Email);
-
         mainPanel.add(pnlHS);
-        mainPanel.add(Box.createVerticalStrut(12));
-        mainPanel.add(pnlPh1);
-        mainPanel.add(Box.createVerticalStrut(12));
-        mainPanel.add(pnlPh2);
-
         add(new JScrollPane(mainPanel), BorderLayout.CENTER);
 
         // ===== Nút =====
         var btnPane = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        var btnCancel = new JButton("Hủy");
-        var btnSave = new JButton("Lưu thay đổi");
+        btnCancel = new JButton("Hủy");
+        btnSave = new JButton("Lưu thay đổi");
 
         btnCancel.addActionListener(e -> dispose());
-        btnSave.addActionListener(e -> {
-            try {
-                int maHS = Integer.parseInt(txtMa.getText().trim());
-                String hoTen = txtHoTen.getText().trim();
-                SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
-                String ngaySinh = sdf.format((Date) spNgaySinh.getValue());
-                String gioiTinh = (String) cboGioiTinh.getSelectedItem();
-                String tenLop = (String) cboLop.getSelectedItem();
-                int maLop = mapTenLopToMaLop(tenLop);
-                String sdt = txtSdt.getText().trim();
-                String email = txtEmail.getText().trim();
-
-                hocSinhBUS.updateHocSinh(maHS, hoTen, ngaySinh, gioiTinh, maLop, sdt, email);
-                JOptionPane.showMessageDialog(this, "Cập nhật học sinh thành công (qua BUS)");
-                dispose();
-            } catch (NumberFormatException ex) {
-                JOptionPane.showMessageDialog(this, "Mã học sinh không hợp lệ");
-            }
-        });
+        btnSave.addActionListener(e -> capNhatHocSinh());
+        btnSave.setEnabled(false); // Chỉ bật sau khi tải thông tin
 
         btnPane.add(btnCancel);
         btnPane.add(btnSave);
         add(btnPane, BorderLayout.SOUTH);
 
         // ===== Sự kiện tải thông tin =====
-        btnLoad.addActionListener(e -> {
-            String maHS = txtMa.getText().trim();
-            if (maHS.isEmpty()) {
-                JOptionPane.showMessageDialog(this, "Vui lòng nhập mã học sinh!");
-                return;
-            }
-
-            Map<String, Object> data = getHocSinhData(maHS);
-            if (data == null) {
-                JOptionPane.showMessageDialog(this, "Không tìm thấy học sinh có mã: " + maHS);
-                return;
-            }
-
-            txtHoTen.setText((String) data.get("hoTen"));
-            txtSdt.setText((String) data.get("sdt"));
-            txtEmail.setText((String) data.get("email"));
-            cboGioiTinh.setSelectedItem(data.get("gioiTinh"));
-            cboLop.setSelectedItem(data.get("lop"));
-            spNgaySinh.setValue(data.get("ngaySinh"));
-
-            // Phụ huynh 1
-            txtPh1HoTen.setText((String) data.get("ph1HoTen"));
-            txtPh1Sdt.setText((String) data.get("ph1Sdt"));
-            txtPh1Email.setText((String) data.get("ph1Email"));
-            cboPh1MoiQuanHe.setSelectedItem(data.get("ph1MoiQuanHe"));
-
-            // Phụ huynh 2
-            txtPh2HoTen.setText((String) data.get("ph2HoTen"));
-            txtPh2Sdt.setText((String) data.get("ph2Sdt"));
-            txtPh2Email.setText((String) data.get("ph2Email"));
-            cboPh2MoiQuanHe.setSelectedItem(data.get("ph2MoiQuanHe"));
-        });
+        btnLoad.addActionListener(e -> taiThongTinHocSinh());
     }
 
-    // ======= Fake data (giả lập từ DB) =======
-    private Map<String, Object> getHocSinhData(String maHS) {
-        Map<String, Map<String, Object>> fakeDB = new HashMap<>();
-        SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
+    // Hàm tải thông tin học sinh từ DB
+    private void taiThongTinHocSinh() {
+        String maText = txtMa.getText().trim();
+        if (maText.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Vui lòng nhập mã học sinh!");
+            return;
+        }
 
         try {
-            // HS001
-            Map<String, Object> hs1 = new HashMap<>();
-            hs1.put("hoTen", "Nguyễn Văn A");
-            hs1.put("ngaySinh", sdf.parse("15/03/2007"));
-            hs1.put("gioiTinh", "Nam");
-            hs1.put("lop", "10A1");
-            hs1.put("sdt", "0123456789");
-            hs1.put("email", "nguyenvana@example.com");
-            hs1.put("ph1HoTen", "Nguyễn Văn B");
-            hs1.put("ph1MoiQuanHe", "Cha");
-            hs1.put("ph1Sdt", "0987654321");
-            hs1.put("ph1Email", "ph1@example.com");
-            hs1.put("ph2HoTen", "Trần Thị C");
-            hs1.put("ph2MoiQuanHe", "Mẹ");
-            hs1.put("ph2Sdt", "0978123456");
-            hs1.put("ph2Email", "ph2@example.com");
-            fakeDB.put("HS001", hs1);
+            int maHS = Integer.parseInt(maText);
+            String sql = "SELECT hs.*, l.TenLop FROM HocSinh hs JOIN Lop l ON hs.MaLop = l.MaLop WHERE hs.MaHS = ?";
+            try (Connection conn = DatabaseConnection.getConnection();
+                    PreparedStatement ps = conn.prepareStatement(sql)) {
+                ps.setInt(1, maHS);
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (rs.next()) {
+                        txtHoTen.setText(rs.getString("HoTen"));
+                        spNgaySinh.setValue(rs.getDate("NgaySinh"));
+                        cboGioiTinh.setSelectedItem(rs.getString("GioiTinh"));
+                        cboLop.setSelectedItem(rs.getString("TenLop"));
+                        txtDiaChi.setText(rs.getString("DiaChi"));
+                        txtSdt.setText(rs.getString("SoDienThoai"));
+                        txtEmail.setText(rs.getString("Email"));
 
-            // HS002
-            Map<String, Object> hs2 = new HashMap<>();
-            hs2.put("hoTen", "Lê Thị D");
-            hs2.put("ngaySinh", sdf.parse("02/06/2008"));
-            hs2.put("gioiTinh", "Nữ");
-            hs2.put("lop", "10A2");
-            hs2.put("sdt", "0912345678");
-            hs2.put("email", "led@example.com");
-            hs2.put("ph1HoTen", "Lê Văn E");
-            hs2.put("ph1MoiQuanHe", "Cha");
-            hs2.put("ph1Sdt", "0909988776");
-            hs2.put("ph1Email", "lecha@example.com");
-            hs2.put("ph2HoTen", "Nguyễn Thị F");
-            hs2.put("ph2MoiQuanHe", "Mẹ");
-            hs2.put("ph2Sdt", "0933221100");
-            hs2.put("ph2Email", "leme@example.com");
-            fakeDB.put("HS002", hs2);
-
-            return fakeDB.get(maHS);
-        } catch (Exception e) {
+                        btnSave.setEnabled(true);
+                    } else {
+                        JOptionPane.showMessageDialog(this, "Không tìm thấy học sinh có mã: " + maHS);
+                        btnSave.setEnabled(false);
+                    }
+                }
+            }
+        } catch (NumberFormatException ex) {
+            JOptionPane.showMessageDialog(this, "Mã học sinh phải là số!");
+        } catch (SQLException e) {
+            JOptionPane.showMessageDialog(this, "Lỗi khi tải dữ liệu: " + e.getMessage());
             e.printStackTrace();
-            return null;
         }
     }
 
-    // ===== Main test nhanh =====
-    public static void main(String[] args) {
-        SwingUtilities.invokeLater(() -> new HocSinhEditDialog(null).setVisible(true));
+    // Hàm cập nhật học sinh
+    private void capNhatHocSinh() {
+        try {
+            int maHS = Integer.parseInt(txtMa.getText().trim());
+            String hoTen = txtHoTen.getText().trim();
+            Date ngaySinh = (Date) spNgaySinh.getValue();
+            String gioiTinh = cboGioiTinh.getSelectedItem().toString();
+            String diaChi = txtDiaChi.getText().trim();
+            String sdt = txtSdt.getText().trim();
+            String email = txtEmail.getText().trim();
+            String tenLop = cboLop.getSelectedItem().toString();
+            int maLop = getMaLopByTenLop(tenLop);
+
+            if (hoTen.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "Vui lòng nhập họ tên học sinh!");
+                return;
+            }
+
+            boolean success = hocSinhDAO.updateHocSinh(
+                    maHS, hoTen, ngaySinh, gioiTinh, diaChi, sdt, email, maLop);
+
+            if (success) {
+                JOptionPane.showMessageDialog(this, "✅ Đã cập nhật thông tin học sinh!");
+                dispose();
+            } else {
+                JOptionPane.showMessageDialog(this, "❌ Cập nhật thất bại!");
+            }
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(this, "Lỗi: " + e.getMessage());
+            e.printStackTrace();
+        }
     }
 
-    private int mapTenLopToMaLop(String tenLop) {
-        if (tenLop == null)
-            return 0;
-        for (var l : lopBUS.getAllLop()) {
-            if (tenLop.equals(l.getTenLop()))
+    // Chuyển tên lớp → mã lớp (dựa vào dữ liệu mẫu)
+    private int getMaLopByTenLop(String tenLop) throws Exception {
+        for (int i = 0; i < cboLop.getItemCount(); i++) {
+            String t = cboLop.getItemAt(i);
+            if (t != null && t.equals(tenLop)) {
+                if (i < lopIds.size())
+                    return lopIds.get(i);
+            }
+        }
+        var lops = lopBUS.getAllLop();
+        for (var l : lops) {
+            if (l.getTenLop().equals(tenLop))
                 return l.getMaLop();
         }
-        return 0;
+        throw new Exception("Không tìm thấy mã lớp cho " + tenLop);
+    }
+
+    // Test riêng
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(() -> new HocSinhEditDialog(null).setVisible(true));
     }
 }

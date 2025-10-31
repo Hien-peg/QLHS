@@ -9,7 +9,8 @@ public class LopDAO {
 
     public List<Object[]> getAllLop() {
         List<Object[]> data = new ArrayList<>();
-        String sql = "SELECT l.MaLop, l.TenLop, l.Khoi, ph.TenPhong " +
+        // THAY ĐỔI: Thêm l.MaPhong vào câu truy vấn
+        String sql = "SELECT l.MaLop, l.TenLop, l.Khoi, l.MaPhong, ph.TenPhong " +
                 "FROM Lop l LEFT JOIN PhongHoc ph ON l.MaPhong = ph.MaPhong";
 
         try (Connection conn = DatabaseConnection.getConnection();
@@ -17,11 +18,13 @@ public class LopDAO {
                 ResultSet rs = pstmt.executeQuery()) {
 
             while (rs.next()) {
-                Object[] row = new Object[4];
+                // THAY ĐỔI: Object[] giờ có 5 phần tử
+                Object[] row = new Object[5];
                 row[0] = rs.getInt("MaLop");
                 row[1] = rs.getString("TenLop");
                 row[2] = rs.getInt("Khoi");
-                row[3] = rs.getString("TenPhong");
+                row[3] = rs.getInt("MaPhong"); // <--- Thêm MaPhong
+                row[4] = rs.getString("TenPhong");
                 data.add(row);
             }
         } catch (SQLException e) {

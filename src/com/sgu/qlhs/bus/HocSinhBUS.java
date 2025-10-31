@@ -39,14 +39,15 @@ public class HocSinhBUS {
         return list;
     }
 
-    // Write facades
-    public void saveHocSinh(String hoTen, String ngaySinh, String gioiTinh, int maLop, String sdt, String email) {
-        dao.insertHocSinh(hoTen, ngaySinh, gioiTinh, maLop, sdt, email);
+    // Write facades (match DAO signatures)
+    public void saveHocSinh(String hoTen, java.util.Date ngaySinh, String gioiTinh, String diaChi, String sdt,
+            String email, int maLop) {
+        dao.addHocSinh(hoTen, ngaySinh, gioiTinh, diaChi, sdt, email, maLop);
     }
 
-    public void updateHocSinh(int maHS, String hoTen, String ngaySinh, String gioiTinh, int maLop, String sdt,
-            String email) {
-        dao.updateHocSinh(maHS, hoTen, ngaySinh, gioiTinh, maLop, sdt, email);
+    public void updateHocSinh(int maHS, String hoTen, java.util.Date ngaySinh, String gioiTinh, String diaChi,
+            String sdt, String email, int maLop) {
+        dao.updateHocSinh(maHS, hoTen, ngaySinh, gioiTinh, diaChi, sdt, email, maLop);
     }
 
     public void deleteHocSinh(int maHS) {
