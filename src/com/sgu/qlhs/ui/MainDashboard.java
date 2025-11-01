@@ -1,5 +1,6 @@
 package com.sgu.qlhs.ui;
 
+import com.sgu.qlhs.dto.NguoiDungDTO;
 import com.sgu.qlhs.ui.components.*;
 import com.sgu.qlhs.ui.panels.*;
 
@@ -8,6 +9,8 @@ import javax.swing.border.EmptyBorder;
 import java.awt.*;
 
 public class MainDashboard extends JFrame {
+
+    private NguoiDungDTO nguoiDung; // Dùng cho thông tin đăng nhập
 
     // ===== Palette =====
     public static final Color SIDEBAR_BG = new Color(29, 35, 66);
@@ -32,14 +35,16 @@ public class MainDashboard extends JFrame {
     private static final String CARD_TKB = "THOI KHOA BIEU";
     private static final String CARD_TK = "TK";
 
-    private JPanel centerCards;
-    private CardLayout cards;
+    protected JPanel centerCards;
+    protected CardLayout cards;
 
     // Sidebar buttons
-    private SidebarButton btnDash, btnHs, btnGv, btnLp, btntkb, btnDiem, btnTk;
+    protected SidebarButton btnDash, btnHs, btnGv, btnLp, btntkb, btnDiem, btnTk;
 
-    public MainDashboard() {
+    // === Constructor có thông tin người dùng (dùng khi đăng nhập thành công) ===
+    public MainDashboard(NguoiDungDTO nd) {
         super("QUẢN LÝ HỌC SINH");
+        this.nguoiDung = nd;
         setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
         setMinimumSize(new Dimension(1280, 760));
         setLocationRelativeTo(null);
@@ -61,7 +66,11 @@ public class MainDashboard extends JFrame {
 
         var avatar = new CircleAvatar(36, new Color(255, 255, 255, 240));
         avatar.setAlignmentX(Component.LEFT_ALIGNMENT);
-        var lblUser = label("Admin", 15f, TEXT_WHITE);
+        var lblUser = label(
+                nguoiDung != null ? nguoiDung.getHoTen() + " (" + nguoiDung.getVaiTro() + ")" : "Khách",
+                15f,
+                TEXT_WHITE
+        );
         lblUser.setBorder(new EmptyBorder(6, 8, 6, 8));
         lblUser.setAlignmentX(Component.LEFT_ALIGNMENT);
 
@@ -129,7 +138,8 @@ public class MainDashboard extends JFrame {
         var status = new JPanel(new BorderLayout());
         status.setBackground(new Color(245, 245, 248));
         status.setBorder(new EmptyBorder(6, 12, 6, 12));
-        status.add(new JLabel("Ready"), BorderLayout.WEST);
+        String tenNguoiDung = nguoiDung != null ? nguoiDung.getHoTen() : "Không xác định";
+        status.add(new JLabel("Người đăng nhập: " + tenNguoiDung), BorderLayout.WEST);
         status.add(new JLabel(java.time.LocalDate.now().toString()), BorderLayout.EAST);
         root.add(status, BorderLayout.SOUTH);
 
@@ -157,18 +167,5 @@ public class MainDashboard extends JFrame {
         lbl.setFont(lbl.getFont().deriveFont(Font.BOLD, size));
         lbl.setForeground(color);
         return lbl;
-    }
-
-    public static void main(String[] args) {
-        try {
-            for (UIManager.LookAndFeelInfo info : UIManager.getInstalledLookAndFeels()) {
-                if ("Nimbus".equals(info.getName())) {
-                    UIManager.setLookAndFeel(info.getClassName());
-                    break;
-                }
-            }
-        } catch (Exception ignored) {
-        }
-        EventQueue.invokeLater(() -> new MainDashboard().setVisible(true));
     }
 }
