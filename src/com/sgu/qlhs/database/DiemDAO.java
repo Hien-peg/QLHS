@@ -87,6 +87,33 @@ public class DiemDAO {
         }
     }
 
+    /**
+     * Upsert with teacher note (GhiChu). New column must exist in DB.
+     */
+    public void upsertDiemWithNote(int maHS, int maMon, int hocKy, int maNK, double mieng, double p15, double gk,
+            double ck, String ghiChu) {
+        String sql = "INSERT INTO Diem (MaHS, MaMon, HocKy, MaNK, DiemMieng, Diem15p, DiemGiuaKy, DiemCuoiKy, GhiChu) "
+                + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) "
+                + "ON DUPLICATE KEY UPDATE DiemMieng = VALUES(DiemMieng), Diem15p = VALUES(Diem15p), "
+                + "DiemGiuaKy = VALUES(DiemGiuaKy), DiemCuoiKy = VALUES(DiemCuoiKy), GhiChu = VALUES(GhiChu)";
+        try (Connection conn = DatabaseConnection.getConnection();
+                PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, maHS);
+            pstmt.setInt(2, maMon);
+            pstmt.setInt(3, hocKy);
+            pstmt.setInt(4, maNK);
+            pstmt.setDouble(5, mieng);
+            pstmt.setDouble(6, p15);
+            pstmt.setDouble(7, gk);
+            pstmt.setDouble(8, ck);
+            pstmt.setString(9, ghiChu);
+            pstmt.executeUpdate();
+        } catch (SQLException e) {
+            System.err.println("Lỗi upsert điểm (with note): " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
     public List<Object[]> getDiemByLopHocKy(int maLop, int hocKy, int maNK) {
         List<Object[]> data = new ArrayList<>();
         String sql = "SELECT hs.MaHS, hs.HoTen, l.TenLop, mh.MaMon, mh.TenMon, d.DiemMieng, d.Diem15p, d.DiemGiuaKy, d.DiemCuoiKy "
@@ -124,7 +151,8 @@ public class DiemDAO {
 
     public List<Object[]> getDiemByMaHS(int maHS, int hocKy, int maNK) {
         List<Object[]> data = new ArrayList<>();
-        String sql = "SELECT d.MaDiem, mh.TenMon, d.DiemMieng, d.Diem15p, d.DiemGiuaKy, d.DiemCuoiKy " +
+        String sql = "SELECT d.MaDiem, mh.MaMon, mh.TenMon, d.DiemMieng, d.Diem15p, d.DiemGiuaKy, d.DiemCuoiKy, d.GhiChu "
+                +
                 "FROM Diem d JOIN MonHoc mh ON d.MaMon = mh.MaMon " +
                 "WHERE d.MaHS = ? AND d.HocKy = ? AND d.MaNK = ?";
         try (Connection conn = DatabaseConnection.getConnection();
@@ -134,13 +162,15 @@ public class DiemDAO {
             pstmt.setInt(3, maNK);
             try (ResultSet rs = pstmt.executeQuery()) {
                 while (rs.next()) {
-                    Object[] row = new Object[6];
+                    Object[] row = new Object[8];
                     row[0] = rs.getInt("MaDiem");
-                    row[1] = rs.getString("TenMon");
-                    row[2] = rs.getDouble("DiemMieng");
-                    row[3] = rs.getDouble("Diem15p");
-                    row[4] = rs.getDouble("DiemGiuaKy");
-                    row[5] = rs.getDouble("DiemCuoiKy");
+                    row[1] = rs.getInt("MaMon");
+                    row[2] = rs.getString("TenMon");
+                    row[3] = rs.getDouble("DiemMieng");
+                    row[4] = rs.getDouble("Diem15p");
+                    row[5] = rs.getDouble("DiemGiuaKy");
+                    row[6] = rs.getDouble("DiemCuoiKy");
+                    row[7] = rs.getString("GhiChu");
                     data.add(row);
                 }
             }
@@ -148,6 +178,48 @@ public class DiemDAO {
             System.err.println("Lỗi khi truy vấn điểm của học sinh: " + e.getMessage());
         }
         return data;
+    }
+
+    /**
+     * Get the teacher comment (nhận xét) for a student in a given niên khóa and học
+     * kỳ.
+     */
+    public String getNhanXet(int maHS, int maNK, int hocKy) {
+        String sql = "SELECT GhiChu FROM DiemNhanXet WHERE MaHS = ? AND MaNK = ? AND HocKy = ?";
+        try (Connection conn = DatabaseConnection.getConnection();
+                PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, maHS);
+            pstmt.setInt(2, maNK);
+            pstmt.setInt(3, hocKy);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getString("GhiChu");
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Lỗi khi đọc nhận xét: " + e.getMessage());
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    /**
+     * Insert or update a teacher comment (nhận xét) for a student/niên khóa/học kỳ.
+     */
+    public void upsertNhanXet(int maHS, int maNK, int hocKy, String ghiChu) {
+        String sql = "INSERT INTO DiemNhanXet (MaHS, MaNK, HocKy, GhiChu) VALUES (?, ?, ?, ?) "
+                + "ON DUPLICATE KEY UPDATE GhiChu = VALUES(GhiChu)";
+        try (Connection conn = DatabaseConnection.getConnection();
+                PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, maHS);
+            pstmt.setInt(2, maNK);
+            pstmt.setInt(3, hocKy);
+            pstmt.setString(4, ghiChu);
+            pstmt.executeUpdate();
+        } catch (SQLException e) {
+            System.err.println("Lỗi upsert nhận xét: " + e.getMessage());
+            e.printStackTrace();
+        }
     }
 
     /**

@@ -14,6 +14,7 @@ public class DiemDTO {
     private double diemGiuaKy;
     private double diemCuoiKy;
     private double diemTB;
+    private String ghiChu;
     private String xepLoai;
 
     public DiemDTO() {
@@ -148,6 +149,14 @@ public class DiemDTO {
 
     public void setDiemTB(double diemTB) {
         this.diemTB = diemTB;
+    }
+
+    public String getGhiChu() {
+        return ghiChu;
+    }
+
+    public void setGhiChu(String ghiChu) {
+        this.ghiChu = ghiChu;
     }
 
     public String getXepLoai() {

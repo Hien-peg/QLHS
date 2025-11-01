@@ -61,21 +61,43 @@ public class DiemBUS {
         List<Object[]> rows = dao.getDiemByMaHS(maHS, hocKy, maNK);
         for (Object[] r : rows) {
             int maDiem = (r[0] instanceof Integer) ? (Integer) r[0] : Integer.parseInt(r[0].toString());
-            String tenMon = r[1] != null ? r[1].toString() : "";
-            double mieng = r[2] != null ? Double.parseDouble(r[2].toString()) : 0.0;
-            double p15 = r[3] != null ? Double.parseDouble(r[3].toString()) : 0.0;
-            double gk = r[4] != null ? Double.parseDouble(r[4].toString()) : 0.0;
-            double ck = r[5] != null ? Double.parseDouble(r[5].toString()) : 0.0;
+            int maMon = (r[1] instanceof Integer) ? (Integer) r[1] : Integer.parseInt(r[1].toString());
+            String tenMon = r[2] != null ? r[2].toString() : "";
+            double mieng = r[3] != null ? Double.parseDouble(r[3].toString()) : 0.0;
+            double p15 = r[4] != null ? Double.parseDouble(r[4].toString()) : 0.0;
+            double gk = r[5] != null ? Double.parseDouble(r[5].toString()) : 0.0;
+            double ck = r[6] != null ? Double.parseDouble(r[6].toString()) : 0.0;
             DiemDTO d = new DiemDTO();
             d.setMaDiem(maDiem);
+            d.setMaMon(maMon);
             d.setTenMon(tenMon);
             d.setDiemMieng(mieng);
             d.setDiem15p(p15);
             d.setDiemGiuaKy(gk);
             d.setDiemCuoiKy(ck);
+            // If DAO returned ghi chu (8th column), set it
+            if (r.length > 7 && r[7] != null) {
+                d.setGhiChu(r[7].toString());
+            } else {
+                d.setGhiChu("");
+            }
             list.add(d);
         }
         return list;
+    }
+
+    /**
+     * Get teacher comment (nhận xét) for a student in a given niên khóa and học kỳ.
+     */
+    public String getNhanXet(int maHS, int maNK, int hocKy) {
+        return dao.getNhanXet(maHS, maNK, hocKy);
+    }
+
+    /**
+     * Save or update teacher comment (nhận xét).
+     */
+    public void saveNhanXet(int maHS, int maNK, int hocKy, String ghiChu) {
+        dao.upsertNhanXet(maHS, maNK, hocKy, ghiChu);
     }
 
     // Thin write facade that delegates to DAO. Keeps Presentation layer unaware of
@@ -90,6 +112,14 @@ public class DiemBUS {
     public void saveOrUpdateDiem(int maHS, int maMon, int hocKy, int maNK, double mieng, double p15, double gk,
             double ck) {
         dao.upsertDiem(maHS, maMon, hocKy, maNK, mieng, p15, gk, ck);
+    }
+
+    /**
+     * Save or update diem and teacher note (ghiChu).
+     */
+    public void saveOrUpdateDiem(int maHS, int maMon, int hocKy, int maNK, double mieng, double p15, double gk,
+            double ck, String ghiChu) {
+        dao.upsertDiemWithNote(maHS, maMon, hocKy, maNK, mieng, p15, gk, ck, ghiChu);
     }
 
     public void deleteDiem(int maHS, int maMon, int hocKy, int maNK) {

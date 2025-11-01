@@ -13,6 +13,7 @@ import com.sgu.qlhs.bus.DiemBUS;
 import com.sgu.qlhs.bus.LopBUS;
 import com.sgu.qlhs.bus.MonBUS;
 import com.sgu.qlhs.bus.NienKhoaBUS;
+import com.sgu.qlhs.bus.HanhKiemBUS;
 import com.sgu.qlhs.dto.LopDTO;
 import com.sgu.qlhs.dto.MonHocDTO;
 import javax.swing.*;
@@ -39,6 +40,7 @@ public class DiemPanel extends JPanel {
     private final DefaultTableModel model;
     private final JTable table;
     private final TableRowSorter<DefaultTableModel> sorter;
+    private final HanhKiemBUS hanhKiemBUS = new HanhKiemBUS();
     private List<LopDTO> lopList;
     private List<MonHocDTO> monList;
     // keep last fetched rows so popup actions can map table rows to DTOs
@@ -80,7 +82,8 @@ public class DiemPanel extends JPanel {
 
         // Table model and table
         model = new DefaultTableModel(
-                new Object[] { "MaDiem", "Mã HS", "Họ tên", "Lớp", "Môn", "HK", "Miệng", "15p", "Giữa kỳ", "Cuối kỳ" },
+                new Object[] { "MaDiem", "Mã HS", "Họ tên", "Lớp", "Môn", "HK", "Miệng", "15p", "Giữa kỳ", "Cuối kỳ",
+                        "Hạnh kiểm" },
                 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
@@ -314,14 +317,41 @@ public class DiemPanel extends JPanel {
 
         int hkFilter = cboHK.getSelectedIndex(); // 0 == all, 1 == HK1, 2 == HK2
 
+        // Prepare batch fetch: group rows by HocKy and collect MaHS per group
+        java.util.Map<Integer, java.util.List<Integer>> hsByHocKy = new java.util.HashMap<>();
         for (var d : rows) {
             if (filterMon && !d.getTenMon().equals(selMon))
                 continue;
             if (hkFilter > 0 && d.getHocKy() != hkFilter)
                 continue;
-            model.addRow(
-                    new Object[] { d.getMaDiem(), d.getMaHS(), d.getHoTen(), d.getTenLop(), d.getTenMon(), d.getHocKy(),
-                            d.getDiemMieng(), d.getDiem15p(), d.getDiemGiuaKy(), d.getDiemCuoiKy() });
+            hsByHocKy.computeIfAbsent(d.getHocKy(), k -> new java.util.ArrayList<>()).add(d.getMaHS());
+        }
+
+        // Fetch Hạnh kiểm per HocKy in batch
+        java.util.Map<Integer, java.util.Map<Integer, String>> hkMaps = new java.util.HashMap<>();
+        for (var entry : hsByHocKy.entrySet()) {
+            int hkVal = entry.getKey();
+            java.util.List<Integer> maHsList = entry.getValue();
+            try {
+                java.util.Map<Integer, String> map = hanhKiemBUS.getHanhKiemForStudents(maHsList, maNK, hkVal);
+                hkMaps.put(hkVal, map);
+            } catch (Exception ex) {
+                hkMaps.put(hkVal, new java.util.HashMap<>());
+            }
+        }
+
+        for (var d : rows) {
+            if (filterMon && !d.getTenMon().equals(selMon))
+                continue;
+            if (hkFilter > 0 && d.getHocKy() != hkFilter)
+                continue;
+            String hkStr = "";
+            var mapForHK = hkMaps.get(d.getHocKy());
+            if (mapForHK != null && mapForHK.containsKey(d.getMaHS()))
+                hkStr = mapForHK.get(d.getMaHS());
+
+            model.addRow(new Object[] { d.getMaDiem(), d.getMaHS(), d.getHoTen(), d.getTenLop(), d.getTenMon(),
+                    d.getHocKy(), d.getDiemMieng(), d.getDiem15p(), d.getDiemGiuaKy(), d.getDiemCuoiKy(), hkStr });
         }
 
         updatePageControls(hasNext);

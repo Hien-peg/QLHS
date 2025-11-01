@@ -1,6 +1,7 @@
 package com.sgu.qlhs.ui.panels;
 
 import com.sgu.qlhs.ui.components.RoundedPanel;
+import com.sgu.qlhs.ui.dialogs.BangDiemChiTietDialog;
 import com.sgu.qlhs.ui.model.LopTableModel;
 import com.sgu.qlhs.ui.model.PhongTableModel;
 import javax.swing.*;
@@ -36,7 +37,9 @@ public class LopPhongPanel extends JPanel {
         // Thanh công cụ
         JPanel bar = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 4));
         JButton btnView = new JButton("Xem chi tiết");
+        JButton btnBangDiem = new JButton("Bảng điểm");
         bar.add(btnView);
+        bar.add(btnBangDiem);
         lopPanel.add(bar, BorderLayout.NORTH);
 
         lopPanel.add(new JScrollPane(tblLop), BorderLayout.CENTER);
@@ -54,6 +57,20 @@ public class LopPhongPanel extends JPanel {
                         .setVisible(true);
             } else {
                 JOptionPane.showMessageDialog(this, "Vui lòng chọn một lớp để xem chi tiết!");
+            }
+        });
+
+        // Open BangDiemChiTietDialog preselected to the chosen class
+        btnBangDiem.addActionListener(e -> {
+            int row = tblLop.getSelectedRow();
+            if (row >= 0) {
+                int modelRow = tblLop.convertRowIndexToModel(row);
+                int maLop = lopModel.getMaLop(modelRow);
+                BangDiemChiTietDialog dlg = new BangDiemChiTietDialog(SwingUtilities.getWindowAncestor(this));
+                dlg.setInitialMaLop(maLop);
+                dlg.setVisible(true);
+            } else {
+                JOptionPane.showMessageDialog(this, "Vui lòng chọn một lớp để xem bảng điểm!");
             }
         });
 

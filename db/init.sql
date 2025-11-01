@@ -138,6 +138,7 @@ CREATE TABLE Diem (
     Diem15p DECIMAL(3, 1),
     DiemGiuaKy DECIMAL(3, 1),
     DiemCuoiKy DECIMAL(3, 1),
+    GhiChu TEXT DEFAULT NULL,
     CONSTRAINT fk_diem_hs FOREIGN KEY (MaHS) REFERENCES HocSinh (MaHS) ON DELETE CASCADE ON UPDATE CASCADE,
     CONSTRAINT fk_diem_mon FOREIGN KEY (MaMon) REFERENCES MonHoc (MaMon) ON DELETE CASCADE ON UPDATE CASCADE,
     CONSTRAINT fk_diem_nk FOREIGN KEY (MaNK) REFERENCES NienKhoa (MaNK) ON DELETE CASCADE ON UPDATE CASCADE,
@@ -190,6 +191,109 @@ BEGIN
 END
 /
 /
+
+-- === Hạnh kiểm ===
+CREATE TABLE HanhKiem (
+    MaHK INT PRIMARY KEY AUTO_INCREMENT, -- Mã hạnh kiểm
+    MaHS INT NOT NULL, -- Học sinh
+    MaNK INT NOT NULL, -- Niên khóa
+    HocKy INT NOT NULL, -- Học kỳ (1, 2)
+    XepLoai ENUM(
+        'Tốt',
+        'Khá',
+        'Trung bình',
+        'Yếu'
+    ) NOT NULL, -- Xếp loại hạnh kiểm
+    GhiChu TEXT DEFAULT NULL, -- Ghi chú thêm (nếu có)
+    NgayCapNhat DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_hk_hs FOREIGN KEY (MaHS) REFERENCES HocSinh (MaHS) ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT fk_hk_nk FOREIGN KEY (MaNK) REFERENCES NienKhoa (MaNK) ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT uq_hanhkiem UNIQUE (MaHS, MaNK, HocKy) -- Mỗi học sinh chỉ có 1 bản ghi hạnh kiểm mỗi HK
+);
+-- Thêm dữ liệu mẫu hạnh kiểm
+INSERT INTO
+    HanhKiem (
+        MaHS,
+        MaNK,
+        HocKy,
+        XepLoai,
+        GhiChu
+    )
+VALUES
+    -- Lớp 10A1
+    (
+        1,
+        1,
+        1,
+        'Tốt',
+        'Tích cực trong học tập và sinh hoạt.'
+    ),
+    (
+        1,
+        1,
+        2,
+        'Tốt',
+        'Giữ vững phong độ.'
+    ),
+    (
+        2,
+        1,
+        1,
+        'Khá',
+        'Đôi khi còn nói chuyện riêng.'
+    ),
+    (
+        2,
+        1,
+        2,
+        'Tốt',
+        'Tiến bộ rõ rệt.'
+    ),
+    -- Lớp 11A1
+    (
+        3,
+        1,
+        1,
+        'Trung bình',
+        'Thiếu tập trung.'
+    ),
+    (
+        3,
+        1,
+        2,
+        'Khá',
+        'Đã cải thiện tốt.'
+    ),
+    -- Lớp 12A1
+    (
+        4,
+        1,
+        1,
+        'Khá',
+        'Gương mẫu trong lớp.'
+    ),
+    (
+        4,
+        1,
+        2,
+        'Tốt',
+        'Tham gia tích cực các hoạt động.'
+    ),
+    -- Lớp 12A1 (HS khác)
+    (
+        5,
+        1,
+        1,
+        'Yếu',
+        'Thường xuyên đi trễ.'
+    ),
+    (
+        5,
+        1,
+        2,
+        'Trung bình',
+        'Đã cố gắng hơn.'
+    );
 
 INSERT INTO
     PhongHoc (
@@ -9085,3 +9189,35 @@ GROUP BY
 CREATE INDEX idx_diem_hs_mon_hk_nk ON Diem (MaHS, MaMon, HocKy, MaNK);
 
 CREATE INDEX idx_diem_hs_nk_hk ON Diem (MaHS, MaNK, HocKy);
+
+-- view tổng hợp điểm + hạnh kiểm
+CREATE OR REPLACE VIEW v_XepLoaiTongHop AS
+SELECT
+    hs.MaHS,
+    hs.HoTen AS TenHS,
+    hk.MaNK,
+    nk.NamBatDau,
+    nk.NamKetThuc,
+    hk.HocKy,
+    hk.XepLoai AS HanhKiem,
+    d.XepLoaiHK AS HocLuc
+FROM
+    HanhKiem hk
+    JOIN HocSinh hs ON hs.MaHS = hk.MaHS
+    JOIN NienKhoa nk ON nk.MaNK = hk.MaNK
+    LEFT JOIN v_TBHocKy_TheoHS d ON d.MaHS = hk.MaHS
+    AND d.MaNK = hk.MaNK
+    AND d.HocKy = hk.HocKy;
+
+ALTER TABLE Diem ADD COLUMN GhiChu TEXT DEFAULT NULL;
+
+-- === BẢNG NHẬN XÉT (Nhận xét chung của giáo viên cho một học sinh theo HK/NK) ===
+CREATE TABLE DiemNhanXet (
+    MaHS INT,
+    MaNK INT,
+    HocKy INT,
+    GhiChu TEXT DEFAULT NULL,
+    PRIMARY KEY (MaHS, MaNK, HocKy),
+    CONSTRAINT fk_nx_hs FOREIGN KEY (MaHS) REFERENCES HocSinh (MaHS) ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT fk_nx_nk FOREIGN KEY (MaNK) REFERENCES NienKhoa (MaNK) ON DELETE CASCADE ON UPDATE CASCADE
+);

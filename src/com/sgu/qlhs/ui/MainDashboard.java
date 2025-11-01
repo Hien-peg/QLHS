@@ -8,6 +8,7 @@ import javax.swing.border.EmptyBorder;
 import java.awt.*;
 
 public class MainDashboard extends JFrame {
+
     // ===== Palette =====
     public static final Color SIDEBAR_BG = new Color(29, 35, 66);
     public static final Color SIDEBAR_BTN = new Color(48, 58, 98);
