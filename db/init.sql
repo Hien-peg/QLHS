@@ -9311,15 +9311,18 @@ VALUES (5, 1),
 
 -- Bước 1: Thêm cột vào MonHoc để phân loại môn
 ALTER TABLE MonHoc
-ADD COLUMN LoaiMon ENUM('TinhDiem', 'DanhGia') NOT NULL DEFAULT 'TinhDiem'
-COMMENT 'TinhDiem = Môn tính điểm số, DanhGia = Môn chỉ đánh giá Đ/KĐ';
+ADD COLUMN LoaiMon ENUM('TinhDiem', 'DanhGia') NOT NULL DEFAULT 'TinhDiem' COMMENT 'TinhDiem = Môn tính điểm số, DanhGia = Môn chỉ đánh giá Đ/KĐ';
 
 -- Cập nhật các môn đánh giá (Thể dục, GDCD)
 UPDATE MonHoc
-SET LoaiMon = 'DanhGia'
-WHERE TenMon IN ('Thể dục', 'Giáo dục công dân');
+SET
+    LoaiMon = 'DanhGia'
+WHERE
+    TenMon IN (
+        'Thể dục',
+        'Giáo dục công dân'
+    );
 
 -- Bước 2: Thêm cột vào Diem để lưu kết quả Đ/KĐ
 ALTER TABLE Diem
-ADD COLUMN KetQuaDanhGia ENUM('Đ', 'KĐ') DEFAULT NULL
-COMMENT 'Chỉ dùng cho các môn có LoaiMon = DanhGia';
+ADD COLUMN KetQuaDanhGia ENUM('Đ', 'KĐ') DEFAULT NULL COMMENT 'Chỉ dùng cho các môn có LoaiMon = DanhGia';
