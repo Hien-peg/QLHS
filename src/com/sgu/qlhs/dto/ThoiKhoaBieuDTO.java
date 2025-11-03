@@ -1,54 +1,60 @@
 package com.sgu.qlhs.dto;
 
+import java.sql.Timestamp;
+
 public class ThoiKhoaBieuDTO {
     private int maTKB;
-    private int maLop;
+    private int maPCD;
+    private String thu;
+    private int tietBD;
+    private int tietKT;
+    private int trangThai;
+    private Timestamp ngayTao;
+    private Timestamp ngayCapNhat;
+
+    // JOIN từ PhanCongDay
     private int maGV;
-    private int maMon;
+    private int maLop;
     private int maPhong;
     private String hocKy;
     private String namHoc;
-    private String thuTrongTuan;
-    private int tietBatDau;
-    private int tietKetThuc;
-    private int trangThai;
-    private String tenMon;
+
+    // Thông tin hiển thị
     private String tenGV;
+    private String tenMon;
+    private String tenLop;
     private String tenPhong;
 
-
-
-
-    public ThoiKhoaBieuDTO() {}
-
-    public ThoiKhoaBieuDTO(int maTKB, int maLop, int maGV, int maMon, int maPhong,
-                           String hocKy, String namHoc, String thuTrongTuan,
-                           int tietBatDau, int tietKetThuc, int trangThai) {
-        this.maTKB = maTKB;
-        this.maLop = maLop;
-        this.maGV = maGV;
-        this.maMon = maMon;
-        this.maPhong = maPhong;
-        this.hocKy = hocKy;
-        this.namHoc = namHoc;
-        this.thuTrongTuan = thuTrongTuan;
-        this.tietBatDau = tietBatDau;
-        this.tietKetThuc = tietKetThuc;
-        this.trangThai = trangThai;
-    }
-
-    // ===== Getter / Setter =====
+    // ===== Getter & Setter =====
     public int getMaTKB() { return maTKB; }
     public void setMaTKB(int maTKB) { this.maTKB = maTKB; }
 
-    public int getMaLop() { return maLop; }
-    public void setMaLop(int maLop) { this.maLop = maLop; }
+    public int getMaPCD() { return maPCD; }
+    public void setMaPCD(int maPCD) { this.maPCD = maPCD; }
+
+    public String getThu() { return thu; }
+    public void setThu(String thu) { this.thu = thu; }
+
+    public int getTietBD() { return tietBD; }
+    public void setTietBD(int tietBD) { this.tietBD = tietBD; }
+
+    public int getTietKT() { return tietKT; }
+    public void setTietKT(int tietKT) { this.tietKT = tietKT; }
+
+    public int getTrangThai() { return trangThai; }
+    public void setTrangThai(int trangThai) { this.trangThai = trangThai; }
+
+    public Timestamp getNgayTao() { return ngayTao; }
+    public void setNgayTao(Timestamp ngayTao) { this.ngayTao = ngayTao; }
+
+    public Timestamp getNgayCapNhat() { return ngayCapNhat; }
+    public void setNgayCapNhat(Timestamp ngayCapNhat) { this.ngayCapNhat = ngayCapNhat; }
 
     public int getMaGV() { return maGV; }
     public void setMaGV(int maGV) { this.maGV = maGV; }
 
-    public int getMaMon() { return maMon; }
-    public void setMaMon(int maMon) { this.maMon = maMon; }
+    public int getMaLop() { return maLop; }
+    public void setMaLop(int maLop) { this.maLop = maLop; }
 
     public int getMaPhong() { return maPhong; }
     public void setMaPhong(int maPhong) { this.maPhong = maPhong; }
@@ -59,23 +65,14 @@ public class ThoiKhoaBieuDTO {
     public String getNamHoc() { return namHoc; }
     public void setNamHoc(String namHoc) { this.namHoc = namHoc; }
 
-    public String getThuTrongTuan() { return thuTrongTuan; }
-    public void setThuTrongTuan(String thuTrongTuan) { this.thuTrongTuan = thuTrongTuan; }
+    public String getTenGV() { return tenGV; }
+    public void setTenGV(String tenGV) { this.tenGV = tenGV; }
 
-    public int getTietBatDau() { return tietBatDau; }
-    public void setTietBatDau(int tietBatDau) { this.tietBatDau = tietBatDau; }
-
-    public int getTietKetThuc() { return tietKetThuc; }
-    public void setTietKetThuc(int tietKetThuc) { this.tietKetThuc = tietKetThuc; }
-
-    public int getTrangThai() { return trangThai; }
-    public void setTrangThai(int trangThai) { this.trangThai = trangThai; }
-    // Getter & Setter
     public String getTenMon() { return tenMon; }
     public void setTenMon(String tenMon) { this.tenMon = tenMon; }
 
-    public String getTenGV() { return tenGV; }
-    public void setTenGV(String tenGV) { this.tenGV = tenGV; }
+    public String getTenLop() { return tenLop; }
+    public void setTenLop(String tenLop) { this.tenLop = tenLop; }
 
     public String getTenPhong() { return tenPhong; }
     public void setTenPhong(String tenPhong) { this.tenPhong = tenPhong; }

@@ -1,6 +1,7 @@
 package com.sgu.qlhs.bus;
 
 import com.sgu.qlhs.database.PhanCongDayDAO;
+import com.sgu.qlhs.dto.PhanCongDayDTO;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -12,6 +13,9 @@ public class PhanCongDayBUS {
         dao = new PhanCongDayDAO();
     }
 
+    // ==========================================================
+    // 🧩 Các hàm đã có sẵn (giữ nguyên)
+    // ==========================================================
     public List<Integer> getDistinctMaLopByGiaoVien(int maGV, Integer maNK, Integer hocKy) {
         try {
             List<Integer> l = dao.getDistinctMaLopByGiaoVien(maGV, maNK, hocKy);
@@ -30,5 +34,79 @@ public class PhanCongDayBUS {
             System.err.println("Lỗi khi lấy PhanCongDay.MaMon: " + ex.getMessage());
             return new ArrayList<>();
         }
+    }
+
+    // ==========================================================
+    // 🆕 Các hàm CRUD cho module Phân công dạy
+    // ==========================================================
+
+    // Lấy toàn bộ danh sách phân công
+    public List<PhanCongDayDTO> getAll() {
+        return dao.getAll();
+    }
+
+    // Thêm mới phân công
+    public boolean insert(PhanCongDayDTO dto) {
+        if (dto == null) return false;
+
+        // Kiểm tra trùng phân công (GV + Lớp + Môn + HK + Năm học)
+        if (dao.existsDuplicate(dto.getMaGV(), dto.getMaLop(), dto.getMaMon(), dto.getHocKy(), dto.getNamHoc())) {
+            System.err.println("Phân công bị trùng: Giáo viên " + dto.getMaGV() +
+                    " đã dạy lớp " + dto.getMaLop() +
+                    " môn " + dto.getMaMon() +
+                    " trong " + dto.getHocKy() + " - " + dto.getNamHoc());
+            return false;
+        }
+
+        return dao.insert(dto);
+    }
+
+    // Cập nhật phân công
+    public boolean update(PhanCongDayDTO dto) {
+        if (dto == null) return false;
+        return dao.update(dto);
+    }
+
+    // Xóa (xóa thật — Thời khóa biểu liên quan sẽ bị xóa theo cascade)
+    public boolean delete(int maPCD) {
+        return dao.delete(maPCD);
+    }
+
+    // Tìm theo mã phân công
+    public PhanCongDayDTO findById(int maPCD) {
+        return dao.findById(maPCD);
+    }
+
+    // Lấy danh sách theo lớp (phục vụ lọc)
+    public List<PhanCongDayDTO> getByLop(int maLop) {
+        List<PhanCongDayDTO> all = dao.getAll();
+        List<PhanCongDayDTO> filtered = new ArrayList<>();
+        for (PhanCongDayDTO dto : all) {
+            if (dto.getMaLop() == maLop)
+                filtered.add(dto);
+        }
+        return filtered;
+    }
+
+    // Lấy danh sách theo giáo viên (phục vụ lọc)
+    public List<PhanCongDayDTO> getByGV(int maGV) {
+        List<PhanCongDayDTO> all = dao.getAll();
+        List<PhanCongDayDTO> filtered = new ArrayList<>();
+        for (PhanCongDayDTO dto : all) {
+            if (dto.getMaGV() == maGV)
+                filtered.add(dto);
+        }
+        return filtered;
+    }
+
+    // Lấy danh sách theo học kỳ hoặc năm học
+    public List<PhanCongDayDTO> getByHocKyNamHoc(String hocKy, String namHoc) {
+        List<PhanCongDayDTO> all = dao.getAll();
+        List<PhanCongDayDTO> filtered = new ArrayList<>();
+        for (PhanCongDayDTO dto : all) {
+            if (dto.getHocKy().equalsIgnoreCase(hocKy) && dto.getNamHoc().equalsIgnoreCase(namHoc))
+                filtered.add(dto);
+        }
+        return filtered;
     }
 }

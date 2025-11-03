@@ -2,15 +2,10 @@ package com.sgu.qlhs.ui.panels;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
-import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.table.*;
 import java.awt.*;
-import java.io.*;
-import java.nio.charset.StandardCharsets;
-import java.sql.Connection;
 import java.util.List;
 
-import com.sgu.qlhs.DatabaseConnection;
 import com.sgu.qlhs.bus.*;
 import com.sgu.qlhs.dto.ThoiKhoaBieuDTO;
 import com.sgu.qlhs.ui.dialogs.TKBDialog;
@@ -19,18 +14,17 @@ public class TKBPanel extends JPanel {
 
     private JTable tblTKB;
     private DefaultTableModel model;
-    private JButton btnThem, btnSua, btnXoa, btnKhoiPhuc, btnImport, btnExport;
+    private JButton btnThem, btnSua, btnXoa;
     private JComboBox<String> cboLop, cboHocKy;
-    private Connection conn;
     private ThoiKhoaBieuBUS tkbBUS;
     private List<ThoiKhoaBieuDTO> currentTkbList;
+    private ThoiKhoaBieuDTO selectedTKB = null; // lưu tiết đang chọn để sửa
 
     public TKBPanel() {
         setLayout(new BorderLayout(10, 10));
         setBackground(Color.WHITE);
 
-        conn = DatabaseConnection.getConnection();
-        tkbBUS = new ThoiKhoaBieuBUS(conn);
+        tkbBUS = new ThoiKhoaBieuBUS();
 
         // ===== Title =====
         JLabel lblTitle = new JLabel("Quản lý Thời khóa biểu", SwingConstants.LEFT);
@@ -44,20 +38,13 @@ public class TKBPanel extends JPanel {
         topPanel.setBackground(new Color(245, 248, 255));
         topPanel.setBorder(new EmptyBorder(8, 10, 8, 10));
 
-        // ===== Nút chức năng =====
         btnThem = button("Thêm");
         btnSua = button("Sửa");
         btnXoa = button("Xóa");
-        btnKhoiPhuc = button("Khôi phục");
-        btnImport = button("Import");
-        btnExport = button("Export");
 
         topPanel.add(btnThem);
         topPanel.add(btnSua);
         topPanel.add(btnXoa);
-        topPanel.add(btnKhoiPhuc);
-        topPanel.add(btnImport);
-        topPanel.add(btnExport);
 
         topPanel.add(Box.createHorizontalStrut(20));
         topPanel.add(new JLabel("Lớp:"));
@@ -66,21 +53,19 @@ public class TKBPanel extends JPanel {
         topPanel.add(cboLop);
 
         topPanel.add(new JLabel("Học kỳ:"));
-        cboHocKy = new JComboBox<>(new String[] { "HK1", "HK2" });
+        cboHocKy = new JComboBox<>(new String[]{"HK1", "HK2"});
         topPanel.add(cboHocKy);
 
         add(topPanel, BorderLayout.NORTH);
 
-        // ===== Bảng Thời khóa biểu =====
-        String[] columnNames = { "Tiết", "Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7" };
+        // ===== Bảng hiển thị TKB =====
+        String[] columnNames = {"Tiết", "Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7"};
         model = new DefaultTableModel(columnNames, 0) {
             @Override
-            public boolean isCellEditable(int r, int c) {
-                return false;
-            }
+            public boolean isCellEditable(int r, int c) { return false; }
         };
         for (int i = 1; i <= 10; i++)
-            model.addRow(new Object[] { "Tiết " + i, "", "", "", "", "", "" });
+            model.addRow(new Object[]{"Tiết " + i, "", "", "", "", "", ""});
 
         tblTKB = new JTable(model);
         tblTKB.setRowHeight(70);
@@ -96,27 +81,66 @@ public class TKBPanel extends JPanel {
         header.setPreferredSize(new Dimension(header.getWidth(), 38));
         header.setReorderingAllowed(false);
 
-        // Renderer cho ô
+        // ✅ CHỈ CHỌN 1 Ô DUY NHẤT, HIỂN THỊ MÀU KHI CLICK
+        tblTKB.setCellSelectionEnabled(true);                 
+        tblTKB.setRowSelectionAllowed(true);      // bật để JTable hiển thị highlight
+        tblTKB.setColumnSelectionAllowed(true);   // bật để highlight chính xác ô
+        tblTKB.setSelectionMode(ListSelectionModel.SINGLE_SELECTION); 
+
+        tblTKB.setSelectionBackground(new Color(100, 160, 255)); // xanh dương nhạt
+        tblTKB.setSelectionForeground(Color.WHITE);
+        tblTKB.putClientProperty("Table.isFileList", Boolean.TRUE); 
+        tblTKB.setFocusable(true);
+
+        // ===== Renderer cho từng ô =====
         tblTKB.setDefaultRenderer(Object.class, new DefaultTableCellRenderer() {
             @Override
             public Component getTableCellRendererComponent(JTable table, Object value,
-                    boolean isSelected, boolean hasFocus,
-                    int row, int column) {
-                JLabel lbl = (JLabel) super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row,
-                        column);
+                                                          boolean isSelected, boolean hasFocus,
+                                                          int row, int column) {
+                JLabel lbl = (JLabel) super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
                 lbl.setHorizontalAlignment(SwingConstants.CENTER);
                 lbl.setVerticalAlignment(SwingConstants.CENTER);
-                lbl.setBorder(BorderFactory.createLineBorder(new Color(230, 230, 230)));
+                lbl.setBorder(BorderFactory.createLineBorder(new Color(220, 220, 230)));
 
                 if (column == 0) {
-                    lbl.setBackground(new Color(235, 238, 250));
+                    lbl.setBackground(new Color(240, 243, 255));
                     lbl.setFont(new Font("Segoe UI Semibold", Font.BOLD, 14));
+                    lbl.setForeground(Color.BLACK);
                 } else if (isSelected) {
-                    lbl.setBackground(new Color(180, 210, 250));
+                    lbl.setBackground(new Color(80, 140, 255)); // ô đang chọn
+                    lbl.setForeground(Color.WHITE);
+                    lbl.setFont(lbl.getFont().deriveFont(Font.BOLD));
                 } else {
                     lbl.setBackground(row % 2 == 0 ? new Color(250, 252, 255) : Color.WHITE);
+                    lbl.setForeground(Color.BLACK);
                 }
                 return lbl;
+            }
+        });
+
+        // ===== Bắt sự kiện click chuột =====
+        tblTKB.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
+            public void mouseClicked(java.awt.event.MouseEvent e) {
+                int row = tblTKB.rowAtPoint(e.getPoint());
+                int col = tblTKB.columnAtPoint(e.getPoint());
+                if (row >= 0 && col > 0) {
+                    tblTKB.setRowSelectionInterval(row, row);
+                    tblTKB.setColumnSelectionInterval(col, col);
+
+                    String thu = "Thứ " + (col + 1);
+                    int tiet = row + 1;
+                    selectedTKB = findByThuTiet(thu, tiet);
+
+                    System.out.println("Click ô: " + thu + " - Tiết " + tiet +
+                            (selectedTKB != null ? " | Môn: " + selectedTKB.getTenMon() : " | Trống"));
+                }
+
+                // Double-click để sửa
+                if (e.getClickCount() == 2 && selectedTKB != null) {
+                    openDialog(selectedTKB);
+                }
             }
         });
 
@@ -124,57 +148,18 @@ public class TKBPanel extends JPanel {
         scroll.setBorder(new EmptyBorder(15, 15, 15, 15));
         add(scroll, BorderLayout.CENTER);
 
-        // ===== Sự kiện =====
+        // ===== Nút sự kiện =====
         btnThem.addActionListener(e -> openDialog(null));
         btnSua.addActionListener(e -> onEdit());
         btnXoa.addActionListener(e -> onDelete());
-        btnKhoiPhuc.addActionListener(e -> onRestore());
+
         cboLop.addActionListener(e -> reloadData());
         cboHocKy.addActionListener(e -> reloadData());
-
-        // Export
-        btnExport.addActionListener(e -> {
-            JFileChooser chooser = new JFileChooser();
-            chooser.setDialogTitle("Chọn nơi lưu file CSV");
-            chooser.setFileFilter(new FileNameExtensionFilter("CSV Files", "csv"));
-            if (chooser.showSaveDialog(this) == JFileChooser.APPROVE_OPTION) {
-                File file = chooser.getSelectedFile();
-                if (!file.getName().endsWith(".csv")) {
-                    file = new File(file.getAbsolutePath() + ".csv");
-                }
-                try {
-                    tkbBUS.exportToCSV(currentTkbList, file);
-                    JOptionPane.showMessageDialog(this, "Xuất dữ liệu thành công!");
-                } catch (Exception ex) {
-                    JOptionPane.showMessageDialog(this, "Lỗi khi xuất file: " + ex.getMessage());
-                }
-            }
-        });
-
-        // Import
-        btnImport.addActionListener(e -> {
-            JFileChooser chooser = new JFileChooser();
-            chooser.setDialogTitle("Chọn file CSV cần nhập");
-            chooser.setFileFilter(new FileNameExtensionFilter("CSV Files", "csv"));
-            if (chooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
-                File file = chooser.getSelectedFile();
-                try {
-                    List<ThoiKhoaBieuDTO> list = tkbBUS.importFromCSV(file);
-                    for (ThoiKhoaBieuDTO tkb : list) {
-                        tkbBUS.addThoiKhoaBieu(tkb);
-                    }
-                    reloadData();
-                    JOptionPane.showMessageDialog(this, "Nhập dữ liệu thành công!");
-                } catch (Exception ex) {
-                    JOptionPane.showMessageDialog(this, "Lỗi khi nhập file: " + ex.getMessage());
-                }
-            }
-        });
 
         reloadData();
     }
 
-    // ===== Nút đẹp hơn =====
+    // ====== Các hàm phụ ======
     private JButton button(String text) {
         JButton btn = new JButton(text);
         btn.setFocusPainted(false);
@@ -187,93 +172,42 @@ public class TKBPanel extends JPanel {
     }
 
     private void loadDanhSachLop() {
-        try {
-            // If current user is a student, show only their class and disable editing
-            try {
-                java.awt.Window w = javax.swing.SwingUtilities.getWindowAncestor(this);
-                if (w instanceof com.sgu.qlhs.ui.MainDashboard) {
-                    com.sgu.qlhs.ui.MainDashboard md = (com.sgu.qlhs.ui.MainDashboard) w;
-                    com.sgu.qlhs.dto.NguoiDungDTO nd = md.getNguoiDung();
-                    if (nd != null && "hoc_sinh".equalsIgnoreCase(nd.getVaiTro())) {
-                        com.sgu.qlhs.bus.HocSinhBUS hsBUS = new com.sgu.qlhs.bus.HocSinhBUS();
-                        com.sgu.qlhs.dto.HocSinhDTO hs = hsBUS.getHocSinhByMaHS(nd.getId());
-                        cboLop.removeAllItems();
-                        if (hs != null && hs.getTenLop() != null) {
-                            cboLop.addItem(hs.getTenLop());
-                        } else {
-                            cboLop.addItem("Không có lớp");
-                        }
-                        cboLop.setEnabled(false);
-                        // disable editing/import/export for students
-                        btnThem.setEnabled(false);
-                        btnSua.setEnabled(false);
-                        btnXoa.setEnabled(false);
-                        btnKhoiPhuc.setEnabled(false);
-                        btnImport.setEnabled(false);
-                        btnExport.setEnabled(false);
-                        return;
-                    }
-                    // If current user is a teacher, restrict class list to those assigned
-                    if (nd != null && "giao_vien".equalsIgnoreCase(nd.getVaiTro())) {
-                        cboLop.removeAllItems();
-                        cboLop.addItem("Tất cả");
-                        com.sgu.qlhs.bus.PhanCongDayBUS pc = new com.sgu.qlhs.bus.PhanCongDayBUS();
-                        com.sgu.qlhs.bus.LopBUS lopBUS = new com.sgu.qlhs.bus.LopBUS();
-                        int maNK = com.sgu.qlhs.bus.NienKhoaBUS.current();
-                        java.util.List<Integer> lopIds = pc.getDistinctMaLopByGiaoVien(nd.getId(), maNK, null);
-                        for (Integer ml : lopIds) {
-                            com.sgu.qlhs.dto.LopDTO l = lopBUS.getLopByMa(ml);
-                            if (l != null)
-                                cboLop.addItem(l.getTenLop());
-                        }
-                        return;
-                    }
-                }
-            } catch (Exception ex) {
-                // ignore and fall back to reading all classes
-            }
-
-            List<String> dsLop = tkbBUS.getDistinctLop();
-            cboLop.removeAllItems();
-            for (String tenLop : dsLop)
-                cboLop.addItem(tenLop);
-        } catch (Exception e) {
-            cboLop.addItem("Không có lớp");
-        }
+        cboLop.removeAllItems();
+        LopBUS lopBUS = new LopBUS();
+        for (var l : lopBUS.getAllLop()) cboLop.addItem(l.getTenLop());
     }
 
     private void reloadData() {
         clearAll();
         try {
-            String lopText = (String) cboLop.getSelectedItem();
+            String tenLop = (String) cboLop.getSelectedItem();
             String hocKy = (String) cboHocKy.getSelectedItem();
-            if (lopText == null || hocKy == null)
-                return;
+            if (tenLop == null || hocKy == null) return;
 
-            int maLop = tkbBUS.getMaLopByTen(lopText);
-            currentTkbList = tkbBUS.findByLopHocKy(maLop, hocKy);
-            for (ThoiKhoaBieuDTO t : currentTkbList) {
-                int thu = dayToNumber(t.getThuTrongTuan());
-                for (int tiet = t.getTietBatDau(); tiet <= t.getTietKetThuc(); tiet++) {
+            currentTkbList = tkbBUS.getAll();
+            for (ThoiKhoaBieuDTO tkb : currentTkbList) {
+                if (!hocKy.equals(tkb.getHocKy()) || !tenLop.equals(tkb.getTenLop())) continue;
+
+                int thu = dayToNumber(tkb.getThu());
+                for (int tiet = tkb.getTietBD(); tiet <= tkb.getTietKT(); tiet++) {
                     setCell(tiet, thu,
-                            "<html><center><b>" + t.getTenMon() + "</b><br>(" +
-                                    t.getTenPhong() + ")<br><i>GV: " + t.getTenGV() + "</i></center></html>");
+                            "<html><center><b>" + tkb.getTenMon() + "</b><br>(" +
+                                    tkb.getTenPhong() + ")<br><i>GV: " + tkb.getTenGV() + "</i></center></html>");
                 }
             }
-        } catch (Exception e) {
-            e.printStackTrace();
+        } catch (Exception ex) {
+            ex.printStackTrace();
         }
     }
 
-    private void setCell(int tiet, int thu, String text) {
-        if (tiet < 1 || tiet > 10 || thu < 2 || thu > 7)
-            return;
-        model.setValueAt(text, tiet - 1, thu - 1);
+    private void clearAll() {
+        for (int r = 0; r < model.getRowCount(); r++)
+            for (int c = 1; c < model.getColumnCount(); c++)
+                model.setValueAt("", r, c);
     }
 
     private int dayToNumber(String thu) {
-        if (thu == null)
-            return 0;
+        if (thu == null) return 0;
         thu = thu.replace("Thứ", "").trim();
         return switch (thu) {
             case "2" -> 2;
@@ -286,68 +220,52 @@ public class TKBPanel extends JPanel {
         };
     }
 
-    private void clearAll() {
-        for (int r = 0; r < model.getRowCount(); r++)
-            for (int c = 1; c < model.getColumnCount(); c++)
-                model.setValueAt("", r, c);
+    private void setCell(int tiet, int thu, String text) {
+        if (tiet < 1 || tiet > 10 || thu < 2 || thu > 7) return;
+        model.setValueAt(text, tiet - 1, thu - 1);
+    }
+
+    private ThoiKhoaBieuDTO findByThuTiet(String thu, int tiet) {
+        if (currentTkbList == null) return null;
+        for (ThoiKhoaBieuDTO tkb : currentTkbList) {
+            if (tkb.getThu().equalsIgnoreCase(thu)
+                    && tiet >= tkb.getTietBD() && tiet <= tkb.getTietKT()) {
+                return tkb;
+            }
+        }
+        return null;
     }
 
     private void openDialog(ThoiKhoaBieuDTO selected) {
         JFrame parent = (JFrame) SwingUtilities.getWindowAncestor(this);
-        TKBDialog dlg = new TKBDialog(
-                parent,
-                new ThoiKhoaBieuBUS(conn),
-                new LopBUS(),
-                new MonBUS(),
-                new GiaoVienBUS(),
-                new PhongBUS(),
-                selected);
+        TKBDialog dlg = new TKBDialog(parent, selected, tkbBUS);
         dlg.setVisible(true);
         reloadData();
     }
 
     private void onEdit() {
-        try {
-            if (currentTkbList == null || currentTkbList.isEmpty()) {
-                JOptionPane.showMessageDialog(this, "Không có bản ghi để sửa!");
-                return;
-            }
-
-            DefaultListModel<ThoiKhoaBieuDTO> listModel = new DefaultListModel<>();
-            for (ThoiKhoaBieuDTO t : currentTkbList)
-                listModel.addElement(t);
-
-            JList<ThoiKhoaBieuDTO> jList = new JList<>(listModel);
-            jList.setCellRenderer((list, value, index, isSelected, cellHasFocus) -> {
-                JLabel lbl = new JLabel(String.format(
-                        "ID #%d | %s | Tiết %d–%d | %s | %s | GV: %s",
-                        value.getMaTKB(),
-                        value.getThuTrongTuan(),
-                        value.getTietBatDau(), value.getTietKetThuc(),
-                        value.getTenMon(), value.getTenPhong(), value.getTenGV()));
-                lbl.setOpaque(true);
-                lbl.setBackground(isSelected ? new Color(200, 220, 255) : Color.WHITE);
-                lbl.setBorder(new EmptyBorder(5, 8, 5, 8));
-                return lbl;
-            });
-
-            JScrollPane sp = new JScrollPane(jList);
-            sp.setPreferredSize(new Dimension(560, 250));
-            int ok = JOptionPane.showConfirmDialog(this, sp, "Chọn tiết để sửa", JOptionPane.OK_CANCEL_OPTION);
-            if (ok == JOptionPane.OK_OPTION && jList.getSelectedValue() != null) {
-                openDialog(jList.getSelectedValue());
-            }
-        } catch (Exception ex) {
-            ex.printStackTrace();
-            JOptionPane.showMessageDialog(this, "Lỗi khi sửa: " + ex.getMessage());
+        if (selectedTKB == null) {
+            JOptionPane.showMessageDialog(this, "Vui lòng chọn ô có tiết học để sửa!");
+            return;
         }
+        openDialog(selectedTKB);
     }
 
     private void onDelete() {
-        JOptionPane.showMessageDialog(this, "Chức năng xóa mềm vẫn hoạt động, chỉ đổi giao diện thôi 😊");
-    }
-
-    private void onRestore() {
-        JOptionPane.showMessageDialog(this, "Chức năng khôi phục giữ nguyên logic cũ nhé 💙");
+        if (selectedTKB == null) {
+            JOptionPane.showMessageDialog(this, "Vui lòng chọn ô có tiết học để xóa!");
+            return;
+        }
+        int confirm = JOptionPane.showConfirmDialog(this,
+                "Bạn có chắc muốn xóa tiết này không?", "Xác nhận",
+                JOptionPane.YES_NO_OPTION);
+        if (confirm == JOptionPane.YES_OPTION) {
+            if (tkbBUS.delete(selectedTKB.getMaTKB())) {
+                JOptionPane.showMessageDialog(this, "Đã xóa thành công!");
+                reloadData();
+            } else {
+                JOptionPane.showMessageDialog(this, "Xóa thất bại!");
+            }
+        }
     }
 }

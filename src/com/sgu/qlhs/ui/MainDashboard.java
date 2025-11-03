@@ -32,6 +32,8 @@ public class MainDashboard extends JFrame {
     private static final String CARD_GV = "GV";
     private static final String CARD_LP = "LP";
     private static final String CARD_DIEM = "DIEM";
+    private static final String CARD_CN = "CHU NHIEM";
+    private static final String CARD_PCD = "PHAN CONG DAY";
     private static final String CARD_TKB = "THOI KHOA BIEU";
     private static final String CARD_TK = "TK";
 
@@ -93,6 +95,8 @@ public class MainDashboard extends JFrame {
         btnHs = new SidebarButton("Học sinh", false);
         btnGv = new SidebarButton("Giáo viên", false);
         btnLp = new SidebarButton("Lớp / Phòng", false);
+        SidebarButton btnCn = new SidebarButton("Chủ nhiệm", false);
+        SidebarButton btnPcd = new SidebarButton("Phân công dạy", false);
         btntkb = new SidebarButton("Thời Khóa Biểu", false);
         btnDiem = new SidebarButton("Điểm", false);
         btnTk = new SidebarButton("Thống kê", false);
@@ -105,14 +109,18 @@ public class MainDashboard extends JFrame {
         sidebar.add(Box.createVerticalStrut(6));
         sidebar.add(btnLp);
         sidebar.add(Box.createVerticalStrut(6));
+        sidebar.add(Box.createVerticalStrut(6));
+        sidebar.add(btnCn);
+        sidebar.add(Box.createVerticalStrut(6));
+        sidebar.add(btnPcd);
         sidebar.add(btntkb);
         sidebar.add(Box.createVerticalStrut(6));
         sidebar.add(btnDiem);
         sidebar.add(Box.createVerticalStrut(6));
         sidebar.add(btnTk);
         sidebar.add(Box.createVerticalGlue());
+        SidebarButton[] sideButtons = { btnDash, btnHs, btnGv, btnLp, btnPcd, btntkb, btnDiem, btnTk, btnCn };
 
-        SidebarButton[] sideButtons = { btnDash, btnHs, btnGv, btnLp, btntkb, btnDiem, btnTk };
 
         // ===== Main area =====
         var mainArea = new JPanel(new BorderLayout());
@@ -135,6 +143,8 @@ public class MainDashboard extends JFrame {
         centerCards.add(new HocSinhPanel(), CARD_HS);
         centerCards.add(new GiaoVienPanel(), CARD_GV);
         centerCards.add(new LopPhongPanel(), CARD_LP);
+        centerCards.add(new ChuNhiemPanel(), CARD_CN);
+        centerCards.add(new PhanCongDayPanel(), CARD_PCD);
         centerCards.add(new TKBPanel(), CARD_TKB);
         centerCards.add(new DiemPanel(), CARD_DIEM);
         centerCards.add(new ThongKePanel(), CARD_TK);
@@ -153,6 +163,8 @@ public class MainDashboard extends JFrame {
         btnHs.addActionListener(e -> showCard(CARD_HS, sideButtons, btnHs));
         btnGv.addActionListener(e -> showCard(CARD_GV, sideButtons, btnGv));
         btnLp.addActionListener(e -> showCard(CARD_LP, sideButtons, btnLp));
+        btnCn.addActionListener(e -> showCard(CARD_CN, sideButtons, btnCn));
+        btnPcd.addActionListener(e -> showCard(CARD_PCD, sideButtons, btnPcd));
         btntkb.addActionListener(e -> showCard(CARD_TKB, sideButtons, btntkb));
         btnDiem.addActionListener(e -> showCard(CARD_DIEM, sideButtons, btnDiem));
         btnTk.addActionListener(e -> showCard(CARD_TK, sideButtons, btnTk));
