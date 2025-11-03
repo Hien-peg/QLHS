@@ -9,7 +9,7 @@ public class GiaoVienDashboard extends MainDashboard {
         // Ẩn các nút không dành cho giáo viên
         if (btnDash != null) btnDash.setVisible(false);
         if (btnGv != null) btnGv.setVisible(false);
-        if (btnTk != null) btnTk.setVisible(false);
+        // if (btnTk != null) btnTk.setVisible(false); 
 
         // Mặc định hiển thị phần Học sinh hoặc Thời khóa biểu
         cards.show(centerCards, "HS");

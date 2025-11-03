@@ -11,6 +11,7 @@ import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.util.List;
 import static com.sgu.qlhs.ui.MainDashboard.*;
+import com.sgu.qlhs.bus.NienKhoaBUS;
 
 public class LopPhongPanel extends JPanel {
     public LopPhongPanel() {
@@ -40,9 +41,14 @@ public class LopPhongPanel extends JPanel {
                 com.sgu.qlhs.ui.MainDashboard md = (com.sgu.qlhs.ui.MainDashboard) w;
                 com.sgu.qlhs.dto.NguoiDungDTO nd = md.getNguoiDung();
                 if (nd != null && "giao_vien".equalsIgnoreCase(nd.getVaiTro())) {
-                    int maNK = com.sgu.qlhs.bus.NienKhoaBUS.current();
+                    
+                    // === PHẦN SỬA ===
+                    String namHoc = com.sgu.qlhs.bus.NienKhoaBUS.currentNamHoc(); // Lấy chuỗi năm học
+                    
                     PhanCongDayBUS pc = new PhanCongDayBUS();
-                    java.util.List<Integer> lopIds = pc.getDistinctMaLopByGiaoVien(nd.getId(), maNK, null);
+                    java.util.List<Integer> lopIds = pc.getDistinctMaLopByGiaoVien(nd.getId(), namHoc, null);
+                    // === KẾT THÚC PHẦN SỬA ===
+
                     lopModel = new LopTableModel(lopIds);
                 } else {
                     lopModel = new LopTableModel();
@@ -53,7 +59,8 @@ public class LopPhongPanel extends JPanel {
         } catch (Exception ex) {
             lopModel = new LopTableModel();
         }
-        // make a final reference for use inside lambdas
+        // ... (Phần còn lại của constructor giữ nguyên) ...
+        
         final LopTableModel lopModelFinal = lopModel;
         JTable tblLop = new JTable(lopModelFinal);
 

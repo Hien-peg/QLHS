@@ -83,16 +83,21 @@ CREATE TABLE DanhGia (
 );
 
 CREATE TABLE PhanCongDay (
-    MaPC INT PRIMARY KEY AUTO_INCREMENT,
-    MaGV INT,
-    MaMon INT,
-    MaLop INT,
-    MaNK INT,
-    HocKy INT,
-    CONSTRAINT fk_pc_gv FOREIGN KEY (MaGV) REFERENCES GiaoVien (MaGV) ON DELETE CASCADE ON UPDATE CASCADE,
-    CONSTRAINT fk_pc_mon FOREIGN KEY (MaMon) REFERENCES MonHoc (MaMon) ON DELETE CASCADE ON UPDATE CASCADE,
-    CONSTRAINT fk_pc_lop FOREIGN KEY (MaLop) REFERENCES Lop (MaLop) ON DELETE CASCADE ON UPDATE CASCADE,
-    CONSTRAINT fk_pc_nk FOREIGN KEY (MaNK) REFERENCES NienKhoa (MaNK) ON DELETE CASCADE ON UPDATE CASCADE
+    MaPCD INT AUTO_INCREMENT PRIMARY KEY,
+    MaGV INT NOT NULL,
+    MaLop INT NOT NULL,
+    MaMon INT NOT NULL,
+    MaPhong INT NOT NULL,
+    HocKy VARCHAR(10) NOT NULL,
+    NamHoc VARCHAR(20) NOT NULL,
+    TrangThai TINYINT DEFAULT 1,
+    NgayTao DATETIME DEFAULT CURRENT_TIMESTAMP,
+    NgayCapNhat DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_pcd_gv FOREIGN KEY (MaGV) REFERENCES GiaoVien(MaGV) ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT fk_pcd_lop FOREIGN KEY (MaLop) REFERENCES Lop(MaLop) ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT fk_pcd_mon FOREIGN KEY (MaMon) REFERENCES MonHoc(MaMon) ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT fk_pcd_phong FOREIGN KEY (MaPhong) REFERENCES PhongHoc(MaPhong) ON DELETE CASCADE ON UPDATE CASCADE
 );
 
 CREATE TABLE ChuNhiem (
@@ -108,23 +113,19 @@ CREATE TABLE ChuNhiem (
 );
 
 CREATE TABLE ThoiKhoaBieu (
-    MaTKB INT PRIMARY KEY AUTO_INCREMENT, -- Mã thời khóa biểu
-    MaLop INT NOT NULL, -- Lớp áp dụng (khóa ngoại -> Lop)
-    MaGV INT NOT NULL, -- Giáo viên dạy (khóa ngoại -> GiaoVien)
-    MaMon INT NOT NULL, -- Môn học (khóa ngoại -> MonHoc)
-    MaPhong INT NOT NULL, -- Phòng học (khóa ngoại -> PhongHoc)
-    HocKy VARCHAR(10) NOT NULL, -- Học kỳ (VD: HK1, HK2)
-    NamHoc VARCHAR(9) NOT NULL, -- Năm học (VD: 2024-2025)
-    ThuTrongTuan VARCHAR(10) NOT NULL, -- Thứ trong tuần (VD: Thứ 2, Thứ 3,...)
-    TietBatDau INT NOT NULL, -- Tiết bắt đầu (VD: 1)
-    TietKetThuc INT NOT NULL, -- Tiết kết thúc (VD: 3)
-    TrangThai TINYINT DEFAULT 1, -- 1: hoạt động, 0: xóa mềm
-    NgayTao DATETIME DEFAULT CURRENT_TIMESTAMP, -- Ngày tạo bản ghi
+    MaTKB INT AUTO_INCREMENT PRIMARY KEY,
+    MaPCD INT NOT NULL,
+    Thu VARCHAR(20) NOT NULL,
+    TietBD INT NOT NULL,
+    TietKT INT NOT NULL,
+    TrangThai TINYINT DEFAULT 1,
+    NgayTao DATETIME DEFAULT CURRENT_TIMESTAMP,
     NgayCapNhat DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (MaLop) REFERENCES Lop (MaLop) ON UPDATE CASCADE,
-    FOREIGN KEY (MaGV) REFERENCES GiaoVien (MaGV) ON UPDATE CASCADE,
-    FOREIGN KEY (MaMon) REFERENCES MonHoc (MaMon) ON UPDATE CASCADE,
-    FOREIGN KEY (MaPhong) REFERENCES PhongHoc (MaPhong) ON UPDATE CASCADE
+
+    CONSTRAINT fk_tkb_pcd FOREIGN KEY (MaPCD)
+        REFERENCES PhanCongDay(MaPCD)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE
 );
 
 -- === BẢNG ĐIỂM (GỘP) + CỘT SINH ===
@@ -9472,3 +9473,50 @@ FROM (
         WHERE
             d.MaDiem IS NULL
     ) AS missing;
+    
+    USE QLHS;
+
+INSERT INTO PhanCongDay (
+    MaGV, 
+    MaLop, 
+    MaMon, 
+    MaPhong, 
+    HocKy, 
+    NamHoc
+)
+SELECT
+    -- Chọn một MaGV ngẫu nhiên từ bảng GiaoVien
+    (SELECT MaGV FROM GiaoVien ORDER BY RAND() LIMIT 1) AS MaGV, 
+    
+    all_combos.MaLop, 
+    all_combos.MaMon, 
+    
+    -- Lấy MaPhong mặc định đã gán cho Lớp đó
+    all_combos.MaPhong, 
+    
+    all_combos.HocKy, 
+    all_combos.NamHoc
+FROM
+(
+    -- 1. Tạo tất cả tổ hợp Lớp x Môn x Học Kỳ x Năm Học
+    SELECT
+        l.MaLop,
+        l.MaPhong,
+        m.MaMon,
+        hk.HocKy,
+        '2024-2025' AS NamHoc
+    FROM
+        Lop l
+    CROSS JOIN
+        MonHoc m
+    CROSS JOIN
+        (SELECT 'HK1' AS HocKy UNION SELECT 'HK2' AS HocKy) hk
+) AS all_combos
+LEFT JOIN
+    -- 2. Kiểm tra xem tổ hợp này đã tồn tại trong PhanCongDay chưa
+    PhanCongDay pcd ON all_combos.MaLop = pcd.MaLop
+                   AND all_combos.MaMon = pcd.MaMon
+                   AND all_combos.HocKy = pcd.HocKy
+                   AND all_combos.NamHoc = pcd.NamHoc
+WHERE
+    pcd.MaPCD IS NULL; -- 3. Chỉ chèn những tổ hợp còn thiếu

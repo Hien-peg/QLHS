@@ -405,9 +405,16 @@ public class DiemXemTheoHocKyDialog extends JDialog {
                 com.sgu.qlhs.dto.NguoiDungDTO nd = md.getNguoiDung();
                 if (nd != null) {
                     if ("giao_vien".equalsIgnoreCase(nd.getVaiTro())) {
+                        
+                        // === PHẦN SỬA ===
                         int maNK = com.sgu.qlhs.bus.NienKhoaBUS.current();
+                        String namHoc = com.sgu.qlhs.bus.NienKhoaBUS.currentNamHoc(); // Lấy chuỗi năm học
+                        
                         com.sgu.qlhs.bus.PhanCongDayBUS pcb = new com.sgu.qlhs.bus.PhanCongDayBUS();
-                        java.util.List<Integer> assigned = pcb.getDistinctMaLopByGiaoVien(nd.getId(), maNK, null);
+                        // Lấy tất cả lớp GV dạy trong năm học (cả 2 học kỳ)
+                        java.util.List<Integer> assigned = pcb.getDistinctMaLopByGiaoVien(nd.getId(), namHoc, null);
+                        // === KẾT THÚC PHẦN SỬA ===
+
                         for (LopDTO lop : lopList) {
                             if (!assigned.contains(lop.getMaLop()))
                                 continue;
@@ -417,6 +424,7 @@ public class DiemXemTheoHocKyDialog extends JDialog {
                         }
                         return;
                     }
+                    // ... (phần code hoc_sinh giữ nguyên) ...
                     if ("hoc_sinh".equalsIgnoreCase(nd.getVaiTro())) {
                         // show only the student's class
                         int maHS = nd.getId();

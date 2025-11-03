@@ -449,9 +449,16 @@ public class DiemTrungBinhTatCaMonDialog extends JDialog {
                 com.sgu.qlhs.ui.MainDashboard md = (com.sgu.qlhs.ui.MainDashboard) w;
                 com.sgu.qlhs.dto.NguoiDungDTO nd = md.getNguoiDung();
                 if (nd != null && "giao_vien".equalsIgnoreCase(nd.getVaiTro())) {
+                    
+                    // === PHẦN SỬA ===
                     int maNK = com.sgu.qlhs.bus.NienKhoaBUS.current();
+                    String namHoc = com.sgu.qlhs.bus.NienKhoaBUS.currentNamHoc(); // Lấy chuỗi năm học
+                    
                     com.sgu.qlhs.bus.PhanCongDayBUS pcb = new com.sgu.qlhs.bus.PhanCongDayBUS();
-                    java.util.List<Integer> assigned = pcb.getDistinctMaLopByGiaoVien(nd.getId(), maNK, null);
+                    // Lấy tất cả lớp GV dạy trong năm học (cả 2 học kỳ)
+                    java.util.List<Integer> assigned = pcb.getDistinctMaLopByGiaoVien(nd.getId(), namHoc, null); 
+                    // === KẾT THÚC PHẦN SỬA ===
+
                     allowed = new java.util.HashSet<>(assigned);
                 }
             }

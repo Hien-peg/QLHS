@@ -192,8 +192,6 @@ public class DiemTinhXepLoaiDialog extends JDialog {
         lops = lopBUS.getAllLop();
         cboLop.removeAllItems();
         cboLop.addItem("-- Chọn lớp --");
-        // Restrict to assigned classes for teachers; if user is student show only
-        // their class
         try {
             java.awt.Window w = javax.swing.SwingUtilities.getWindowAncestor(this);
             if (w instanceof com.sgu.qlhs.ui.MainDashboard) {
@@ -201,9 +199,16 @@ public class DiemTinhXepLoaiDialog extends JDialog {
                 com.sgu.qlhs.dto.NguoiDungDTO nd = md.getNguoiDung();
                 if (nd != null) {
                     if ("giao_vien".equalsIgnoreCase(nd.getVaiTro())) {
+                        
+                        // === PHẦN SỬA ===
                         int maNK = com.sgu.qlhs.bus.NienKhoaBUS.current();
+                        String namHoc = com.sgu.qlhs.bus.NienKhoaBUS.currentNamHoc(); // Lấy chuỗi năm học
+                        // (Dialog này không có cboHocKy, nên mặc định là null - lấy tất cả HK)
+                        
                         com.sgu.qlhs.bus.PhanCongDayBUS pcb = new com.sgu.qlhs.bus.PhanCongDayBUS();
-                        java.util.List<Integer> assigned = pcb.getDistinctMaLopByGiaoVien(nd.getId(), maNK, null);
+                        java.util.List<Integer> assigned = pcb.getDistinctMaLopByGiaoVien(nd.getId(), namHoc, null);
+                        // === KẾT THÚC PHẦN SỬA ===
+
                         java.util.Set<Integer> allowed = new java.util.HashSet<>(assigned);
                         for (LopDTO l : lops) {
                             if (allowed != null && !allowed.contains(l.getMaLop()))
@@ -212,8 +217,8 @@ public class DiemTinhXepLoaiDialog extends JDialog {
                         }
                         return;
                     }
+                     // ... (phần hoc_sinh giữ nguyên) ...
                     if ("hoc_sinh".equalsIgnoreCase(nd.getVaiTro())) {
-                        // student: show only their class and disable selection
                         int maHS = nd.getId();
                         HocSinhDTO hs = hocSinhBUS.getHocSinhByMaHS(maHS);
                         String tenLop = hs != null && hs.getTenLop() != null ? hs.getTenLop() : "-- Tất cả --";

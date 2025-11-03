@@ -61,10 +61,10 @@ public class LopDTO {
         this.tenPhong = tenPhong;
     }
 
+    // === SỬA LỖI TẠI ĐÂY ===
+    // Sửa hàm toString() để JComboBox hiển thị đúng tên lớp
     @Override
     public String toString() {
-        return "LopDTO{" + "maLop=" + maLop + ", tenLop='" + tenLop + '\'' + ", khoi=" + khoi + ", maPhong=" + maPhong
-                + ", tenPhong='"
-                + tenPhong + '\'' + '}';
+        return tenLop; // Chỉ trả về tên lớp
     }
 }

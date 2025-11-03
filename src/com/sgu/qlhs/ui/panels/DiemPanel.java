@@ -364,21 +364,23 @@ public class DiemPanel extends JPanel {
     private void loadLopOptions() {
         cboLop.removeAllItems();
         cboLop.addItem("-- Tất cả --");
-        // If the running user is a teacher, restrict classes to those they teach.
         try {
             java.awt.Window w = javax.swing.SwingUtilities.getWindowAncestor(this);
             if (w instanceof com.sgu.qlhs.ui.MainDashboard) {
                 com.sgu.qlhs.ui.MainDashboard md = (com.sgu.qlhs.ui.MainDashboard) w;
                 NguoiDungDTO nd = md.getNguoiDung();
                 if (nd != null && "giao_vien".equalsIgnoreCase(nd.getVaiTro())) {
-                    // assume NguoiDung.id maps to MaGV
-                    // prefer PhanCongDay assignments (respect MaNK)
+                    
+                    // === PHẦN SỬA ===
                     int maNK = NienKhoaBUS.current();
+                    String namHoc = (new NienKhoaBUS()).getNamHocString(maNK); // Lấy chuỗi năm học
                     int hkIdx = cboHK.getSelectedIndex();
-                    Integer hkParam = hkIdx > 0 ? hkIdx : null;
-                    java.util.List<Integer> lopIds = phanCongBUS.getDistinctMaLopByGiaoVien(nd.getId(), maNK,
-                            hkParam);
-                    // build lopList to mirror combo entries so indices align later
+                    // Chuyển Integer (1) sang String ("HK1")
+                    String hkParam = hkIdx > 0 ? ("HK" + hkIdx) : null; 
+                    
+                    java.util.List<Integer> lopIds = phanCongBUS.getDistinctMaLopByGiaoVien(nd.getId(), namHoc, hkParam);
+                    // === KẾT THÚC PHẦN SỬA ===
+
                     lopList = new java.util.ArrayList<>();
                     for (Integer ml : lopIds) {
                         var l = lopBUS.getLopByMa(ml);
@@ -391,7 +393,7 @@ public class DiemPanel extends JPanel {
                         cboLop.setSelectedIndex(0);
                     return;
                 }
-                // if student, show only their class and disable selection
+                // ... (phần hoc_sinh giữ nguyên) ...
                 if (nd != null && "hoc_sinh".equalsIgnoreCase(nd.getVaiTro())) {
                     isStudentView = true;
                     currentStudentMaHS = nd.getId();
@@ -401,14 +403,12 @@ public class DiemPanel extends JPanel {
                     cboLop.addItem(tenLop);
                     cboLop.setSelectedIndex(0);
                     cboLop.setEnabled(false);
-                    // hide/disable subject search for students
                     cboMon.setEnabled(false);
                     txtSearch.setEnabled(false);
                     return;
                 }
             }
         } catch (Exception ex) {
-            // if any issue, fallback to showing all classes
             System.err.println("Lỗi lấy lớp theo giáo viên: " + ex.getMessage());
         }
 
@@ -428,12 +428,17 @@ public class DiemPanel extends JPanel {
                 com.sgu.qlhs.ui.MainDashboard md = (com.sgu.qlhs.ui.MainDashboard) w;
                 NguoiDungDTO nd = md.getNguoiDung();
                 if (nd != null && "giao_vien".equalsIgnoreCase(nd.getVaiTro())) {
+                    
+                    // === PHẦN SỬA ===
                     int maNK = NienKhoaBUS.current();
+                    String namHoc = (new NienKhoaBUS()).getNamHocString(maNK); // Lấy chuỗi năm học
                     int hkIdx = cboHK.getSelectedIndex();
-                    Integer hkParam = hkIdx > 0 ? hkIdx : null;
-                    java.util.List<Integer> monIds = phanCongBUS.getDistinctMaMonByGiaoVien(nd.getId(), maNK,
-                            hkParam);
-                    // build a filtered monList that mirrors combo entries
+                    // Chuyển Integer (1) sang String ("HK1")
+                    String hkParam = hkIdx > 0 ? ("HK" + hkIdx) : null;
+                    
+                    java.util.List<Integer> monIds = phanCongBUS.getDistinctMaMonByGiaoVien(nd.getId(), namHoc, hkParam);
+                    // === KẾT THÚC PHẦN SỬA ===
+
                     monList = new java.util.ArrayList<>();
                     java.util.List<MonHocDTO> allMons = monBUS.getAllMon();
                     for (Integer mm : monIds) {
@@ -449,7 +454,7 @@ public class DiemPanel extends JPanel {
                         cboMon.setSelectedIndex(0);
                     return;
                 }
-                // if student, disable subject selection
+                // ... (phần hoc_sinh giữ nguyên) ...
                 if (nd != null && "hoc_sinh".equalsIgnoreCase(nd.getVaiTro())) {
                     cboMon.removeAllItems();
                     cboMon.addItem("-- Tất cả --");

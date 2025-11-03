@@ -29,4 +29,28 @@ public class NienKhoaBUS {
             return 1;
         }
     }
+
+    /**
+     * === MỚI: Thêm hàm này ===
+     * Lấy chuỗi NamHoc (vd: "2024-2025") từ MaNK
+     */
+    public String getNamHocString(int maNK) {
+        String s = dao.getNamHocStringByMaNK(maNK);
+        // Fallback nếu không tìm thấy
+        return (s != null) ? s : "2024-2025";
+    }
+
+    /**
+     * === MỚI: Thêm hàm này ===
+     * Lấy chuỗi NamHoc cho niên khóa HIỆN TẠI
+     */
+    public static String currentNamHoc() {
+        try {
+            NienKhoaBUS bus = new NienKhoaBUS();
+            int maNK = bus.getCurrentMaNK();
+            return bus.getNamHocString(maNK);
+        } catch (Exception ex) {
+            return "2024-2025"; // Fallback
+        }
+    }
 }

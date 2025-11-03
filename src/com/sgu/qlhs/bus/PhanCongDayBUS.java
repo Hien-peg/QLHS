@@ -14,11 +14,12 @@ public class PhanCongDayBUS {
     }
 
     // ==========================================================
-    // 🧩 Các hàm đã có sẵn (giữ nguyên)
+    // 🧩 SỬA: Thay đổi tham số (MaNK, HocKy int) -> (NamHoc, HocKy String)
     // ==========================================================
-    public List<Integer> getDistinctMaLopByGiaoVien(int maGV, Integer maNK, Integer hocKy) {
+    public List<Integer> getDistinctMaLopByGiaoVien(int maGV, String namHoc, String hocKy) {
         try {
-            List<Integer> l = dao.getDistinctMaLopByGiaoVien(maGV, maNK, hocKy);
+            // SỬA: Truyền tham số String
+            List<Integer> l = dao.getDistinctMaLopByGiaoVien(maGV, namHoc, hocKy);
             return l != null ? l : new ArrayList<>();
         } catch (Exception ex) {
             System.err.println("Lỗi khi lấy PhanCongDay.MaLop: " + ex.getMessage());
@@ -26,9 +27,10 @@ public class PhanCongDayBUS {
         }
     }
 
-    public List<Integer> getDistinctMaMonByGiaoVien(int maGV, Integer maNK, Integer hocKy) {
+    public List<Integer> getDistinctMaMonByGiaoVien(int maGV, String namHoc, String hocKy) {
         try {
-            List<Integer> l = dao.getDistinctMaMonByGiaoVien(maGV, maNK, hocKy);
+            // SỬA: Truyền tham số String
+            List<Integer> l = dao.getDistinctMaMonByGiaoVien(maGV, namHoc, hocKy);
             return l != null ? l : new ArrayList<>();
         } catch (Exception ex) {
             System.err.println("Lỗi khi lấy PhanCongDay.MaMon: " + ex.getMessage());

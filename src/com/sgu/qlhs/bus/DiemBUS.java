@@ -171,51 +171,27 @@ public class DiemBUS {
     // === PHẦN SỬA LỖI (NẠP CHỒNG HÀM) ===
 
     // HÀM CŨ (cho DiemTinhXepLoaiDialog và DiemTrungBinhTatCaMonDialog)
-    // Chuyển từ double -> Double để chấp nhận null
     public boolean saveOrUpdateDiem(int maHS, int maMon, int hocKy, int maNK,
             double mieng, double p15, double gk, double ck, NguoiDungDTO user) {
         // Gọi hàm mới, truyền null cho ketQuaDanhGia
-        return this.saveOrUpdateDiem(maHS, maMon, hocKy, maNK, mieng, p15, gk, ck, null, user);
+        return this.saveOrUpdateDiem(maHS, maMon, hocKy, maNK, mieng, p15, gk, ck, null, null, user);
     }
 
     // HÀM MỚI (cho DiemNhapDialog)
-    // Hàm này nhận Double (có thể null) và String (KetQuaDanhGia)
     public boolean saveOrUpdateDiem(int maHS, int maMon, int hocKy, int maNK,
             Double mieng, Double p15, Double gk, Double ck,
             String ketQuaDanhGia, NguoiDungDTO user) {
-
-        if (user != null && "giao_vien".equalsIgnoreCase(user.getVaiTro())) {
-            try {
-                if (!isTeacherAssigned(user.getId(), maHS, maMon, hocKy, maNK))
-                    return false;
-            } catch (Exception ex) {
-                System.err.println("Lỗi kiểm tra quyền trước khi lưu điểm: " + ex.getMessage());
-                return false;
-            }
-        }
-        try {
-            // Chuyển Double (có thể null) thành double (0.0 nếu null)
-            double dMieng = (mieng != null) ? mieng : 0.0;
-            double dP15 = (p15 != null) ? p15 : 0.0;
-            double dGk = (gk != null) ? gk : 0.0;
-            double dCk = (ck != null) ? ck : 0.0;
-
-            // Gọi DAO (đã sửa) với 9 tham số
-            dao.upsertDiem(maHS, maMon, hocKy, maNK, dMieng, dP15, dGk, dCk, ketQuaDanhGia);
-            return true;
-        } catch (Exception ex) {
-            System.err.println("Lỗi khi lưu điểm: " + ex.getMessage());
-            return false;
-        }
+        // Gọi hàm đầy đủ, truyền null cho ghiChu
+        return this.saveOrUpdateDiem(maHS, maMon, hocKy, maNK, mieng, p15, gk, ck, null, ketQuaDanhGia, user);
     }
 
-    // HÀM MỚI (cho BangDiemChiTietDialog)
-    // Hàm này nhận cả GhiChu và KetQuaDanhGia
+    // HÀM MỚI ĐẦY ĐỦ (cho BangDiemChiTietDialog)
     public boolean saveOrUpdateDiem(int maHS, int maMon, int hocKy, int maNK,
             Double mieng, Double p15, Double gk, Double ck,
             String ghiChu, String ketQuaDanhGia, NguoiDungDTO user) {
         if (user != null && "giao_vien".equalsIgnoreCase(user.getVaiTro())) {
             try {
+                // SỬA: Lỗi của bạn ở đây. Truyền hocKy (int) và maNK (int)
                 if (!isTeacherAssigned(user.getId(), maHS, maMon, hocKy, maNK))
                     return false;
             } catch (Exception ex) {
@@ -246,6 +222,7 @@ public class DiemBUS {
     public boolean deleteDiem(int maHS, int maMon, int hocKy, int maNK, NguoiDungDTO user) {
         if (user != null && "giao_vien".equalsIgnoreCase(user.getVaiTro())) {
             try {
+                // SỬA: Lỗi của bạn ở đây. Truyền hocKy (int) và maNK (int)
                 if (!isTeacherAssigned(user.getId(), maHS, maMon, hocKy, maNK))
                     return false;
             } catch (Exception ex) {
@@ -262,18 +239,40 @@ public class DiemBUS {
         }
     }
 
-    private boolean isTeacherAssigned(int maGV, int maHS, Integer maMon, int hocKy, int maNK) throws SQLException {
+    /**
+     * SỬA LỖI: Đây là hàm gây ra lỗi "Unknown column 'pc.MaNK'".
+     * Helper: check whether a teacher (maGV) is assigned to teach the class of maHS
+     * for the given niên khóa (maNK) and học kỳ (hocKy).
+     * If maMon is not null, also require teacher assigned for that subject.
+     */
+    private boolean isTeacherAssigned(int maGV, int maHS, Integer maMon, int hocKyInt, int maNK) throws SQLException {
+        
+        // 1. Chuyển đổi int HocKy (1) -> String HocKy ("HK1")
+        String hocKyString = "HK" + hocKyInt;
+        
+        // 2. Lấy chuỗi NamHoc (vd: "2024-2025") từ MaNK
+        String namHocString = null;
+        // Dùng NienKhoaBUS đã tạo
+        NienKhoaBUS nkBUS = new NienKhoaBUS();
+        namHocString = nkBUS.getNamHocString(maNK);
+        
+        if (namHocString == null) {
+            throw new SQLException("Không tìm thấy Niên Khóa cho MaNK: " + maNK);
+        }
+
+        // 3. Xây dựng câu SQL đúng với schema của init-2.sql
         String sql = "SELECT COUNT(*) AS cnt FROM PhanCongDay pc JOIN HocSinh hs ON hs.MaLop = pc.MaLop "
-                + "WHERE pc.MaGV = ? AND pc.MaNK = ? AND pc.HocKy = ? AND hs.MaHS = ?";
+                + "WHERE pc.MaGV = ? AND pc.NamHoc = ? AND pc.HocKy = ? AND hs.MaHS = ?";
         if (maMon != null) {
             sql += " AND pc.MaMon = ?";
         }
+        
         try (Connection conn = DatabaseConnection.getConnection();
                 PreparedStatement ps = conn.prepareStatement(sql)) {
             int idx = 1;
             ps.setInt(idx++, maGV);
-            ps.setInt(idx++, maNK);
-            ps.setInt(idx++, hocKy);
+            ps.setString(idx++, namHocString);  // SỬA: Dùng NamHoc (String)
+            ps.setString(idx++, hocKyString);   // SỬA: Dùng HocKy (String)
             ps.setInt(idx++, maHS);
             if (maMon != null) {
                 ps.setInt(idx++, maMon);
@@ -286,6 +285,7 @@ public class DiemBUS {
         }
         return false;
     }
+
 
     public List<DiemDTO> getDiemFiltered(Integer maLop, Integer maMon, Integer hocKy, Integer maNK,
             Integer limit, Integer offset) {

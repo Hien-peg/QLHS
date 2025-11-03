@@ -337,7 +337,6 @@ public class DiemNhapDialog extends JDialog {
     private void loadMonData() {
         cboMon.removeAllItems();
         try {
-            // if current user is a teacher, limit subjects to PhanCongDay assignments
             com.sgu.qlhs.dto.NguoiDungDTO nd = null;
             try {
                 java.awt.Window w = javax.swing.SwingUtilities.getWindowAncestor(this);
@@ -349,17 +348,28 @@ public class DiemNhapDialog extends JDialog {
                 // ignore
             }
             if (nd != null && "giao_vien".equalsIgnoreCase(nd.getVaiTro())) {
+                
+                // === PHẦN SỬA ===
                 int maNK = NienKhoaBUS.current();
                 int selNk = cboNamHoc.getSelectedIndex();
                 if (selNk >= 0 && selNk < nienKhoaIds.size())
                     maNK = nienKhoaIds.get(selNk);
+                String namHoc = (new NienKhoaBUS()).getNamHocString(maNK); // Lấy chuỗi năm học
+
                 int hkIdx = cboHK.getSelectedIndex();
-                Integer hkParam = hkIdx >= 0 ? (hkIdx + 1) : null; // cboHK: index 0 -> HK1
-                java.util.List<Integer> monos = phanCongBUS.getDistinctMaMonByGiaoVien(nd.getId(), maNK, hkParam);
-                monList = monBUS.getAllMon(); // Lấy tất cả môn
-                for (MonHocDTO m : monList) { // Duyệt tất cả môn
-                    if (monos.contains(m.getMaMon())) { // Nếu GV được phân công
-                        cboMon.addItem(m.getTenMon());
+                // Chuyển Integer (0, 1) -> String ("HK1", "HK2")
+                String hkParam = (hkIdx >= 0) ? ("HK" + (hkIdx + 1)) : null; 
+                
+                java.util.List<Integer> monos = phanCongBUS.getDistinctMaMonByGiaoVien(nd.getId(), namHoc, hkParam);
+                // === KẾT THÚC PHẦN SỬA ===
+
+                monList = monBUS.getAllMon();
+                for (Integer mm : monos) {
+                    for (MonHocDTO m : monList) {
+                        if (m.getMaMon() == mm) {
+                            cboMon.addItem(m.getTenMon());
+                            break;
+                        }
                     }
                 }
                 return;
@@ -369,7 +379,6 @@ public class DiemNhapDialog extends JDialog {
                 cboMon.addItem(m.getTenMon());
             }
         } catch (Exception ex) {
-            // fallback: keep empty or default list
             cboMon.addItem("Toán");
             cboMon.addItem("Văn");
         }
@@ -380,7 +389,6 @@ public class DiemNhapDialog extends JDialog {
         cboLop.addItem("-- Chọn lớp --");
         java.util.List<LopDTO> lops = lopBUS.getAllLop();
 
-        // if user is a teacher, filter lớp by PhanCongDay assignments for current MaNK
         try {
             com.sgu.qlhs.dto.NguoiDungDTO nd = null;
             try {
@@ -393,26 +401,33 @@ public class DiemNhapDialog extends JDialog {
                 // ignore
             }
             if (nd != null && "giao_vien".equalsIgnoreCase(nd.getVaiTro())) {
+                
+                // === PHẦN SỬA ===
                 int maNK = NienKhoaBUS.current();
                 int selNk = cboNamHoc.getSelectedIndex();
                 if (selNk >= 0 && selNk < nienKhoaIds.size())
                     maNK = nienKhoaIds.get(selNk);
+                String namHoc = (new NienKhoaBUS()).getNamHocString(maNK); // Lấy chuỗi năm học
+
                 int hkIdxL = cboHK.getSelectedIndex();
-                Integer hkParamL = hkIdxL >= 0 ? (hkIdxL + 1) : null;
-                java.util.List<Integer> lopIds = phanCongBUS.getDistinctMaLopByGiaoVien(nd.getId(), maNK,
-                        hkParamL);
+                // Chuyển Integer (0, 1) -> String ("HK1", "HK2")
+                String hkParamL = (hkIdxL >= 0) ? ("HK" + (hkIdxL + 1)) : null;
+                
+                java.util.List<Integer> lopIds = phanCongBUS.getDistinctMaLopByGiaoVien(nd.getId(), namHoc, hkParamL);
+                // === KẾT THÚC PHẦN SỬA ===
+
                 for (LopDTO l : lops) {
                     if (lopIds.contains(l.getMaLop()))
                         cboLop.addItem(l.getTenLop());
                 }
-                // note: we do not preload 'lops' variable differently; but cboLop now contains
-                // only teacher's classes
                 return;
             }
         } catch (Exception ex) {
             // ignore and fallback to listing all classes
         }
 
+        // ... (Phần còn lại của hàm loadLopData giữ nguyên) ...
+        
         for (LopDTO l : lops) {
             cboLop.addItem(l.getTenLop());
         }
@@ -440,9 +455,8 @@ public class DiemNhapDialog extends JDialog {
         });
 
         cboMon.addActionListener(e -> {
-            // THÊM: Cập nhật LoaiMon và ẩn/hiện cột
-            updateColumnVisibility();
-
+            updateColumnVisibility(); // Giữ nguyên
+            
             int idx = cboLop.getSelectedIndex();
             if (idx <= 0)
                 return;
@@ -471,7 +485,6 @@ public class DiemNhapDialog extends JDialog {
             }
         });
 
-        // when year selection changes, reload existing scores overlay
         cboNamHoc.addActionListener(e -> {
             int idx = cboLop.getSelectedIndex();
             if (idx <= 0)
