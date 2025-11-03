@@ -9309,6 +9309,57 @@ VALUES (5, 1),
 -- JOIN TaiKhoan_HocSinh tkhs ON tkhs.MaTK = tk.MaTK
 -- JOIN HocSinh hs ON hs.MaHS = tkhs.MaHS;
 
+-- Đảm bảo bạn đang dùng đúng database
+USE QLHS;
+
+-- Chèn các bản ghi điểm còn thiếu cho tất cả học sinh, tất cả các môn, cả 2 học kỳ
+INSERT INTO
+    Diem (
+        MaHS,
+        MaMon,
+        HocKy,
+        MaNK,
+        DiemMieng,
+        Diem15p,
+        DiemGiuaKy,
+        DiemCuoiKy
+    )
+SELECT
+    missing.MaHS,
+    missing.MaMon,
+    missing.HocKy,
+    missing.MaNK,
+    -- Tạo điểm ngẫu nhiên từ 5.0 đến 10.0, làm tròn 1 chữ số
+    ROUND(5.0 + RAND() * 5.0, 1) AS DiemMieng,
+    ROUND(5.0 + RAND() * 5.0, 1) AS Diem15p,
+    ROUND(5.0 + RAND() * 5.0, 1) AS DiemGiuaKy,
+    ROUND(5.0 + RAND() * 5.0, 1) AS DiemCuoiKy
+FROM (
+        -- 1. Tạo tất cả các kết hợp (MaHS, MaMon, HocKy, MaNK) có thể có
+        SELECT all_combos.MaHS, all_combos.MaMon, all_combos.HocKy, all_combos.MaNK
+        FROM (
+                SELECT hs.MaHS, mh.MaMon, hk.HocKy, nk.MaNK
+                FROM
+                    HocSinh hs
+                    CROSS JOIN MonHoc mh
+                    CROSS JOIN (
+                        SELECT 1 AS HocKy
+                        UNION
+                        SELECT 2 AS HocKy
+                    ) hk
+                    CROSS JOIN NienKhoa nk
+                WHERE
+                    nk.MaNK = 1 -- Chỉ thêm cho niên khóa 1 (2024-2025)
+            ) AS all_combos
+            -- 2. Loại bỏ những kết hợp đã tồn tại trong bảng Diem
+            LEFT JOIN Diem d ON all_combos.MaHS = d.MaHS
+            AND all_combos.MaMon = d.MaMon
+            AND all_combos.HocKy = d.HocKy
+            AND all_combos.MaNK = d.MaNK
+        WHERE
+            d.MaDiem IS NULL -- Chỉ lấy những bản ghi còn thiếu
+    ) AS missing;
+
 -- Bước 1: Thêm cột vào MonHoc để phân loại môn
 ALTER TABLE MonHoc
 ADD COLUMN LoaiMon ENUM('TinhDiem', 'DanhGia') NOT NULL DEFAULT 'TinhDiem' COMMENT 'TinhDiem = Môn tính điểm số, DanhGia = Môn chỉ đánh giá Đ/KĐ';
@@ -9326,3 +9377,98 @@ WHERE
 -- Bước 2: Thêm cột vào Diem để lưu kết quả Đ/KĐ
 ALTER TABLE Diem
 ADD COLUMN KetQuaDanhGia ENUM('Đ', 'KĐ') DEFAULT NULL COMMENT 'Chỉ dùng cho các môn có LoaiMon = DanhGia';
+
+-- Đảm bảo bạn đang dùng đúng database
+USE QLHS;
+
+-- === PHẦN 1: ĐIỀN ĐIỂM SỐ CHO CÁC MÔN TÍNH ĐIỂM ===
+INSERT INTO
+    Diem (
+        MaHS,
+        MaMon,
+        HocKy,
+        MaNK,
+        DiemMieng,
+        Diem15p,
+        DiemGiuaKy,
+        DiemCuoiKy
+    )
+SELECT
+    missing.MaHS,
+    missing.MaMon,
+    missing.HocKy,
+    missing.MaNK,
+    -- Điểm số ngẫu nhiên
+    ROUND(5.0 + RAND() * 5.0, 1) AS DiemMieng,
+    ROUND(5.0 + RAND() * 5.0, 1) AS Diem15p,
+    ROUND(5.0 + RAND() * 5.0, 1) AS DiemGiuaKy,
+    ROUND(5.0 + RAND() * 5.0, 1) AS DiemCuoiKy
+FROM (
+        SELECT all_combos.MaHS, all_combos.MaMon, all_combos.HocKy, all_combos.MaNK
+        FROM (
+                SELECT hs.MaHS, mh.MaMon, hk.HocKy, nk.MaNK
+                FROM HocSinh hs
+                    -- Chỉ join với các môn TinhDiem
+                    CROSS JOIN (
+                        SELECT MaMon
+                        FROM MonHoc
+                        WHERE
+                            LoaiMon = 'TinhDiem'
+                    ) mh
+                    CROSS JOIN (
+                        SELECT 1 AS HocKy
+                        UNION
+                        SELECT 2 AS HocKy
+                    ) hk
+                    CROSS JOIN NienKhoa nk
+                WHERE
+                    nk.MaNK = 1
+            ) AS all_combos
+            LEFT JOIN Diem d ON all_combos.MaHS = d.MaHS
+            AND all_combos.MaMon = d.MaMon
+            AND all_combos.HocKy = d.HocKy
+            AND all_combos.MaNK = d.MaNK
+        WHERE
+            d.MaDiem IS NULL
+    ) AS missing;
+
+-- === PHẦN 2: ĐIỀN KẾT QUẢ Đ/KĐ CHO CÁC MÔN ĐÁNH GIÁ ===
+INSERT INTO
+    Diem (
+        MaHS,
+        MaMon,
+        HocKy,
+        MaNK,
+        KetQuaDanhGia
+    )
+SELECT missing.MaHS, missing.MaMon, missing.HocKy, missing.MaNK,
+    -- Ngẫu nhiên Đ hoặc KĐ (90% là Đ)
+    IF(RAND() < 0.9, 'Đ', 'KĐ') AS KetQuaDanhGia
+FROM (
+        SELECT all_combos.MaHS, all_combos.MaMon, all_combos.HocKy, all_combos.MaNK
+        FROM (
+                SELECT hs.MaHS, mh.MaMon, hk.HocKy, nk.MaNK
+                FROM HocSinh hs
+                    -- Chỉ join với các môn DanhGia
+                    CROSS JOIN (
+                        SELECT MaMon
+                        FROM MonHoc
+                        WHERE
+                            LoaiMon = 'DanhGia'
+                    ) mh
+                    CROSS JOIN (
+                        SELECT 1 AS HocKy
+                        UNION
+                        SELECT 2 AS HocKy
+                    ) hk
+                    CROSS JOIN NienKhoa nk
+                WHERE
+                    nk.MaNK = 1
+            ) AS all_combos
+            LEFT JOIN Diem d ON all_combos.MaHS = d.MaHS
+            AND all_combos.MaMon = d.MaMon
+            AND all_combos.HocKy = d.HocKy
+            AND all_combos.MaNK = d.MaNK
+        WHERE
+            d.MaDiem IS NULL
+    ) AS missing;
