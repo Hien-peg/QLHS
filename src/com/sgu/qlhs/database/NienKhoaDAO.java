@@ -28,4 +28,24 @@ public class NienKhoaDAO {
         }
         return 1;
     }
+
+    /**
+     * === MỚI: Thêm hàm này ===
+     * Lấy chuỗi NamHoc (vd: "2024-2025") từ MaNK
+     */
+    public String getNamHocStringByMaNK(int maNK) {
+        String sql = "SELECT CONCAT(NamBatDau, '-', NamKetThuc) AS NamHoc FROM NienKhoa WHERE MaNK = ?";
+        try (Connection conn = DatabaseConnection.getConnection();
+                PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, maNK);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getString("NamHoc");
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Lỗi khi lấy NamHoc string: " + e.getMessage());
+        }
+        return null; // Trả về null nếu không tìm thấy
+    }
 }

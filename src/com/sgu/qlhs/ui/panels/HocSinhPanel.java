@@ -60,8 +60,7 @@ public class HocSinhPanel extends JPanel {
 
         cboHsLop = new JComboBox<>();
         cboHsLop.setBorder(BorderFactory.createTitledBorder("Lớp"));
-        // populate lớp options; if logged-in user is a teacher, restrict to classes
-        // they teach
+        
         try {
             java.awt.Window w = SwingUtilities.getWindowAncestor(this);
             if (w instanceof com.sgu.qlhs.ui.MainDashboard) {
@@ -71,16 +70,20 @@ public class HocSinhPanel extends JPanel {
                     cboHsLop.addItem("Tất cả");
                     LopBUS lopBUS = new LopBUS();
                     PhanCongDayBUS pc = new PhanCongDayBUS();
-                    int maNK = NienKhoaBUS.current();
-                    // no hoc ky filter here (show all classes assigned across HKs)
-                    java.util.List<Integer> lopIds = pc.getDistinctMaLopByGiaoVien(nd.getId(), maNK, null);
+                    
+                    // === PHẦN SỬA ===
+                    String namHoc = NienKhoaBUS.currentNamHoc(); // Lấy chuỗi năm học
+                    // Lấy tất cả lớp GV dạy trong năm học (cả 2 học kỳ)
+                    java.util.List<Integer> lopIds = pc.getDistinctMaLopByGiaoVien(nd.getId(), namHoc, null);
+                    // === KẾT THÚC PHẦN SỬA ===
+
                     for (Integer ml : lopIds) {
                         com.sgu.qlhs.dto.LopDTO l = lopBUS.getLopByMa(ml);
                         if (l != null)
                             cboHsLop.addItem(l.getTenLop());
                     }
                 } else {
-                    // not a teacher: show all classes
+                    // ... (phần code else giữ nguyên) ...
                     cboHsLop.addItem("Tất cả");
                     cboHsLop.addItem("10A1");
                     cboHsLop.addItem("10A2");
@@ -88,6 +91,7 @@ public class HocSinhPanel extends JPanel {
                     cboHsLop.addItem("12A1");
                 }
             } else {
+                // ... (phần code else giữ nguyên) ...
                 cboHsLop.addItem("Tất cả");
                 cboHsLop.addItem("10A1");
                 cboHsLop.addItem("10A2");
@@ -97,7 +101,8 @@ public class HocSinhPanel extends JPanel {
         } catch (Exception ex) {
             cboHsLop.addItem("Tất cả");
         }
-
+        
+        // ... (Phần còn lại của hàm buildFilter() giữ nguyên) ...
         cboHsGioiTinh = new JComboBox<>(new String[] { "Tất cả", "Nam", "Nữ", "Khác" });
         cboHsGioiTinh.setBorder(BorderFactory.createTitledBorder("Giới tính"));
 

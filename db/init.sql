@@ -9473,3 +9473,50 @@ FROM (
         WHERE
             d.MaDiem IS NULL
     ) AS missing;
+    
+    USE QLHS;
+
+INSERT INTO PhanCongDay (
+    MaGV, 
+    MaLop, 
+    MaMon, 
+    MaPhong, 
+    HocKy, 
+    NamHoc
+)
+SELECT
+    -- Chọn một MaGV ngẫu nhiên từ bảng GiaoVien
+    (SELECT MaGV FROM GiaoVien ORDER BY RAND() LIMIT 1) AS MaGV, 
+    
+    all_combos.MaLop, 
+    all_combos.MaMon, 
+    
+    -- Lấy MaPhong mặc định đã gán cho Lớp đó
+    all_combos.MaPhong, 
+    
+    all_combos.HocKy, 
+    all_combos.NamHoc
+FROM
+(
+    -- 1. Tạo tất cả tổ hợp Lớp x Môn x Học Kỳ x Năm Học
+    SELECT
+        l.MaLop,
+        l.MaPhong,
+        m.MaMon,
+        hk.HocKy,
+        '2024-2025' AS NamHoc
+    FROM
+        Lop l
+    CROSS JOIN
+        MonHoc m
+    CROSS JOIN
+        (SELECT 'HK1' AS HocKy UNION SELECT 'HK2' AS HocKy) hk
+) AS all_combos
+LEFT JOIN
+    -- 2. Kiểm tra xem tổ hợp này đã tồn tại trong PhanCongDay chưa
+    PhanCongDay pcd ON all_combos.MaLop = pcd.MaLop
+                   AND all_combos.MaMon = pcd.MaMon
+                   AND all_combos.HocKy = pcd.HocKy
+                   AND all_combos.NamHoc = pcd.NamHoc
+WHERE
+    pcd.MaPCD IS NULL; -- 3. Chỉ chèn những tổ hợp còn thiếu

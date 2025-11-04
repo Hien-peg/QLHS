@@ -22,6 +22,8 @@ import com.sgu.qlhs.bus.MonBUS;
 import com.sgu.qlhs.dto.HanhKiemDTO;
 import com.sgu.qlhs.bus.PhanCongDayBUS;
 import com.sgu.qlhs.dto.NguoiDungDTO;
+// THÊM: Import NienKhoaBUS
+import com.sgu.qlhs.bus.NienKhoaBUS;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -36,29 +38,24 @@ import javax.swing.filechooser.FileNameExtensionFilter;
  * (ĐÃ CẬP NHẬT ĐỂ HỖ TRỢ MÔN ĐÁNH GIÁ Đ/KĐ)
  */
 public class BangDiemChiTietDialog extends JDialog {
+    // ... (Giữ nguyên các biến thành viên) ...
     private final JComboBox<String> cboHocSinh = new JComboBox<>();
     private final JComboBox<String> cboLop = new JComboBox<>();
     private final JComboBox<String> cboHocKy = new JComboBox<>(new String[] { "Học kỳ 1", "Học kỳ 2" });
     private final JComboBox<String> cboNamHoc = new JComboBox<>();
-    // map combo index -> MaNK
     private java.util.List<Integer> nienKhoaIds = new java.util.ArrayList<>();
     private JPanel pnlBangDiem;
     private DefaultTableModel model;
     private JTable table;
     private boolean tableEditing = false;
-    // current context for save
     private int currentMaHS = -1;
     private int currentHocKy = -1;
     private int currentMaNK = -1;
-    // THAY ĐỔI: Lưu trữ DTO đầy đủ (chứa LoaiMon)
     private java.util.List<DiemDTO> currentDiemList = new java.util.ArrayList<>();
-    // teacher comment area (nhận xét chung cho học sinh trong HK/NK)
     private javax.swing.JTextArea txtNhanXet;
     private String currentNhanXet = "";
-    // editable hạnh kiểm control (merged with main 'Sửa' action)
     private JComboBox<String> cboHanhKiemEditor;
     private JLabel lblHanhKiemValue;
-
     private String tenHocSinh = "";
     private String tenTruong = "ĐẠI HỌC SÀI GÒN - SGU";
     private String diaPhuong = "SỞ GD&ĐT HỒ CHÍ MINH";
@@ -67,28 +64,18 @@ public class BangDiemChiTietDialog extends JDialog {
     private final DiemBUS diemBUS = new DiemBUS();
     private final HanhKiemBUS hanhKiemBUS = new HanhKiemBUS();
     private final PhanCongDayBUS phanCongBUS = new PhanCongDayBUS();
-    // THÊM MONBUS
     private final MonBUS monBUS = new MonBUS();
-    // map combo index -> MaLop
     private java.util.List<Integer> lopIds = new java.util.ArrayList<>();
     private boolean suppressLopAction = false;
     private boolean suppressHocSinhAction = false;
-    // student view flags (when the logged-in user is a student)
     private boolean isStudentView = false;
     private int loggedInStudentMaHS = -1;
-    // teacher view flag (when the logged-in user is a teacher)
     private boolean isTeacherView = false;
-    // toolbar buttons that need to be enabled/disabled based on permissions
     private JButton btnEdit;
     private JButton btnSave;
     private JButton btnCancel;
-    // optional initial class context (MaLop). If >=0, the dialog will try to
-    // preselect it
     private int initialMaLopContext = -1;
-    // optional initial student context (MaHS). If >=0, the dialog will try to
-    // preselect that student
     private int initialMaHS = -1;
-    // per-row edit mask computed for the currently loaded diem rows
     private java.util.List<Boolean> rowCanEditList = new java.util.ArrayList<>();
 
     public BangDiemChiTietDialog(Window owner) {
@@ -481,14 +468,22 @@ public class BangDiemChiTietDialog extends JDialog {
                 com.sgu.qlhs.ui.MainDashboard md = (com.sgu.qlhs.ui.MainDashboard) w;
                 com.sgu.qlhs.dto.NguoiDungDTO nd = md.getNguoiDung();
                 if (nd != null && "giao_vien".equalsIgnoreCase(nd.getVaiTro())) {
+                    
+                    // === PHẦN SỬA ===
                     int maNK = com.sgu.qlhs.bus.NienKhoaBUS.current();
                     int selNk = cboNamHoc.getSelectedIndex();
                     if (selNk >= 0 && selNk < nienKhoaIds.size())
                         maNK = nienKhoaIds.get(selNk);
+                    String namHoc = (new NienKhoaBUS()).getNamHocString(maNK); // Lấy chuỗi năm học
+
                     int hkIdx = cboHocKy.getSelectedIndex();
-                    Integer hkParam = hkIdx >= 0 ? (hkIdx + 1) : null;
-                    java.util.List<Integer> lopIdsAssigned = phanCongBUS.getDistinctMaLopByGiaoVien(nd.getId(), maNK,
+                    // Chuyển Integer (0, 1) -> String ("HK1", "HK2")
+                    String hkParam = (hkIdx >= 0) ? ("HK" + (hkIdx + 1)) : null; 
+                    
+                    java.util.List<Integer> lopIdsAssigned = phanCongBUS.getDistinctMaLopByGiaoVien(nd.getId(), namHoc,
                             hkParam);
+                    // === KẾT THÚC PHẦN SỬA ===
+
                     java.util.List<com.sgu.qlhs.dto.LopDTO> list = lopBUS.getAllLop();
                     for (com.sgu.qlhs.dto.LopDTO l : list) {
                         if (lopIdsAssigned.contains(l.getMaLop())) {
@@ -500,7 +495,7 @@ public class BangDiemChiTietDialog extends JDialog {
                         cboLop.setSelectedIndex(0);
                     return;
                 }
-                // If current user is a student, show only their class and student entry
+                // ... (Phần code cho "hoc_sinh" giữ nguyên) ...
                 if (nd != null && "hoc_sinh".equalsIgnoreCase(nd.getVaiTro())) {
                     try {
                         int maHS = nd.getId();

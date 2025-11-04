@@ -12,6 +12,8 @@ import com.sgu.qlhs.ui.components.BarChartCanvas;
 import com.sgu.qlhs.bus.HocSinhBUS;
 import com.sgu.qlhs.bus.LopBUS;
 import com.sgu.qlhs.bus.PhanCongDayBUS;
+// THÊM: Import NienKhoaBUS
+import com.sgu.qlhs.bus.NienKhoaBUS;
 import com.sgu.qlhs.dto.HocSinhDTO;
 import com.sgu.qlhs.dto.NguoiDungDTO;
 import com.sgu.qlhs.dto.LopDTO;
@@ -40,12 +42,20 @@ public class ThongKeGioiTinhDialog extends JDialog {
                     com.sgu.qlhs.ui.MainDashboard md = (com.sgu.qlhs.ui.MainDashboard) w;
                     NguoiDungDTO nd = md.getNguoiDung();
                     if (nd != null && "giao_vien".equalsIgnoreCase(nd.getVaiTro())) {
-                        int maNK = com.sgu.qlhs.bus.NienKhoaBUS.current();
+                        
+                        // === SỬA LỖI: Lấy NamHoc (String) thay vì MaNK (int) ===
+                        String namHoc = NienKhoaBUS.currentNamHoc(); // Lấy chuỗi năm học
+                        // =======================================================
+
                         // get assigned class ids and map them to names
                         PhanCongDayBUS phanCong = new PhanCongDayBUS();
                         LopBUS lopBus = new LopBUS();
-                        java.util.List<Integer> assigned = phanCong.getDistinctMaLopByGiaoVien(nd.getId(), maNK,
+                        
+                        // === SỬA LỖI: Truyền namHoc (String) vào hàm ===
+                        java.util.List<Integer> assigned = phanCong.getDistinctMaLopByGiaoVien(nd.getId(), namHoc,
                                 null);
+                        // ===============================================
+
                         java.util.Set<String> allowedLopNames = new java.util.HashSet<>();
                         for (Integer ml : assigned) {
                             LopDTO l = lopBus.getLopByMa(ml);
@@ -81,8 +91,8 @@ public class ThongKeGioiTinhDialog extends JDialog {
             // fallback to zeros on error
             System.err.println("Lỗi khi tải dữ liệu học sinh: " + ex.getMessage());
         }
-        String[] cats = { "Nam", "Nữ", "Khác" };
-        int[] vals = { nam, nu, khac };
+        String[] cats = { "Nam", "Nữ"};
+        int[] vals = { nam, nu };
         root.add(new BarChartCanvas("Tỉ lệ giới tính học sinh", cats, vals), BorderLayout.CENTER);
 
         var south = new JPanel(new FlowLayout(FlowLayout.RIGHT));

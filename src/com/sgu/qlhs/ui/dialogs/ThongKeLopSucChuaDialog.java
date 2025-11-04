@@ -17,6 +17,8 @@ import com.sgu.qlhs.bus.LopBUS;
 import com.sgu.qlhs.bus.PhongBUS;
 import com.sgu.qlhs.bus.HocSinhBUS;
 import com.sgu.qlhs.bus.PhanCongDayBUS;
+// THÊM: Import NienKhoaBUS
+import com.sgu.qlhs.bus.NienKhoaBUS;
 import com.sgu.qlhs.dto.NguoiDungDTO;
 import com.sgu.qlhs.dto.LopDTO;
 import com.sgu.qlhs.dto.PhongDTO;
@@ -67,9 +69,17 @@ public class ThongKeLopSucChuaDialog extends JDialog {
                     com.sgu.qlhs.ui.MainDashboard md = (com.sgu.qlhs.ui.MainDashboard) w;
                     NguoiDungDTO nd = md.getNguoiDung();
                     if (nd != null && "giao_vien".equalsIgnoreCase(nd.getVaiTro())) {
-                        int maNK = com.sgu.qlhs.bus.NienKhoaBUS.current();
+                        
+                        // === SỬA LỖI: Lấy NamHoc (String) thay vì MaNK (int) ===
+                        String namHoc = NienKhoaBUS.currentNamHoc(); // Lấy chuỗi năm học
+                        // =======================================================
+                        
                         PhanCongDayBUS pBus = new PhanCongDayBUS();
-                        java.util.List<Integer> assigned = pBus.getDistinctMaLopByGiaoVien(nd.getId(), maNK, null);
+                        
+                        // === SỬA LỖI: Truyền namHoc (String) vào hàm ===
+                        java.util.List<Integer> assigned = pBus.getDistinctMaLopByGiaoVien(nd.getId(), namHoc, null);
+                        // ===============================================
+
                         allowedLopIds = new java.util.HashSet<>(assigned);
                     }
                 }
