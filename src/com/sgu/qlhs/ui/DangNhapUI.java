@@ -9,9 +9,9 @@ import java.awt.*;
 /**
  * Màn hình đăng nhập hệ thống QLHS
  * Bổ sung:
- *  - Kiểm tra phân quyền GVCN (ưu tiên trước giáo viên thường)
- *  - Mở đúng Dashboard theo vai trò
- *  - Hỗ trợ đăng xuất quay lại giao diện này
+ * - Kiểm tra phân quyền GVCN (ưu tiên trước giáo viên thường)
+ * - Mở đúng Dashboard theo vai trò
+ * - Hỗ trợ đăng xuất quay lại giao diện này
  */
 public class DangNhapUI extends JFrame {
 
@@ -140,16 +140,27 @@ public class DangNhapUI extends JFrame {
 
                     case "giao_vien" -> {
                         System.out.println(">> Kiểm tra giáo viên có là GVCN không...");
-                        ChuNhiemBUS cnBus = new ChuNhiemBUS();
-                        ChuNhiemDTO cn = cnBus.getChuNhiemByGV(nd.getId());
+                        
+                        // === SỬA LỖI LOGIC: Kiểm tra tên đăng nhập ===
+                        // Nếu tên đăng nhập bắt đầu bằng "cn", VÀ họ CÓ chủ nhiệm
+                        if (nd.getTenDangNhap().startsWith("cn")) {
+                            ChuNhiemBUS cnBus = new ChuNhiemBUS();
+                            ChuNhiemDTO cn = cnBus.getChuNhiemByGV(nd.getId()); // Kiểm tra xem có gán CN thật không
 
-                        if (cn != null) {
-                            System.out.println(">> Là GVCN của lớp " + cn.getMaLop());
-                            new ChuNhiemDashboard(nd, cn).setVisible(true);
+                            if (cn != null) {
+                                System.out.println(">> Là GVCN của lớp " + cn.getMaLop());
+                                new ChuNhiemDashboard(nd, cn).setVisible(true);
+                            } else {
+                                // Đăng nhập "cn" nhưng không gán -> Vẫn vào GVBM
+                                System.out.println(">> (Lỗi) Đăng nhập 'cn' nhưng không tìm thấy gán chủ nhiệm. Vào GiaoVienDashboard.");
+                                new GiaoVienDashboard(nd).setVisible(true);
+                            }
                         } else {
+                            // Tên đăng nhập là "gv" hoặc khác -> Vào GVBM
                             System.out.println(">> Là giáo viên bộ môn");
                             new GiaoVienDashboard(nd).setVisible(true);
                         }
+                        // === KẾT THÚC SỬA LỖI ===
                     }
 
                     case "hoc_sinh" -> {

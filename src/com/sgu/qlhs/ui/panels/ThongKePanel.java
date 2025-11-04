@@ -6,24 +6,32 @@ import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import static com.sgu.qlhs.ui.MainDashboard.*;
 
+// === IMPORT THÊM ===
 import com.sgu.qlhs.dto.NguoiDungDTO;
 import com.sgu.qlhs.ui.MainDashboard;
+import com.sgu.qlhs.ui.ChuNhiemDashboard;
+import com.sgu.qlhs.dto.ChuNhiemDTO;
 import com.sgu.qlhs.bus.DiemBUS;
 import com.sgu.qlhs.bus.HocSinhBUS;
 import com.sgu.qlhs.bus.NienKhoaBUS;
 import com.sgu.qlhs.bus.LopBUS;
 import com.sgu.qlhs.bus.PhanCongDayBUS;
+import com.sgu.qlhs.bus.MonBUS; 
 import com.sgu.qlhs.dto.DiemDTO;
 import com.sgu.qlhs.dto.HocSinhDTO;
-import com.sgu.qlhs.dto.LopDTO; 
+import com.sgu.qlhs.dto.LopDTO;
+import com.sgu.qlhs.dto.MonHocDTO; 
+import com.sgu.qlhs.dto.PhanCongDayDTO;
 import java.awt.event.HierarchyListener;
 import java.awt.event.HierarchyEvent;
 import java.util.List;
 import java.util.ArrayList;
+import java.util.Arrays; // Thêm import
 import java.util.Map;
 import java.util.HashMap;
 import java.util.Comparator;
 import java.util.stream.Collectors;
+// ===================
 
 public class ThongKePanel extends JPanel {
 
@@ -32,22 +40,28 @@ public class ThongKePanel extends JPanel {
     private int currentMaHS = -1;
     private HocSinhDTO currentHocSinh;
 
-    // === SỬA: Thêm các component cho Giáo viên ===
+    // === Component dùng chung ===
     private JComboBox<String> cboThongKe;
     private JComboBox<String> cboHocKy;
-    private JComboBox<LopDTO> cboLopGV; // Combobox lớp cho giáo viên
-    private JPanel chartContainer; // Panel chính để chứa CardLayout
+    private JComboBox<LopDTO> cboLopGV; // Dùng cho cả GVBM và GVCN
+    private JComboBox<MonHocDTO> cboMonGVBM; // Chỉ dùng cho GVBM
+    private JComboBox<MonHocDTO> cboMonGVCN; // Mới: Chỉ dùng cho GVCN
+    private JPanel chartContainer;
     private CardLayout chartCards;
 
     private DiemBUS diemBUS;
     private HocSinhBUS hocSinhBUS;
     private LopBUS lopBUS;
     private PhanCongDayBUS phanCongBUS;
-    private List<LopDTO> lopListGV; // Danh sách lớp giáo viên được phân công
+    private List<LopDTO> lopListGV;
 
     // Card keys
-    private final String CARD_GV_XEPLOAI = "GV_XEPLOAI";
-    private final String CARD_GV_PHODIEM = "GV_PHODIEM";
+    private final String CARD_GVCN_XEPLOAI = "GVCN_XEPLOAI";
+    private final String CARD_GVCN_PHODIEM_CHUNG = "GVCN_PHODIEM_CHUNG";
+    private final String CARD_GVCN_PHODIEM_MON = "GVCN_PHODIEM_MON"; // Mới
+    private final String CARD_GVCN_DANHGIA_MON = "GVCN_DANHGIA_MON"; // Mới
+    private final String CARD_GVBM_PHODIEM_MON = "GVBM_PHODIEM_MON";
+    private final String CARD_GVBM_DANHGIA = "GVBM_DANHGIA";
     private final String CARD_RANKING = "RANKING";
     private final String CARD_AVERAGES = "AVERAGES";
     private final String CARD_ADMIN = "ADMIN_DEFAULT";
@@ -69,7 +83,6 @@ public class ThongKePanel extends JPanel {
                     
                     currentUser = md.getNguoiDung();
 
-                    // === SỬA: Phân nhánh 3 vai trò ===
                     if (currentUser != null) {
                         String vaiTro = currentUser.getVaiTro();
                         if ("hoc_sinh".equalsIgnoreCase(vaiTro)) {
@@ -78,7 +91,11 @@ public class ThongKePanel extends JPanel {
                             initStudentView();
                         } else if ("giao_vien".equalsIgnoreCase(vaiTro)) {
                             isStudentView = false;
-                            initTeacherView(); // Giao diện mới cho giáo viên
+                            if (md instanceof ChuNhiemDashboard) {
+                                initChuNhiemView((ChuNhiemDashboard) md); // Giao diện GVCN
+                            } else {
+                                initTeacherView(); // Giao diện GVBM
+                            }
                         } else {
                             isStudentView = false;
                             initAdminView(); // Giao diện cho Admin
@@ -87,7 +104,6 @@ public class ThongKePanel extends JPanel {
                         isStudentView = false;
                         initAdminView(); // Mặc định
                     }
-                    // ==================================
                     
                     removeHierarchyListener(this);
                 }
@@ -96,7 +112,7 @@ public class ThongKePanel extends JPanel {
     }
 
     /**
-     * Giao diện cho Admin (tách ra từ initAdminGiaoVienView)
+     * Giao diện cho Admin
      */
     private void initAdminView() {
         this.removeAll(); 
@@ -108,10 +124,12 @@ public class ThongKePanel extends JPanel {
         lbl.setFont(lbl.getFont().deriveFont(Font.BOLD, 18f));
         outer.add(lbl, BorderLayout.NORTH);
 
-        // TODO: Dữ liệu giới tính này nên được tải động từ HocSinhBUS
         String[] cats = { "Nam", "Nữ" };
-        int[] values = { 58, 42 };
-        var chart = new BarChartCanvas("Tỉ lệ giới tính học sinh", cats, values);
+        int[] values = { 58, 42 }; 
+        // === SỬA: Ép kiểu sang double[] ===
+        double[] doubleValues = Arrays.stream(values).asDoubleStream().toArray();
+        var chart = new BarChartCanvas("Tỉ lệ giới tính học sinh", cats, doubleValues);
+        // =================================
         outer.add(chart, BorderLayout.CENTER);
 
         this.add(outer, BorderLayout.CENTER);
@@ -120,12 +138,88 @@ public class ThongKePanel extends JPanel {
     }
 
     /**
-     * Giao diện mới cho Giáo viên
+     * Giao diện mới cho Giáo viên Chủ nhiệm (GVCN)
+     */
+    private void initChuNhiemView(ChuNhiemDashboard dashboard) {
+        this.removeAll();
+
+        diemBUS = new DiemBUS();
+        hocSinhBUS = new HocSinhBUS();
+        lopBUS = new LopBUS();
+        phanCongBUS = new PhanCongDayBUS();
+
+        ChuNhiemDTO cnInfo = dashboard.getChuNhiemInfo();
+        if (cnInfo == null) {
+            add(new JLabel("Lỗi: Không tìm thấy thông tin chủ nhiệm."));
+            return;
+        }
+        LopDTO lopCN = lopBUS.getLopByMa(cnInfo.getMaLop());
+
+        var outer = new RoundedPanel(18, CARD_BG, CARD_BORDER);
+        outer.setLayout(new BorderLayout());
+
+        var lbl = new JLabel("Thống kê Lớp Chủ nhiệm: " + lopCN.getTenLop());
+        lbl.setBorder(new EmptyBorder(12, 16, 8, 16));
+        lbl.setFont(lbl.getFont().deriveFont(Font.BOLD, 18f));
+
+        JPanel topPanel = new JPanel(new BorderLayout());
+        topPanel.setOpaque(false);
+        topPanel.setBorder(new EmptyBorder(5, 12, 5, 12));
+        
+        JPanel filterPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
+        filterPanel.setOpaque(false);
+
+        cboLopGV = new JComboBox<>(new LopDTO[]{ lopCN });
+        cboLopGV.setSelectedItem(lopCN);
+        cboLopGV.setEnabled(false); 
+        filterPanel.add(new JLabel("Lớp:"));
+        filterPanel.add(cboLopGV);
+        
+        filterPanel.add(new JLabel("Loại thống kê:"));
+        cboThongKe = new JComboBox<>(new String[]{
+                "Phân loại Học lực (TB Chung)", 
+                "Phổ điểm TB Chung (0-10)",
+                "Phổ điểm theo Từng môn"
+        });
+        filterPanel.add(cboThongKe);
+
+        filterPanel.add(new JLabel("Học kỳ:"));
+        cboHocKy = new JComboBox<>(new String[]{"Học kỳ 1", "Học kỳ 2"});
+        filterPanel.add(cboHocKy);
+
+        filterPanel.add(new JLabel("Chọn môn:"));
+        cboMonGVCN = new JComboBox<>();
+        loadAllMonOptions(cboMonGVCN); 
+        filterPanel.add(cboMonGVCN);
+
+        topPanel.add(lbl, BorderLayout.NORTH);
+        topPanel.add(filterPanel, BorderLayout.CENTER);
+        outer.add(topPanel, BorderLayout.NORTH);
+
+        chartCards = new CardLayout();
+        chartContainer = new JPanel(chartCards);
+        chartContainer.setOpaque(false);
+        chartContainer.setBorder(new EmptyBorder(10, 10, 10, 10));
+        chartContainer.add(new JLabel("Đang tải...", SwingConstants.CENTER), CARD_EMPTY);
+        outer.add(chartContainer, BorderLayout.CENTER);
+        
+        this.add(outer, BorderLayout.CENTER);
+
+        cboThongKe.addActionListener(e -> loadGvcnChart());
+        cboHocKy.addActionListener(e -> loadGvcnChart());
+        cboMonGVCN.addActionListener(e -> loadGvcnChart()); 
+        loadGvcnChart();
+        
+        this.revalidate();
+        this.repaint();
+    }
+
+    /**
+     * Giao diện mới cho Giáo viên Bộ môn (GVBM)
      */
     private void initTeacherView() {
         this.removeAll();
 
-        // Khởi tạo BUS
         diemBUS = new DiemBUS();
         hocSinhBUS = new HocSinhBUS();
         lopBUS = new LopBUS();
@@ -134,12 +228,10 @@ public class ThongKePanel extends JPanel {
         var outer = new RoundedPanel(18, CARD_BG, CARD_BORDER);
         outer.setLayout(new BorderLayout());
 
-        // Tiêu đề
-        var lbl = new JLabel("Thống kê Lớp");
+        var lbl = new JLabel("Thống kê Môn dạy");
         lbl.setBorder(new EmptyBorder(12, 16, 8, 16));
         lbl.setFont(lbl.getFont().deriveFont(Font.BOLD, 18f));
 
-        // Panel bộ lọc
         JPanel topPanel = new JPanel(new BorderLayout());
         topPanel.setOpaque(false);
         topPanel.setBorder(new EmptyBorder(5, 12, 5, 12));
@@ -149,16 +241,13 @@ public class ThongKePanel extends JPanel {
 
         filterPanel.add(new JLabel("Lớp dạy:"));
         cboLopGV = new JComboBox<>();
-        loadTeacherLopOptions(); // Tải các lớp GV dạy
+        loadTeacherLopOptions();
         filterPanel.add(cboLopGV);
         
-        filterPanel.add(new JLabel("Loại thống kê:"));
-        cboThongKe = new JComboBox<>(new String[]{
-                "Phân loại Học lực (Biểu đồ tròn)", 
-                "Phổ điểm TB (Biểu đồ cột)"
-        });
-        filterPanel.add(cboThongKe);
-
+        filterPanel.add(new JLabel("Môn dạy:"));
+        cboMonGVBM = new JComboBox<>();
+        filterPanel.add(cboMonGVBM);
+        
         filterPanel.add(new JLabel("Học kỳ:"));
         cboHocKy = new JComboBox<>(new String[]{"Học kỳ 1", "Học kỳ 2"});
         filterPanel.add(cboHocKy);
@@ -167,41 +256,38 @@ public class ThongKePanel extends JPanel {
         topPanel.add(filterPanel, BorderLayout.CENTER);
         outer.add(topPanel, BorderLayout.NORTH);
 
-        // Panel chứa biểu đồ
         chartCards = new CardLayout();
         chartContainer = new JPanel(chartCards);
         chartContainer.setOpaque(false);
         chartContainer.setBorder(new EmptyBorder(10, 10, 10, 10));
-        chartContainer.add(new JLabel("Vui lòng chọn lớp để xem thống kê.", SwingConstants.CENTER), CARD_EMPTY);
+        chartContainer.add(new JLabel("Vui lòng chọn lớp và môn để xem thống kê.", SwingConstants.CENTER), CARD_EMPTY);
         outer.add(chartContainer, BorderLayout.CENTER);
         
         this.add(outer, BorderLayout.CENTER);
 
-        // Gắn sự kiện
-        cboLopGV.addActionListener(e -> loadTeacherChart());
-        cboThongKe.addActionListener(e -> loadTeacherChart());
-        cboHocKy.addActionListener(e -> loadTeacherChart());
+        cboLopGV.addActionListener(e -> {
+            loadTeacherMonOptions(); 
+            loadGvbmChart(); 
+        });
+        cboMonGVBM.addActionListener(e -> loadGvbmChart());
+        cboHocKy.addActionListener(e -> loadGvbmChart());
 
-        // Tải biểu đồ lần đầu
-        loadTeacherChart();
+        loadTeacherMonOptions();
+        loadGvbmChart();
         
         this.revalidate();
         this.repaint();
     }
     
     /**
-     * Tải danh sách lớp mà giáo viên đang đăng nhập được phân công
+     * (GVBM/GVCN) Tải danh sách lớp mà giáo viên đang đăng nhập được phân công
      */
     private void loadTeacherLopOptions() {
         cboLopGV.removeAllItems();
         int maGV = currentUser.getId();
+        String namHoc = NienKhoaBUS.currentNamHoc();
         
-        // === PHẦN SỬA ===
-        String namHoc = NienKhoaBUS.currentNamHoc(); // Lấy chuỗi năm học
-        
-        // Lấy tất cả lớp GV dạy trong năm học (cả 2 học kỳ)
         List<Integer> maLopList = phanCongBUS.getDistinctMaLopByGiaoVien(maGV, namHoc, null);
-        // === KẾT THÚC PHẦN SỬA ===
         
         if(maLopList == null || maLopList.isEmpty()) {
             cboLopGV.setEnabled(false);
@@ -209,19 +295,92 @@ public class ThongKePanel extends JPanel {
         }
 
         lopListGV = new ArrayList<>();
+        List<LopDTO> allLops = lopBUS.getAllLop();
         for (Integer maLop : maLopList) {
-            LopDTO lop = lopBUS.getLopByMa(maLop);
-            if (lop != null) {
-                lopListGV.add(lop);
-                cboLopGV.addItem(lop); // JComboBox sẽ tự gọi lop.toString()
+            for(LopDTO lop : allLops) {
+                if(lop.getMaLop() == maLop) {
+                    if (!lopListGV.stream().anyMatch(l -> l.getMaLop() == maLop)) {
+                         lopListGV.add(lop);
+                        cboLopGV.addItem(lop); 
+                    }
+                    break;
+                }
             }
         }
+        cboLopGV.setEnabled(true);
     }
 
     /**
-     * Tải biểu đồ cho giáo viên dựa trên các lựa chọn
+     * (GVBM) Tải danh sách MÔN mà GV dạy cho LỚP đã chọn
      */
-    private void loadTeacherChart() {
+    private void loadTeacherMonOptions() {
+        cboMonGVBM.removeAllItems();
+        LopDTO selectedLop = (LopDTO) cboLopGV.getSelectedItem();
+        if (selectedLop == null) {
+            cboMonGVBM.setEnabled(false);
+            return;
+        }
+
+        int maGV = currentUser.getId();
+        int maLop = selectedLop.getMaLop();
+        String namHoc = NienKhoaBUS.currentNamHoc();
+
+        List<PhanCongDayDTO> allPCD = phanCongBUS.getByGV(maGV);
+        if (allPCD == null || allPCD.isEmpty()) {
+            cboMonGVBM.setEnabled(false);
+            return;
+        }
+
+        List<PhanCongDayDTO> pcdHopLe = allPCD.stream()
+                .filter(pcd -> pcd.getMaLop() == maLop && namHoc.equals(pcd.getNamHoc()))
+                .collect(Collectors.toList());
+
+        if (pcdHopLe.isEmpty()) {
+            cboMonGVBM.setEnabled(false);
+            return;
+        }
+
+        MonBUS monBUS = new MonBUS(); 
+        List<MonHocDTO> allMon = monBUS.getAllMon();
+        List<MonHocDTO> monDaThem = new ArrayList<>(); 
+        
+        for (PhanCongDayDTO pcd : pcdHopLe) {
+            for (MonHocDTO mon : allMon) {
+                if (mon.getMaMon() == pcd.getMaMon()) {
+                    if (!monDaThem.stream().anyMatch(m -> m.getMaMon() == mon.getMaMon())) {
+                        cboMonGVBM.addItem(mon);
+                        monDaThem.add(mon);
+                    }
+                    break;
+                }
+            }
+        }
+        cboMonGVBM.setEnabled(true);
+    }
+
+    /**
+     * (GVCN) Tải TẤT CẢ môn học vào combobox
+     */
+    private void loadAllMonOptions(JComboBox<MonHocDTO> cbo) {
+        cbo.removeAllItems();
+        MonBUS monBUS = new MonBUS();
+        List<MonHocDTO> allMon = monBUS.getAllMon();
+        
+        if (allMon == null || allMon.isEmpty()) {
+            cbo.setEnabled(false);
+            return;
+        }
+        
+        for (MonHocDTO mon : allMon) {
+            cbo.addItem(mon);
+        }
+        cbo.setEnabled(true);
+    }
+
+    /**
+     * (GVCN) Tải biểu đồ cho GVCN
+     */
+    private void loadGvcnChart() {
         LopDTO selectedLop = (LopDTO) cboLopGV.getSelectedItem();
         if (selectedLop == null) {
             chartCards.show(chartContainer, CARD_EMPTY);
@@ -233,43 +392,98 @@ public class ThongKePanel extends JPanel {
         int maNK = NienKhoaBUS.current();
         int maLop = selectedLop.getMaLop();
 
-        String cardKey = maLop + "_" + loaiTK + "_" + hocKy;
-
-        // Lấy danh sách điểm TBHK của cả lớp
-        List<Double> dsDiemTBHK = tinhDiemTBHKChoLop(maLop, hocKy, maNK);
-
-        if (dsDiemTBHK.isEmpty()) {
-            chartContainer.add(new JLabel("Lớp chưa có dữ liệu điểm học kỳ " + hocKy, SwingConstants.CENTER), cardKey);
-            chartCards.show(chartContainer, cardKey);
-            return;
+        if ("Phổ điểm theo Từng môn".equals(loaiTK)) {
+            cboMonGVCN.setVisible(true);
+        } else {
+            cboMonGVCN.setVisible(false);
         }
-
-        if ("Phân loại Học lực (Biểu đồ tròn)".equals(loaiTK)) {
+        
+        if ("Phân loại Học lực (TB Chung)".equals(loaiTK)) {
+            String cardKey = "GVCN_XEPLOAI_" + maLop + "_" + hocKy;
+            List<Double> dsDiemTBHK = tinhDiemTBHKChoLop(maLop, hocKy, maNK);
+             if (dsDiemTBHK.isEmpty()) {
+                chartContainer.add(new JLabel("Lớp chưa có dữ liệu điểm học kỳ " + hocKy, SwingConstants.CENTER), cardKey);
+                chartCards.show(chartContainer, cardKey);
+                return;
+            }
             JComponent chart = createHocLucPieChart(dsDiemTBHK);
             chartContainer.add(chart, cardKey);
             chartCards.show(chartContainer, cardKey);
-        } else if ("Phổ điểm TB (Biểu đồ cột)".equals(loaiTK)) {
-            JComponent chart = createPhoDiemBarChart(dsDiemTBHK);
+
+        } else if ("Phổ điểm TB Chung (0-10)".equals(loaiTK)) {
+            String cardKey = "GVCN_PHODIEM_CHUNG_" + maLop + "_" + hocKy;
+            List<Double> dsDiemTBHK = tinhDiemTBHKChoLop(maLop, hocKy, maNK);
+             if (dsDiemTBHK.isEmpty()) {
+                chartContainer.add(new JLabel("Lớp chưa có dữ liệu điểm học kỳ " + hocKy, SwingConstants.CENTER), cardKey);
+                chartCards.show(chartContainer, cardKey);
+                return;
+            }
+            JComponent chart = createPhoDiemTBChungChart(dsDiemTBHK);
+            chartContainer.add(chart, cardKey);
+            chartCards.show(chartContainer, cardKey);
+
+        } else if ("Phổ điểm theo Từng môn".equals(loaiTK)) {
+            MonHocDTO selectedMon = (MonHocDTO) cboMonGVCN.getSelectedItem();
+            if (selectedMon == null) {
+                chartCards.show(chartContainer, CARD_EMPTY);
+                return;
+            }
+            int maMon = selectedMon.getMaMon();
+            String cardKey = "GVCN_MON_" + maLop + "_" + maMon + "_" + hocKy;
+
+            if ("DanhGia".equals(selectedMon.getLoaiMon())) {
+                JComponent chart = createDanhGiaBarChart(maLop, maMon, hocKy, maNK, selectedMon.getTenMon());
+                chartContainer.add(chart, cardKey);
+                chartCards.show(chartContainer, cardKey);
+            } else {
+                JComponent chart = createPhoDiemMonBarChart(maLop, maMon, hocKy, maNK, selectedMon.getTenMon());
+                chartContainer.add(chart, cardKey);
+                chartCards.show(chartContainer, cardKey);
+            }
+        }
+    }
+
+    /**
+     * (GVBM) Tải biểu đồ Phổ điểm MÔN HỌC
+     */
+    private void loadGvbmChart() {
+        LopDTO selectedLop = (LopDTO) cboLopGV.getSelectedItem();
+        MonHocDTO selectedMon = (MonHocDTO) cboMonGVBM.getSelectedItem();
+        
+        if (selectedLop == null || selectedMon == null) {
+            chartCards.show(chartContainer, CARD_EMPTY);
+            return;
+        }
+        
+        int hocKy = (cboHocKy.getSelectedIndex() == 0) ? 1 : 2;
+        int maNK = NienKhoaBUS.current();
+        int maLop = selectedLop.getMaLop();
+        int maMon = selectedMon.getMaMon();
+        String cardKey = "GVBM_" + maLop + "_" + maMon + "_" + hocKy;
+
+        if ("DanhGia".equals(selectedMon.getLoaiMon())) {
+            JComponent chart = createDanhGiaBarChart(maLop, maMon, hocKy, maNK, selectedMon.getTenMon()); 
+            chartContainer.add(chart, cardKey);
+            chartCards.show(chartContainer, cardKey);
+        } else {
+            JComponent chart = createPhoDiemMonBarChart(maLop, maMon, hocKy, maNK, selectedMon.getTenMon());
             chartContainer.add(chart, cardKey);
             chartCards.show(chartContainer, cardKey);
         }
     }
 
     /**
-     * (GV) Tính toán danh sách điểm TB học kỳ cho 1 lớp
+     * (GVCN/GVBM) Tính toán danh sách điểm TB học kỳ cho 1 lớp
      */
     private List<Double> tinhDiemTBHKChoLop(int maLop, int hocKy, int maNK) {
         List<Double> dsDiemTBHK = new ArrayList<>();
-        // Lấy tất cả học sinh trong lớp
         List<HocSinhDTO> dsHS = hocSinhBUS.getHocSinhByMaLop(maLop);
         if (dsHS == null || dsHS.isEmpty()) {
             return dsDiemTBHK;
         }
 
-        // Lấy tất cả điểm của lớp
         List<DiemDTO> allScoresInClass = diemBUS.getDiemFiltered(maLop, null, hocKy, maNK, null, null);
 
-        // Group theo MaHS
         Map<Integer, List<DiemDTO>> diemTheoHS = allScoresInClass.stream()
                 .collect(Collectors.groupingBy(DiemDTO::getMaHS));
 
@@ -279,7 +493,6 @@ public class ThongKePanel extends JPanel {
                 continue;
             }
 
-            // Lọc các môn TinhDiem và tính TB
             double tongDiem = 0;
             int soMon = 0;
             for (DiemDTO d : diemCuaHS) {
@@ -297,7 +510,7 @@ public class ThongKePanel extends JPanel {
     }
 
     /**
-     * (GV) Tạo biểu đồ tròn Phân loại học lực
+     * (GVCN) Tạo biểu đồ tròn Phân loại học lực
      */
     private JComponent createHocLucPieChart(List<Double> dsDiemTBHK) {
         double[] values = new double[4]; // Giỏi, Khá, TB, Yếu
@@ -315,26 +528,84 @@ public class ThongKePanel extends JPanel {
     }
     
     /**
-     * (GV) Tạo biểu đồ cột Phổ điểm
+     * (GVCN) Tạo biểu đồ cột Phổ điểm TB HỌC KỲ
      */
-    private JComponent createPhoDiemBarChart(List<Double> dsDiemTBHK) {
-        int[] bins = new int[10]; // 0-1, 1-2, ..., 9-10
+    private JComponent createPhoDiemTBChungChart(List<Double> dsDiemTBHK) {
+        int[] bins = new int[10]; 
         String[] cats = {"0-1", "1-2", "2-3", "3-4", "4-5", "5-6", "6-7", "7-8", "8-9", "9-10"};
 
         for (double diem : dsDiemTBHK) {
             if (diem >= 10.0) {
-                bins[9]++; // Cho điểm 10 vào bin cuối
+                bins[9]++; 
             } else if (diem >= 0) {
                 bins[(int)diem]++;
             }
         }
 
+        double[] doubleBins = Arrays.stream(bins).asDoubleStream().toArray();
         String title = "Phổ điểm TB Học kỳ - " + cboHocKy.getSelectedItem();
-        return new BarChartCanvas(title, cats, bins);
+        return new BarChartCanvas(title, cats, doubleBins);
+    }
+    
+
+    /**
+     * (GVBM / GVCN) Tạo biểu đồ cột Phổ điểm MÔN HỌC
+     */
+    private JComponent createPhoDiemMonBarChart(int maLop, int maMon, int hocKy, int maNK, String tenMon) {
+        List<DiemDTO> diemList = diemBUS.getDiemFiltered(maLop, maMon, hocKy, maNK, null, null);
+
+        int[] bins = new int[10]; 
+        String[] cats = {"0-1", "1-2", "2-3", "3-4", "4-5", "5-6", "6-7", "7-8", "8-9", "9-10"};
+
+        if(diemList != null && !diemList.isEmpty()) {
+             for (DiemDTO diem : diemList) {
+                if ("TinhDiem".equals(diem.getLoaiMon())) {
+                    double diemTBMon = diem.getDiemTB();
+                    if (diemTBMon >= 10.0) {
+                        bins[9]++; 
+                    } else if (diemTBMon >= 0) {
+                        bins[(int)diemTBMon]++;
+                    }
+                }
+            }
+        }
+       
+        double[] doubleBins = Arrays.stream(bins).asDoubleStream().toArray();
+        String title = "Phổ điểm Môn (" + tenMon + ") - " + cboHocKy.getSelectedItem();
+        return new BarChartCanvas(title, cats, doubleBins);
     }
 
     /**
-     * Giao diện cho Học sinh (như cũ)
+     * (GVBM / GVCN) Tạo biểu đồ cột Đạt/Không Đạt
+     */
+    private JComponent createDanhGiaBarChart(int maLop, int maMon, int hocKy, int maNK, String tenMon) {
+        List<DiemDTO> diemList = diemBUS.getDiemFiltered(maLop, maMon, hocKy, maNK, null, null);
+    
+        int dat = 0;
+        int khongDat = 0;
+    
+        if (diemList != null && !diemList.isEmpty()) {
+            for (DiemDTO diem : diemList) {
+                if ("DanhGia".equals(diem.getLoaiMon())) {
+                    if ("Đ".equals(diem.getKetQuaDanhGia())) {
+                        dat++;
+                    } else if ("KĐ".equals(diem.getKetQuaDanhGia())) {
+                        khongDat++;
+                    }
+                }
+            }
+        }
+        
+        String[] cats = {"Đạt", "Không Đạt"};
+        double[] values = {(double)dat, (double)khongDat};
+    
+        String title = "Thống kê Đạt/KĐ (" + tenMon + ") - " + cboHocKy.getSelectedItem();
+        return new BarChartCanvas(title, cats, values);
+    }
+
+
+    /**
+     * Giao diện cho Học sinh 
      */
     private void initStudentView() {
         this.removeAll(); 
@@ -453,9 +724,11 @@ public class ThongKePanel extends JPanel {
         }
 
         String[] cats = scoresTinhDiem.stream().map(DiemDTO::getTenMon).toArray(String[]::new);
-        int[] values = scoresTinhDiem.stream().mapToInt(d -> (int) (d.getDiemTB() * 10)).toArray();
         
-        String title = "Điểm TB các môn (x10) - " + cboHocKy.getSelectedItem();
+        double[] values = scoresTinhDiem.stream().mapToDouble(DiemDTO::getDiemTB).toArray();
+        
+        String title = "Điểm TB các môn - " + cboHocKy.getSelectedItem();
+        
         return new BarChartCanvas(title, cats, values);
     }
 
@@ -505,9 +778,9 @@ public class ThongKePanel extends JPanel {
         }
         
         String[] cats = myScoresTinhDiem.stream().map(DiemDTO::getTenMon).toArray(String[]::new);
-        int[] values = new int[cats.length];
+        double[] values = new double[cats.length];
         for (int i = 0; i < cats.length; i++) {
-            values[i] = ranks.getOrDefault(cats[i], 0);
+            values[i] = (double) ranks.getOrDefault(cats[i], 0);
         }
         
         String title = "Thứ hạng ĐTB theo môn - " + cboHocKy.getSelectedItem();
