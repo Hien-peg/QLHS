@@ -115,4 +115,35 @@ public class ChuNhiemDAO {
         }
         return false;
     }
+    // ===== Kiểm tra GVCN theo MaGV (dùng khi đăng nhập) =====
+    public ChuNhiemDTO getChuNhiemByGV(int maGV) {
+        String sql = """
+            SELECT cn.*, gv.HoTen AS TenGV, lop.TenLop
+            FROM ChuNhiem cn
+            JOIN GiaoVien gv ON gv.MaGV = cn.MaGV
+            JOIN Lop lop ON lop.MaLop = cn.MaLop
+            WHERE cn.MaGV = ?
+            ORDER BY cn.NgayNhanNhiem DESC
+            LIMIT 1
+        """;
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, maGV);
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) {
+                ChuNhiemDTO cn = new ChuNhiemDTO();
+                cn.setMaCN(rs.getInt("MaCN"));
+                cn.setMaGV(rs.getInt("MaGV"));
+                cn.setMaLop(rs.getInt("MaLop"));
+                cn.setNgayNhanNhiem(rs.getDate("NgayNhanNhiem"));
+                cn.setNgayKetThuc(rs.getDate("NgayKetThuc"));
+                cn.setTenGV(rs.getString("TenGV"));
+                cn.setTenLop(rs.getString("TenLop"));
+                return cn;
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
 }

@@ -1,19 +1,24 @@
 package com.sgu.qlhs.ui;
 
-import com.sgu.qlhs.bus.NguoiDungBUS;
-import com.sgu.qlhs.dto.NguoiDungDTO;
-
+import com.sgu.qlhs.bus.*;
+import com.sgu.qlhs.dto.*;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
 
+/**
+ * Màn hình đăng nhập hệ thống QLHS
+ * Bổ sung:
+ *  - Kiểm tra phân quyền GVCN (ưu tiên trước giáo viên thường)
+ *  - Mở đúng Dashboard theo vai trò
+ *  - Hỗ trợ đăng xuất quay lại giao diện này
+ */
 public class DangNhapUI extends JFrame {
 
     private JTextField txtUser;
     private JPasswordField txtPass;
     private JButton btnLogin;
 
-    // ===== Màu sắc đồng bộ với MainDashboard =====
     private static final Color PRIMARY = new Color(33, 84, 170);
     private static final Color BG = new Color(246, 248, 251);
     private static final Color FIELD_BG = Color.WHITE;
@@ -26,26 +31,22 @@ public class DangNhapUI extends JFrame {
         setLocationRelativeTo(null);
         setResizable(false);
 
-        // ===== Root panel =====
         JPanel root = new JPanel(new BorderLayout());
         root.setBackground(BG);
         setContentPane(root);
 
-        // ===== Header =====
         JLabel lblTitle = new JLabel("QUẢN LÝ HỌC SINH", SwingConstants.CENTER);
         lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 22));
         lblTitle.setForeground(PRIMARY);
         lblTitle.setBorder(new EmptyBorder(25, 0, 5, 0));
         root.add(lblTitle, BorderLayout.NORTH);
 
-        // ===== Center form =====
         JPanel form = new JPanel();
         form.setBackground(BG);
         form.setLayout(new BoxLayout(form, BoxLayout.Y_AXIS));
         form.setBorder(new EmptyBorder(20, 60, 20, 60));
         root.add(form, BorderLayout.CENTER);
 
-        // Username
         JLabel lblUser = new JLabel("Tên đăng nhập:");
         lblUser.setFont(new Font("Segoe UI", Font.PLAIN, 14));
         lblUser.setForeground(Color.DARK_GRAY);
@@ -60,7 +61,6 @@ public class DangNhapUI extends JFrame {
         form.add(txtUser);
         form.add(Box.createVerticalStrut(12));
 
-        // Password
         JLabel lblPass = new JLabel("Mật khẩu:");
         lblPass.setFont(new Font("Segoe UI", Font.PLAIN, 14));
         lblPass.setForeground(Color.DARK_GRAY);
@@ -75,7 +75,6 @@ public class DangNhapUI extends JFrame {
         form.add(txtPass);
         form.add(Box.createVerticalStrut(20));
 
-        // Login button
         btnLogin = new JButton("Đăng nhập");
         btnLogin.setFont(new Font("Segoe UI", Font.BOLD, 15));
         btnLogin.setForeground(Color.WHITE);
@@ -85,19 +84,15 @@ public class DangNhapUI extends JFrame {
         btnLogin.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         btnLogin.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        // Hover effect
         btnLogin.addChangeListener(e -> {
-            if (btnLogin.getModel().isRollover()) {
+            if (btnLogin.getModel().isRollover())
                 btnLogin.setBackground(new Color(25, 70, 145));
-            } else {
-                btnLogin.setBackground(PRIMARY);
-            }
+            else btnLogin.setBackground(PRIMARY);
         });
 
         form.add(btnLogin);
         form.add(Box.createVerticalStrut(10));
 
-        // Action
         btnLogin.addActionListener(e -> xuLyDangNhap());
     }
 
@@ -117,9 +112,6 @@ public class DangNhapUI extends JFrame {
             NguoiDungDTO nd = bus.dangNhap(user, pass);
 
             if (nd != null) {
-                JOptionPane.showMessageDialog(this,
-                        "Xin chào " + nd.getHoTen() + " (" + nd.getVaiTro() + ")",
-                        "Đăng nhập thành công", JOptionPane.INFORMATION_MESSAGE);
                 moGiaoDienTheoVaiTro(nd);
             } else {
                 JOptionPane.showMessageDialog(this,
@@ -136,23 +128,58 @@ public class DangNhapUI extends JFrame {
 
     private void moGiaoDienTheoVaiTro(NguoiDungDTO nd) {
         SwingUtilities.invokeLater(() -> {
-            switch (nd.getVaiTro()) {
-                case "quan_tri_vien":
-                    new MainDashboard(nd).setVisible(true);
-                    break;
-                case "giao_vien":
-                    new GiaoVienDashboard(nd).setVisible(true);
-                    break;
-                case "hoc_sinh":
-                    new HocSinhDashboard(nd).setVisible(true);
-                    break;
-                default:
-                    JOptionPane.showMessageDialog(this,
-                            "Vai trò không hợp lệ: " + nd.getVaiTro());
-                    return;
+            try {
+                String vaiTro = nd.getVaiTro();
+                System.out.println(">> Vai trò đăng nhập: " + vaiTro + " | Tài khoản: " + nd.getTenDangNhap());
+
+                switch (vaiTro) {
+                    case "quan_tri_vien" -> {
+                        System.out.println(">> Mở giao diện Quản trị viên");
+                        new MainDashboard(nd).setVisible(true);
+                    }
+
+                    case "giao_vien" -> {
+                        System.out.println(">> Kiểm tra giáo viên có là GVCN không...");
+                        ChuNhiemBUS cnBus = new ChuNhiemBUS();
+                        ChuNhiemDTO cn = cnBus.getChuNhiemByGV(nd.getId());
+
+                        if (cn != null) {
+                            System.out.println(">> Là GVCN của lớp " + cn.getMaLop());
+                            new ChuNhiemDashboard(nd, cn).setVisible(true);
+                        } else {
+                            System.out.println(">> Là giáo viên bộ môn");
+                            new GiaoVienDashboard(nd).setVisible(true);
+                        }
+                    }
+
+                    case "hoc_sinh" -> {
+                        System.out.println(">> Mở giao diện Học sinh");
+                        new HocSinhDashboard(nd).setVisible(true);
+                    }
+
+                    default -> {
+                        JOptionPane.showMessageDialog(this,
+                                "Vai trò không hợp lệ: " + vaiTro,
+                                "Lỗi phân quyền", JOptionPane.ERROR_MESSAGE);
+                        return;
+                    }
+                }
+
+                // ✅ Đóng form đăng nhập sau khi mở dashboard
+                this.dispose();
+
+            } catch (Exception e) {
+                e.printStackTrace();
+                JOptionPane.showMessageDialog(this,
+                        "Lỗi khi mở giao diện: " + e.getMessage(),
+                        "Lỗi", JOptionPane.ERROR_MESSAGE);
             }
-            this.dispose();
         });
+    }
+
+    // ==== Hàm tiện ích mở lại màn hình đăng nhập (dành cho nút "Đăng xuất") ====
+    public static void moLaiDangNhap() {
+        SwingUtilities.invokeLater(() -> new DangNhapUI().setVisible(true));
     }
 
     public static void main(String[] args) {
@@ -164,8 +191,7 @@ public class DangNhapUI extends JFrame {
                         break;
                     }
                 }
-            } catch (Exception ignored) {
-            }
+            } catch (Exception ignored) { }
             new DangNhapUI().setVisible(true);
         });
     }

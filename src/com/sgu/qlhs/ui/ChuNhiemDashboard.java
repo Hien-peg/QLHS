@@ -1,46 +1,51 @@
 package com.sgu.qlhs.ui;
 
-import com.sgu.qlhs.dto.NguoiDungDTO;
+import com.sgu.qlhs.dto.*;
 import com.sgu.qlhs.ui.panels.*;
 import javax.swing.*;
 import java.awt.*;
 
 /**
- * Dashboard dành cho Học sinh
- * - Kế thừa MainDashboard
- * - Giữ 3 chức năng: Thời khóa biểu, Điểm, Thống kê
+ * Dashboard dành cho Giáo viên Chủ nhiệm
+ * - Có 4 chức năng: Lịch dạy của tôi, TKB lớp chủ nhiệm, Điểm, Thống kê
  * - Có nút Đăng xuất
+ * - Giữ nguyên style của MainDashboard
  */
-public class HocSinhDashboard extends MainDashboard {
+public class ChuNhiemDashboard extends MainDashboard {
 
-    private JButton btnTkb, btnDiem, btnThongKe, btnLogout;
+    private JButton btnLichDay, btnTkbLop, btnDiem, btnThongKe, btnLogout;
+    private final ChuNhiemDTO cn;
     private final NguoiDungDTO nd;
 
-    public HocSinhDashboard(NguoiDungDTO nd) {
+    public ChuNhiemDashboard(NguoiDungDTO nd, ChuNhiemDTO cn) {
         super(nd);
+        this.cn = cn;
         this.nd = nd;
-        setTitle("Học sinh - " + nd.getHoTen());
-        buildHocSinhUI();
+        setTitle("Chủ nhiệm - " + nd.getHoTen());
+        buildChuNhiemUI();
     }
 
-    private void buildHocSinhUI() {
-        // Xóa sidebar mặc định của admin
+    private void buildChuNhiemUI() {
+        // Xóa sidebar mặc định để thay sidebar riêng
         sidebar.removeAll();
 
-        JLabel lblTitle = new JLabel("HỌC SINH", SwingConstants.LEFT);
+        JLabel lblTitle = new JLabel("GIÁO VIÊN CHỦ NHIỆM", SwingConstants.LEFT);
         lblTitle.setFont(new Font("Segoe UI Semibold", Font.BOLD, 16));
         lblTitle.setForeground(Color.WHITE);
         lblTitle.setAlignmentX(Component.LEFT_ALIGNMENT);
         sidebar.add(lblTitle);
         sidebar.add(Box.createVerticalStrut(20));
 
-        // ===== Các nút sidebar =====
-        btnTkb = createSidebarButton("Thời khóa biểu");
-        btnDiem = createSidebarButton("Điểm");
-        btnThongKe = createSidebarButton("Thống kê");
+        // ===== Các nút chức năng =====
+        btnLichDay = createSidebarButton("Lịch dạy của tôi");
+        btnTkbLop = createSidebarButton("TKB lớp chủ nhiệm");
+        btnDiem = createSidebarButton("Điểm lớp chủ nhiệm");
+        btnThongKe = createSidebarButton("Thống kê lớp");
         btnLogout = createSidebarButton("Đăng xuất");
 
-        sidebar.add(btnTkb);
+        sidebar.add(btnLichDay);
+        sidebar.add(Box.createVerticalStrut(8));
+        sidebar.add(btnTkbLop);
         sidebar.add(Box.createVerticalStrut(8));
         sidebar.add(btnDiem);
         sidebar.add(Box.createVerticalStrut(8));
@@ -48,27 +53,32 @@ public class HocSinhDashboard extends MainDashboard {
         sidebar.add(Box.createVerticalGlue());
         sidebar.add(btnLogout);
 
-        // ===== Khu vực hiển thị chính =====
+        // ==== Khu vực hiển thị nội dung chính ====
         cards = new CardLayout();
         centerCards = new JPanel(cards);
         centerCards.setBackground(PAGE_BG);
 
-        // 1️⃣ Thời khóa biểu lớp học sinh (role: HocSinh)
-        JPanel pnlTkb = new TKBPanel("HocSinh", null, null);
-        centerCards.add(pnlTkb, "TKB");
+        // 1️⃣ Lịch dạy của tôi (TKBPanel lọc theo giáo viên)
+        JPanel pnlLichDay = new TKBPanel("GiaoVien", nd.getId(), null);
+        centerCards.add(pnlLichDay, "LICHDAY");
 
-        // 2️⃣ Điểm học sinh
+        // 2️⃣ TKB lớp chủ nhiệm (TKBPanel lọc theo lớp)
+        JPanel pnlTkbLop = new TKBPanel("ChuNhiem", nd.getId(), cn.getMaLop());
+        centerCards.add(pnlTkbLop, "TKBLOP");
+
+        // 3️⃣ Điểm lớp chủ nhiệm (dùng lại panel DiemPanel)
         JPanel pnlDiem = new DiemPanel();
         centerCards.add(pnlDiem, "DIEM");
 
-        // 3️⃣ Thống kê
+        // 4️⃣ Thống kê lớp (dùng lại panel ThongKePanel)
         JPanel pnlThongKe = new ThongKePanel();
         centerCards.add(pnlThongKe, "THONGKE");
 
         add(centerCards, BorderLayout.CENTER);
 
-        // ===== Gán sự kiện các nút =====
-        btnTkb.addActionListener(e -> cards.show(centerCards, "TKB"));
+        // ==== Sự kiện các nút ====
+        btnLichDay.addActionListener(e -> cards.show(centerCards, "LICHDAY"));
+        btnTkbLop.addActionListener(e -> cards.show(centerCards, "TKBLOP"));
         btnDiem.addActionListener(e -> cards.show(centerCards, "DIEM"));
         btnThongKe.addActionListener(e -> cards.show(centerCards, "THONGKE"));
         btnLogout.addActionListener(e -> {
@@ -76,8 +86,8 @@ public class HocSinhDashboard extends MainDashboard {
             DangNhapUI.moLaiDangNhap();
         });
 
-        // Mặc định hiển thị Thời khóa biểu
-        cards.show(centerCards, "TKB");
+        // Mặc định hiển thị TKB lớp chủ nhiệm
+        cards.show(centerCards, "TKBLOP");
     }
 
     private JButton createSidebarButton(String text) {
@@ -98,6 +108,7 @@ public class HocSinhDashboard extends MainDashboard {
             else
                 btn.setBackground(new Color(45, 85, 150));
         });
+
         return btn;
     }
 }
