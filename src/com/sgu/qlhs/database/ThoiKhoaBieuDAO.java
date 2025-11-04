@@ -106,7 +106,6 @@ public class ThoiKhoaBieuDAO {
         }
     }
 
-    // ===== Helper chung =====
     private boolean checkConflict(String sql, Object... params) {
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -154,5 +153,85 @@ public class ThoiKhoaBieuDAO {
                    OR (? BETWEEN tkb.TietBD AND tkb.TietKT))
         """;
         return checkConflict(sql, maPhong, hocKy, namHoc, thu, tietBD, tietKT, tietBD, tietKT, tietBD);
+    }
+    public List<ThoiKhoaBieuDTO> getByLop(int maLop, String hocKy, String namHoc) {
+        List<ThoiKhoaBieuDTO> list = new ArrayList<>();
+        String sql = """
+            SELECT tkb.*, pcd.MaGV, pcd.MaLop, pcd.MaPhong, pcd.HocKy, pcd.NamHoc,
+                   gv.HoTen AS TenGV, mon.TenMon, lop.TenLop, phong.TenPhong
+            FROM ThoiKhoaBieu tkb
+            JOIN PhanCongDay pcd ON tkb.MaPCD = pcd.MaPCD
+            JOIN GiaoVien gv ON gv.MaGV = pcd.MaGV
+            JOIN MonHoc mon ON mon.MaMon = pcd.MaMon
+            JOIN Lop lop ON lop.MaLop = pcd.MaLop
+            JOIN PhongHoc phong ON phong.MaPhong = pcd.MaPhong
+            WHERE pcd.MaLop = ? AND pcd.HocKy = ? AND pcd.NamHoc = ? AND tkb.TrangThai = 1
+            ORDER BY tkb.Thu, tkb.TietBD
+        """;
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, maLop);
+            ps.setString(2, hocKy);
+            ps.setString(3, namHoc);
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                ThoiKhoaBieuDTO t = new ThoiKhoaBieuDTO();
+                t.setMaTKB(rs.getInt("MaTKB"));
+                t.setMaPCD(rs.getInt("MaPCD"));
+                t.setThu(rs.getString("Thu"));
+                t.setTietBD(rs.getInt("TietBD"));
+                t.setTietKT(rs.getInt("TietKT"));
+                t.setTrangThai(rs.getInt("TrangThai"));
+                t.setTenMon(rs.getString("TenMon"));
+                t.setTenGV(rs.getString("TenGV"));
+                t.setTenLop(rs.getString("TenLop"));
+                t.setTenPhong(rs.getString("TenPhong"));
+                list.add(t);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return list;
+    }
+
+    // === Lấy TKB theo giáo viên (cho GV bộ môn / GVCN) ===
+    public List<ThoiKhoaBieuDTO> getByGiaoVien(int maGV, String hocKy, String namHoc) {
+        List<ThoiKhoaBieuDTO> list = new ArrayList<>();
+        String sql = """
+            SELECT tkb.*, pcd.MaGV, pcd.MaLop, pcd.MaPhong, pcd.HocKy, pcd.NamHoc,
+                   gv.HoTen AS TenGV, mon.TenMon, lop.TenLop, phong.TenPhong
+            FROM ThoiKhoaBieu tkb
+            JOIN PhanCongDay pcd ON tkb.MaPCD = pcd.MaPCD
+            JOIN GiaoVien gv ON gv.MaGV = pcd.MaGV
+            JOIN MonHoc mon ON mon.MaMon = pcd.MaMon
+            JOIN Lop lop ON lop.MaLop = pcd.MaLop
+            JOIN PhongHoc phong ON phong.MaPhong = pcd.MaPhong
+            WHERE pcd.MaGV = ? AND pcd.HocKy = ? AND pcd.NamHoc = ? AND tkb.TrangThai = 1
+            ORDER BY tkb.Thu, tkb.TietBD
+        """;
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, maGV);
+            ps.setString(2, hocKy);
+            ps.setString(3, namHoc);
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                ThoiKhoaBieuDTO t = new ThoiKhoaBieuDTO();
+                t.setMaTKB(rs.getInt("MaTKB"));
+                t.setMaPCD(rs.getInt("MaPCD"));
+                t.setThu(rs.getString("Thu"));
+                t.setTietBD(rs.getInt("TietBD"));
+                t.setTietKT(rs.getInt("TietKT"));
+                t.setTrangThai(rs.getInt("TrangThai"));
+                t.setTenMon(rs.getString("TenMon"));
+                t.setTenGV(rs.getString("TenGV"));
+                t.setTenLop(rs.getString("TenLop"));
+                t.setTenPhong(rs.getString("TenPhong"));
+                list.add(t);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return list;
     }
 }

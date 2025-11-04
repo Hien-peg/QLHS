@@ -48,4 +48,51 @@ public class ThoiKhoaBieuBUS {
         boolean ok = dao.update(tkb);
         return ok ? "✅ Cập nhật thời khóa biểu thành công!" : "❌ Lỗi khi cập nhật!";
     }
+    /**
+     * Lấy thời khóa biểu theo lớp (cho Học sinh / GVCN)
+     */
+    public List<ThoiKhoaBieuDTO> getByLop(int maLop, String hocKy, String namHoc) {
+        return dao.getByLop(maLop, hocKy, namHoc);
+    }
+
+    /**
+     * Lấy thời khóa biểu theo giáo viên (cho GV bộ môn / GVCN)
+     */
+    public List<ThoiKhoaBieuDTO> getByGiaoVien(int maGV, String hocKy, String namHoc) {
+        return dao.getByGiaoVien(maGV, hocKy, namHoc);
+    }
+
+    /**
+     * Lấy TKB theo vai trò đăng nhập
+     * @param role Vai trò ("Admin", "HocSinh", "GiaoVien", "ChuNhiem")
+     * @param maLop Mã lớp (HS hoặc GVCN)
+     * @param maGV Mã giáo viên (GV hoặc GVCN)
+     * @param hocKy Học kỳ hiện tại
+     * @param namHoc Năm học hiện tại
+     */
+    public List<ThoiKhoaBieuDTO> getByRole(String role, Integer maLop, Integer maGV, String hocKy, String namHoc) {
+        switch (role) {
+            case "Admin":
+                return getAll();
+
+            case "HocSinh":
+                if (maLop != null)
+                    return getByLop(maLop, hocKy, namHoc);
+                break;
+
+            case "GiaoVien":
+                if (maGV != null)
+                    return getByGiaoVien(maGV, hocKy, namHoc);
+                break;
+
+            case "ChuNhiem":
+                // GVCN có thể xem cả TKB dạy và TKB lớp chủ nhiệm
+                if (maLop != null)
+                    return getByLop(maLop, hocKy, namHoc);
+                else if (maGV != null)
+                    return getByGiaoVien(maGV, hocKy, namHoc);
+                break;
+        }
+        return List.of(); // Trả về list rỗng nếu không hợp lệ
+    }
 }

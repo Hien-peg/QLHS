@@ -3,14 +3,13 @@ package com.sgu.qlhs.ui;
 import com.sgu.qlhs.dto.NguoiDungDTO;
 import com.sgu.qlhs.ui.components.*;
 import com.sgu.qlhs.ui.panels.*;
-
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
 
 public class MainDashboard extends JFrame {
 
-    private NguoiDungDTO nguoiDung; // Dùng cho thông tin đăng nhập
+    protected NguoiDungDTO nguoiDung; // Dùng cho thông tin đăng nhập
 
     // ===== Palette =====
     public static final Color SIDEBAR_BG = new Color(29, 35, 66);
@@ -26,7 +25,7 @@ public class MainDashboard extends JFrame {
     public static final Color ICON_BG = new Color(230, 240, 255);
     public static final Color ICON_FG = new Color(33, 84, 170);
 
-    // Card keys
+    // ===== Card keys =====
     private static final String CARD_DASH = "DASHBOARD";
     private static final String CARD_HS = "HS";
     private static final String CARD_GV = "GV";
@@ -37,13 +36,15 @@ public class MainDashboard extends JFrame {
     private static final String CARD_TKB = "THOI KHOA BIEU";
     private static final String CARD_TK = "TK";
 
+    // ===== Layout chính =====
+    protected JPanel sidebar;
     protected JPanel centerCards;
     protected CardLayout cards;
 
-    // Sidebar buttons
-    protected SidebarButton btnDash, btnHs, btnGv, btnLp, btntkb, btnDiem, btnTk;
+    // ===== Sidebar buttons =====
+    protected SidebarButton btnDash, btnHs, btnGv, btnLp, btnCn, btnPcd, btntkb, btnDiem, btnTk;
 
-    // === Constructor có thông tin người dùng (dùng khi đăng nhập thành công) ===
+    // === Constructor ===
     public MainDashboard(NguoiDungDTO nd) {
         super("QUẢN LÝ HỌC SINH");
         this.nguoiDung = nd;
@@ -53,8 +54,7 @@ public class MainDashboard extends JFrame {
         buildUI();
     }
 
-    // Expose the logged-in user to child panels/dialogs so they can
-    // enforce role-based behavior (e.g. teacher-scoped views).
+    // === Getter cho lớp con truy cập người dùng đăng nhập ===
     public NguoiDungDTO getNguoiDung() {
         return this.nguoiDung;
     }
@@ -65,13 +65,14 @@ public class MainDashboard extends JFrame {
         setContentPane(root);
 
         // ===== Sidebar =====
-        var sidebar = new JPanel();
+        sidebar = new JPanel();
         sidebar.setLayout(new BoxLayout(sidebar, BoxLayout.Y_AXIS));
         sidebar.setBackground(SIDEBAR_BG);
         sidebar.setBorder(new EmptyBorder(16, 12, 16, 12));
         sidebar.setPreferredSize(new Dimension(230, 0));
         root.add(sidebar, BorderLayout.WEST);
 
+        // ===== Thông tin người dùng =====
         var avatar = new CircleAvatar(36, new Color(255, 255, 255, 240));
         avatar.setAlignmentX(Component.LEFT_ALIGNMENT);
         var lblUser = label(
@@ -91,16 +92,18 @@ public class MainDashboard extends JFrame {
         sidebar.add(head);
         sidebar.add(Box.createVerticalStrut(10));
 
+        // ===== Tạo các nút sidebar =====
         btnDash = new SidebarButton("Dashboard", true);
         btnHs = new SidebarButton("Học sinh", false);
         btnGv = new SidebarButton("Giáo viên", false);
         btnLp = new SidebarButton("Lớp / Phòng", false);
-        SidebarButton btnCn = new SidebarButton("Chủ nhiệm", false);
-        SidebarButton btnPcd = new SidebarButton("Phân công dạy", false);
-        btntkb = new SidebarButton("Thời Khóa Biểu", false);
+        btnCn = new SidebarButton("Chủ nhiệm", false);
+        btnPcd = new SidebarButton("Phân công dạy", false);
+        btntkb = new SidebarButton("Thời khóa biểu", false);
         btnDiem = new SidebarButton("Điểm", false);
         btnTk = new SidebarButton("Thống kê", false);
 
+        // Thêm vào sidebar
         sidebar.add(btnDash);
         sidebar.add(Box.createVerticalStrut(6));
         sidebar.add(btnHs);
@@ -109,18 +112,18 @@ public class MainDashboard extends JFrame {
         sidebar.add(Box.createVerticalStrut(6));
         sidebar.add(btnLp);
         sidebar.add(Box.createVerticalStrut(6));
-        sidebar.add(Box.createVerticalStrut(6));
         sidebar.add(btnCn);
         sidebar.add(Box.createVerticalStrut(6));
         sidebar.add(btnPcd);
+        sidebar.add(Box.createVerticalStrut(6));
         sidebar.add(btntkb);
         sidebar.add(Box.createVerticalStrut(6));
         sidebar.add(btnDiem);
         sidebar.add(Box.createVerticalStrut(6));
         sidebar.add(btnTk);
         sidebar.add(Box.createVerticalGlue());
-        SidebarButton[] sideButtons = { btnDash, btnHs, btnGv, btnLp, btnPcd, btntkb, btnDiem, btnTk, btnCn };
 
+        SidebarButton[] sideButtons = { btnDash, btnHs, btnGv, btnLp, btnCn, btnPcd, btntkb, btnDiem, btnTk };
 
         // ===== Main area =====
         var mainArea = new JPanel(new BorderLayout());
@@ -149,7 +152,7 @@ public class MainDashboard extends JFrame {
         centerCards.add(new DiemPanel(), CARD_DIEM);
         centerCards.add(new ThongKePanel(), CARD_TK);
 
-        // Status bar
+        // ===== Status bar =====
         var status = new JPanel(new BorderLayout());
         status.setBackground(new Color(245, 245, 248));
         status.setBorder(new EmptyBorder(6, 12, 6, 12));
@@ -158,7 +161,7 @@ public class MainDashboard extends JFrame {
         status.add(new JLabel(java.time.LocalDate.now().toString()), BorderLayout.EAST);
         root.add(status, BorderLayout.SOUTH);
 
-        // Sự kiện sidebar
+        // ===== Sự kiện sidebar =====
         btnDash.addActionListener(e -> showCard(CARD_DASH, sideButtons, btnDash));
         btnHs.addActionListener(e -> showCard(CARD_HS, sideButtons, btnHs));
         btnGv.addActionListener(e -> showCard(CARD_GV, sideButtons, btnGv));
@@ -169,6 +172,7 @@ public class MainDashboard extends JFrame {
         btnDiem.addActionListener(e -> showCard(CARD_DIEM, sideButtons, btnDiem));
         btnTk.addActionListener(e -> showCard(CARD_TK, sideButtons, btnTk));
 
+        // Hiển thị mặc định Dashboard
         cards.show(centerCards, CARD_DASH);
     }
 

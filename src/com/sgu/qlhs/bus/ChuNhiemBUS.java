@@ -32,4 +32,7 @@ public class ChuNhiemBUS {
     public boolean delete(int maCN) {
         return dao.delete(maCN);
     }
+    public ChuNhiemDTO getChuNhiemByGV(int maGV) {
+        return dao.getChuNhiemByGV(maGV);
+    }
 }
