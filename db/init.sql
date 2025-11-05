@@ -9526,15 +9526,15 @@ WHERE
 -- Bước 1: Thêm tài khoản cho 2 giáo viên mới
 INSERT INTO TaiKhoan (TenDangNhap, MatKhau, VaiTro)
 VALUES 
-('cn104', '123456', 'GiaoVien'),
-('cn105', '123456', 'GiaoVien');
+('gv104', '123456', 'GiaoVien'),
+('gv105', '123456', 'GiaoVien');
 
 -- Bước 2: Liên kết tài khoản với giáo viên
 -- (Giả sử MaTK của gv104, gv105 là 8, 9 nếu bạn đã có 7 tài khoản)
 INSERT INTO TaiKhoan_GiaoVien (MaTK, MaGV)
 VALUES
-((SELECT MaTK FROM TaiKhoan WHERE TenDangNhap = 'cn104'), 104),
-((SELECT MaTK FROM TaiKhoan WHERE TenDangNhap = 'cn105'), 105);
+((SELECT MaTK FROM TaiKhoan WHERE TenDangNhap = 'gv104'), 104),
+((SELECT MaTK FROM TaiKhoan WHERE TenDangNhap = 'gv105'), 105);
 
 -- Bước 3: Thêm dữ liệu Chủ nhiệm cho 2 giáo viên này
 -- (MaNK = 1 là 2024-2025)
@@ -9544,17 +9544,6 @@ VALUES
 (105, 2, 1, '2024-09-05'); -- GV 105 (Bùi Thanh Mai) chủ nhiệm lớp 10A2
 
 USE QLHS;
-
--- 1. Tạo tài khoản cn101 (VaiTro = GiaoVien)
-INSERT INTO TaiKhoan (TenDangNhap, MatKhau, VaiTro)
-VALUES ('cn101', '123456', 'GiaoVien');
-
--- 2. Liên kết tài khoản 'cn101' với giáo viên MaGV = 101
-INSERT INTO TaiKhoan_GiaoVien (MaTK, MaGV)
-VALUES (
-    (SELECT MaTK FROM TaiKhoan WHERE TenDangNhap = 'cn101'), 
-    101
-);
 
 -- 3. Gán GV 101 làm chủ nhiệm lớp 11A1 (MaLop=3)
 INSERT INTO ChuNhiem (MaGV, MaLop, MaNK, NgayNhanNhiem)

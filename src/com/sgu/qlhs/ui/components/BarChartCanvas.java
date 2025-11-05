@@ -1,23 +1,13 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package com.sgu.qlhs.ui.components;
 
-/**
- *
- * @author minho
- */
 import javax.swing.*;
 import java.awt.*;
-import java.text.DecimalFormat;
+import java.text.DecimalFormat; 
 
 public class BarChartCanvas extends JComponent {
     private final String title;
     private final String[] cats;
-    // === SỬA: Chuyển từ int[] sang double[] ===
     private final double[] values;
-    // Thêm một định dạng số
     private final DecimalFormat df = new DecimalFormat("#.#");
 
     public BarChartCanvas(String title, String[] categories, double[] values) {
@@ -28,7 +18,6 @@ public class BarChartCanvas extends JComponent {
         setOpaque(false);
     }
     
-
     public BarChartCanvas(String title, String[] categories, int[] intValues) {
         this.title = title;
         this.cats = categories;
@@ -100,7 +89,6 @@ public class BarChartCanvas extends JComponent {
             } else {
                 val = df.format(values[i]);
             }
-            // ============================================
 
             g2.drawString(val, x + (barW - fm.stringWidth(val)) / 2, y - 4);
             x += barW + gap;
