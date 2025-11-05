@@ -14,21 +14,27 @@ import com.sgu.qlhs.bus.HocSinhBUS;
 import com.sgu.qlhs.bus.NienKhoaBUS;
 import com.sgu.qlhs.bus.LopBUS;
 import com.sgu.qlhs.bus.PhanCongDayBUS;
-import com.sgu.qlhs.bus.MonBUS; 
+import com.sgu.qlhs.bus.MonBUS;
 import com.sgu.qlhs.dto.DiemDTO;
 import com.sgu.qlhs.dto.HocSinhDTO;
 import com.sgu.qlhs.dto.LopDTO;
-import com.sgu.qlhs.dto.MonHocDTO; 
+import com.sgu.qlhs.dto.MonHocDTO;
 import com.sgu.qlhs.dto.PhanCongDayDTO;
 import java.awt.event.HierarchyListener;
 import java.awt.event.HierarchyEvent;
 import java.util.List;
 import java.util.ArrayList;
-import java.util.Arrays; 
+import java.util.Arrays;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.Comparator;
 import java.util.stream.Collectors;
+// === THÊM IMPORT MỚI ===
+import com.sgu.qlhs.bus.PhongBUS;
+import com.sgu.qlhs.dto.PhongDTO;
+import com.sgu.qlhs.ui.components.PieChartCanvas;
+import java.util.Collections;
+// =========================
 
 public class ThongKePanel extends JPanel {
 
@@ -98,7 +104,7 @@ public class ThongKePanel extends JPanel {
                                 gvcnInfo = null;
                                 initTeacherView(); // Giao diện GVBM
                             }
-                        } else {
+                        } else { // Admin
                             isStudentView = false;
                             initAdminView(); // Giao diện cho Admin
                         }
@@ -114,27 +120,279 @@ public class ThongKePanel extends JPanel {
     }
 
     /**
-     * Giao diện cho Admin
+     * Giao diện cho Admin (ĐÃ NÂNG CẤP)
      */
     private void initAdminView() {
         this.removeAll(); 
+        this.setLayout(new BorderLayout(10, 10));
+        this.setBorder(new EmptyBorder(10, 10, 10, 10));
 
-        var outer = new RoundedPanel(18, CARD_BG, CARD_BORDER);
-        outer.setLayout(new BorderLayout());
-        var lbl = new JLabel("Thống kê (Chung)");
-        lbl.setBorder(new EmptyBorder(12, 16, 8, 16));
-        lbl.setFont(lbl.getFont().deriveFont(Font.BOLD, 18f));
-        outer.add(lbl, BorderLayout.NORTH);
+        // Khởi tạo các BUS cần thiết
+        diemBUS = new DiemBUS();
+        hocSinhBUS = new HocSinhBUS();
+        lopBUS = new LopBUS();
 
-        String[] cats = { "Nam", "Nữ" };
-        double[] values = { 58.0, 42.0 }; 
-        var chart = new BarChartCanvas("Tỉ lệ giới tính học sinh", cats, values);
-        outer.add(chart, BorderLayout.CENTER);
+        JTabbedPane tabbedPane = new JTabbedPane();
+        this.add(tabbedPane, BorderLayout.CENTER);
 
-        this.add(outer, BorderLayout.CENTER);
+        // Tab 1: Thống kê giới tính
+        JPanel pnlGioiTinh = buildAdminGioiTinhTab();
+        tabbedPane.addTab("Thống Kê Giới Tính", pnlGioiTinh);
+
+        // Tab 2: Xếp loại học lực theo Khối
+        JPanel pnlHocLuc = buildAdminHocLucKhoiTab();
+        tabbedPane.addTab("Xếp Loại Học Lực (Theo Khối)", pnlHocLuc);
+
+        // Tab 3: Điểm TB Môn theo Khối
+        JPanel pnlPhoDiem = buildAdminPhoDiemMonKhoiTab();
+        tabbedPane.addTab("Điểm TB Môn (Theo Khối)", pnlPhoDiem);
+        
         this.revalidate();
         this.repaint();
     }
+
+    /**
+     * (Admin) Tab 1: Biểu đồ tròn giới tính
+     */
+    private JPanel buildAdminGioiTinhTab() {
+        JPanel panel = new JPanel(new BorderLayout());
+        panel.setOpaque(false);
+        panel.setBorder(new EmptyBorder(10, 10, 10, 10));
+        
+        int nam = 0, nu = 0;
+        try {
+            List<HocSinhDTO> allHS = hocSinhBUS.getAllHocSinh();
+            for (HocSinhDTO hs : allHS) {
+                if ("Nam".equalsIgnoreCase(hs.getGioiTinh())) {
+                    nam++;
+                } else {
+                    nu++;
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        
+        double[] values = {(double) nam, (double) nu};
+        String[] cats = {"Nam (" + nam + ")", "Nữ (" + nu + ")"};
+        
+        panel.add(new PieChartCanvas("Tỉ lệ giới tính toàn trường", values, cats), BorderLayout.CENTER);
+        return panel;
+    }
+
+    /**
+     * (Admin) Tab 2: Panel Xếp loại học lực (GV, K, TB, Y) theo Khối
+     */
+    private JPanel buildAdminHocLucKhoiTab() {
+        JPanel mainPanel = new JPanel(new BorderLayout(10, 10));
+        mainPanel.setOpaque(false);
+
+        // Panel chứa 3 biểu đồ
+        JPanel chartPanel = new JPanel(new GridLayout(1, 3, 10, 10));
+        chartPanel.setOpaque(false);
+
+        // Panel lọc (chọn học kỳ)
+        JPanel filterPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        filterPanel.setOpaque(false);
+        JComboBox<String> cboHK = new JComboBox<>(new String[]{"Học kỳ 1", "Học kỳ 2"});
+        filterPanel.add(new JLabel("Chọn học kỳ:"));
+        filterPanel.add(cboHK);
+
+        mainPanel.add(filterPanel, BorderLayout.NORTH);
+        mainPanel.add(chartPanel, BorderLayout.CENTER);
+
+        // Gắn sự kiện
+        cboHK.addActionListener(e -> {
+            updateHocLucCharts(chartPanel, cboHK.getSelectedIndex() + 1);
+        });
+
+        // Tải lần đầu
+        updateHocLucCharts(chartPanel, 1);
+        return mainPanel;
+    }
+
+    /**
+     * (Admin) Cập nhật 3 biểu đồ tròn Xếp loại học lực
+     */
+    private void updateHocLucCharts(JPanel chartPanel, int hocKy) {
+        chartPanel.removeAll();
+        int maNK = NienKhoaBUS.current();
+
+        List<DiemDTO> allDiem = diemBUS.getDiemFiltered(null, null, hocKy, maNK, null, null);
+        List<LopDTO> allLop = lopBUS.getAllLop();
+        Map<Integer, Integer> lopToKhoiMap = allLop.stream()
+                .collect(Collectors.toMap(LopDTO::getMaLop, LopDTO::getKhoi, (a, b) -> a));
+
+        // Tính TBHK cho từng học sinh
+        Map<Integer, List<DiemDTO>> diemTheoHS = allDiem.stream()
+                .filter(d -> "TinhDiem".equals(d.getLoaiMon()))
+                .collect(Collectors.groupingBy(DiemDTO::getMaHS));
+
+        Map<Integer, Double> tbhkMap = new HashMap<>();
+        Map<Integer, Integer> khoiCuaHS = new HashMap<>();
+
+        for (Map.Entry<Integer, List<DiemDTO>> entry : diemTheoHS.entrySet()) {
+            int maHS = entry.getKey();
+            List<DiemDTO> diemList = entry.getValue();
+            if (diemList.isEmpty()) continue;
+
+            double avg = diemList.stream().mapToDouble(DiemDTO::getDiemTB).average().orElse(0.0);
+            tbhkMap.put(maHS, avg);
+            
+            // Lấy khối từ MaLop (giả định hs không chuyển lớp giữa kỳ)
+            int maLop = diemList.get(0).getMaLop();
+            khoiCuaHS.put(maHS, lopToKhoiMap.getOrDefault(maLop, 0));
+        }
+
+        // Đếm kết quả theo Khối
+        Map<Integer, long[]> counts = new HashMap<>();
+        counts.put(10, new long[4]); // [Giỏi, Khá, TB, Yếu]
+        counts.put(11, new long[4]);
+        counts.put(12, new long[4]);
+
+        for (Map.Entry<Integer, Double> entry : tbhkMap.entrySet()) {
+            int maHS = entry.getKey();
+            double tb = entry.getValue();
+            int khoi = khoiCuaHS.getOrDefault(maHS, 0);
+
+            long[] khoiCounts = counts.get(khoi);
+            if (khoiCounts == null) continue;
+
+            if (tb >= 8.0) khoiCounts[0]++;
+            else if (tb >= 6.5) khoiCounts[1]++;
+            else if (tb >= 5.0) khoiCounts[2]++;
+            else khoiCounts[3]++;
+        }
+
+        // Tạo biểu đồ
+        chartPanel.add(createHocLucPieChart(counts.get(10), "Khối 10 - HK " + hocKy));
+        chartPanel.add(createHocLucPieChart(counts.get(11), "Khối 11 - HK " + hocKy));
+        chartPanel.add(createHocLucPieChart(counts.get(12), "Khối 12 - HK " + hocKy));
+
+        chartPanel.revalidate();
+        chartPanel.repaint();
+    }
+
+    /**
+     * (Admin) Helper tạo biểu đồ tròn Xếp loại
+     */
+    private JComponent createHocLucPieChart(long[] data, String title) {
+        if (data == null) return new JPanel();
+        double[] values = {(double) data[0], (double) data[1], (double) data[2], (double) data[3]};
+        String[] labels = {
+            "Giỏi (" + data[0] + ")", 
+            "Khá (" + data[1] + ")", 
+            "TB (" + data[2] + ")", 
+            "Yếu (" + data[3] + ")"
+        };
+        return new PieChartCanvas(title, values, labels);
+    }
+
+    /**
+     * (Admin) Tab 3: Panel Phổ điểm TB Môn theo Khối
+     */
+    private JPanel buildAdminPhoDiemMonKhoiTab() {
+        JPanel mainPanel = new JPanel(new BorderLayout(10, 10));
+        mainPanel.setOpaque(false);
+
+        // Panel chứa 3 biểu đồ
+        JPanel chartPanel = new JPanel(new GridLayout(1, 3, 10, 10));
+        chartPanel.setOpaque(false);
+
+        // Panel lọc
+        JPanel filterPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        filterPanel.setOpaque(false);
+        JComboBox<String> cboHK = new JComboBox<>(new String[]{"Học kỳ 1", "Học kỳ 2"});
+        filterPanel.add(new JLabel("Chọn học kỳ:"));
+        filterPanel.add(cboHK);
+
+        mainPanel.add(filterPanel, BorderLayout.NORTH);
+        mainPanel.add(chartPanel, BorderLayout.CENTER);
+
+        // Gắn sự kiện
+        cboHK.addActionListener(e -> {
+            updatePhoDiemCharts(chartPanel, cboHK.getSelectedIndex() + 1);
+        });
+
+        // Tải lần đầu
+        updatePhoDiemCharts(chartPanel, 1);
+        return mainPanel;
+    }
+
+    /**
+     * (Admin) Cập nhật 3 biểu đồ cột Phổ điểm TB Môn
+     */
+    private void updatePhoDiemCharts(JPanel chartPanel, int hocKy) {
+        chartPanel.removeAll();
+        int maNK = NienKhoaBUS.current();
+
+        List<DiemDTO> allDiem = diemBUS.getDiemFiltered(null, null, hocKy, maNK, null, null);
+        List<LopDTO> allLop = lopBUS.getAllLop();
+        Map<Integer, Integer> lopToKhoiMap = allLop.stream()
+                .collect(Collectors.toMap(LopDTO::getMaLop, LopDTO::getKhoi, (a, b) -> a));
+
+        // Gom điểm: Map<Khối, Map<Tên Môn, List<ĐiểmTB>>>
+        Map<Integer, Map<String, List<Double>>> diemTheoKhoiTheoMon = new HashMap<>();
+
+        for (DiemDTO d : allDiem) {
+            if ("DanhGia".equals(d.getLoaiMon())) continue; // Bỏ qua môn đánh giá
+
+            int khoi = lopToKhoiMap.getOrDefault(d.getMaLop(), 0);
+            if (khoi == 0) continue;
+
+            diemTheoKhoiTheoMon
+                .computeIfAbsent(khoi, k -> new HashMap<>())
+                .computeIfAbsent(d.getTenMon(), k -> new ArrayList<>())
+                .add(d.getDiemTB());
+        }
+
+        // Tính trung bình: Map<Khối, Map<Tên Môn, ĐiểmTB_Chung>>
+        Map<Integer, Map<String, Double>> avgData = new HashMap<>();
+        for (Integer khoi : diemTheoKhoiTheoMon.keySet()) {
+            Map<String, List<Double>> monMap = diemTheoKhoiTheoMon.get(khoi);
+            Map<String, Double> avgMonMap = new HashMap<>();
+            for (String tenMon : monMap.keySet()) {
+                double avg = monMap.get(tenMon).stream().mapToDouble(val -> val).average().orElse(0.0);
+                avgMonMap.put(tenMon, avg);
+            }
+            avgData.put(khoi, avgMonMap);
+        }
+
+        // Tạo biểu đồ
+        chartPanel.add(createPhoDiemBarChart(avgData.get(10), "Điểm TB Môn - Khối 10 - HK " + hocKy));
+        chartPanel.add(createPhoDiemBarChart(avgData.get(11), "Điểm TB Môn - Khối 11 - HK " + hocKy));
+        chartPanel.add(createPhoDiemBarChart(avgData.get(12), "Điểm TB Môn - Khối 12 - HK " + hocKy));
+
+        chartPanel.revalidate();
+        chartPanel.repaint();
+    }
+    
+    /**
+     * (Admin) Helper tạo biểu đồ cột Phổ điểm
+     */
+    private JComponent createPhoDiemBarChart(Map<String, Double> data, String title) {
+        if (data == null || data.isEmpty()) {
+            JPanel p = new JPanel(new GridBagLayout());
+            p.setOpaque(false);
+            p.add(new JLabel("Không có dữ liệu cho " + title));
+            return p;
+        }
+
+        // Sắp xếp môn học theo tên
+        List<String> sortedKeys = new ArrayList<>(data.keySet());
+        Collections.sort(sortedKeys);
+
+        String[] cats = new String[sortedKeys.size()];
+        double[] vals = new double[sortedKeys.size()];
+
+        for (int i = 0; i < sortedKeys.size(); i++) {
+            cats[i] = sortedKeys.get(i);
+            vals[i] = data.get(cats[i]);
+        }
+        
+        return new BarChartCanvas(title, cats, vals);
+    }
+
 
     /**
      * Giao diện mới cho Giáo viên Chủ nhiệm (GVCN)
@@ -584,12 +842,19 @@ public class ThongKePanel extends JPanel {
         double[] values = new double[4]; // Giỏi, Khá, TB, Yếu
         String[] labels = {"Giỏi (8.0+)", "Khá (6.5-7.9)", "Trung bình (5.0-6.4)", "Yếu (<5.0)"};
         
+        int countG = 0, countK = 0, countTB = 0, countY = 0;
+        
         for (double diem : dsDiemTBHK) {
-            if (diem >= 8.0) values[0]++;
-            else if (diem >= 6.5) values[1]++;
-            else if (diem >= 5.0) values[2]++;
-            else values[3]++;
+            if (diem >= 8.0) { values[0]++; countG++; }
+            else if (diem >= 6.5) { values[1]++; countK++; }
+            else if (diem >= 5.0) { values[2]++; countTB++; }
+            else { values[3]++; countY++; }
         }
+        
+        labels[0] = "Giỏi (" + countG + ")";
+        labels[1] = "Khá (" + countK + ")";
+        labels[2] = "TB (" + countTB + ")";
+        labels[3] = "Yếu (" + countY + ")";
         
         String title = "Phân loại Học lực Lớp - " + cboHocKy.getSelectedItem();
         return new PieChartCanvas(title, values, labels);
@@ -664,7 +929,7 @@ public class ThongKePanel extends JPanel {
             }
         }
         
-        String[] cats = {"Đạt", "Không Đạt"};
+        String[] cats = {"Đạt (" + dat + ")", "KĐ (" + khongDat + ")"};
         double[] values = {(double)dat, (double)khongDat};
     
         String title = "Thống kê Đạt/KĐ (" + tenMon + ") - " + cboHocKy.getSelectedItem();
@@ -750,13 +1015,9 @@ public class ThongKePanel extends JPanel {
             int maNK = NienKhoaBUS.current();
     
             int maLop = -1;
-            String tenLop = currentHocSinh.getTenLop();
-            if (tenLop != null) {
-                maLop = lopBUS.getAllLop().stream()
-                        .filter(lop -> tenLop.equals(lop.getTenLop()))
-                        .map(com.sgu.qlhs.dto.LopDTO::getMaLop)
-                        .findFirst()
-                        .orElse(-1);
+            // SỬA LỖI: dùng getMaLop() thay vì getTenLop()
+            if (currentHocSinh.getMaLop() != 0) {
+                 maLop = currentHocSinh.getMaLop();
             }
     
             if (maLop == -1) {
