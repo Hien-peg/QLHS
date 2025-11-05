@@ -6,12 +6,11 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class LopDAO {
-
     public List<Object[]> getAllLop() {
         List<Object[]> data = new ArrayList<>();
-        // THAY ĐỔI: Thêm l.MaPhong vào câu truy vấn
         String sql = "SELECT l.MaLop, l.TenLop, l.Khoi, l.MaPhong, ph.TenPhong " +
-                "FROM Lop l LEFT JOIN PhongHoc ph ON l.MaPhong = ph.MaPhong";
+                "FROM Lop l LEFT JOIN PhongHoc ph ON l.MaPhong = ph.MaPhong " +
+                "WHERE l.TrangThai = 1";
 
         try (Connection conn = DatabaseConnection.getConnection();
                 PreparedStatement pstmt = conn.prepareStatement(sql);
@@ -65,7 +64,7 @@ public class LopDAO {
     }
 
     public void deleteLop(int maLop) {
-        String sql = "DELETE FROM Lop WHERE MaLop = ?";
+        String sql = "UPDATE Lop SET TrangThai = 0 WHERE MaLop = ?";
         try (Connection conn = DatabaseConnection.getConnection();
                 PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setInt(1, maLop);

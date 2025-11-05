@@ -81,8 +81,8 @@ public class HocSinhBUS {
     /**
      * Xóa học sinh
      */
-    public void deleteHocSinh(int maHS) {
-        dao.deleteHocSinh(maHS);
+    public boolean deleteHocSinh(int maHS) {
+        return dao.deleteHocSinh(maHS); // Trả về kết quả của DAO
     }
 
     /**

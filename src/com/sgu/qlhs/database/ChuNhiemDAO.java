@@ -7,7 +7,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class ChuNhiemDAO {
-
     public List<ChuNhiemDTO> getAll() {
         List<ChuNhiemDTO> list = new ArrayList<>();
         String sql = """
@@ -15,6 +14,7 @@ public class ChuNhiemDAO {
             FROM ChuNhiem cn
             JOIN GiaoVien gv ON gv.MaGV = cn.MaGV
             JOIN Lop lop ON lop.MaLop = cn.MaLop
+            WHERE cn.TrangThai = 1
             ORDER BY cn.MaCN DESC
         """;
         try (Connection c = DatabaseConnection.getConnection();
@@ -73,7 +73,7 @@ public class ChuNhiemDAO {
     }
 
     public boolean delete(int maCN) {
-        String sql = "DELETE FROM ChuNhiem WHERE MaCN = ?";
+        String sql = "UPDATE ChuNhiem SET TrangThai = 0 WHERE MaCN = ?";
         try (Connection c = DatabaseConnection.getConnection();
              PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setInt(1, maCN);
@@ -122,7 +122,7 @@ public class ChuNhiemDAO {
             FROM ChuNhiem cn
             JOIN GiaoVien gv ON gv.MaGV = cn.MaGV
             JOIN Lop lop ON lop.MaLop = cn.MaLop
-            WHERE cn.MaGV = ?
+            WHERE cn.MaGV = ? AND cn.TrangThai = 1
             ORDER BY cn.NgayNhanNhiem DESC
             LIMIT 1
         """;

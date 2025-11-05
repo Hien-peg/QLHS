@@ -9,13 +9,14 @@ import java.util.List;
 
 public class HocSinhDAO {
 
-    // Lấy tất cả học sinh kèm tên lớp
+	// Lấy tất cả học sinh kèm tên lớp (CHỈ LẤY TRẠNG THÁI = 1)
     public List<Object[]> getAllHocSinh() {
         List<Object[]> data = new ArrayList<>();
         String sql = """
                     SELECT hs.MaHS, hs.HoTen, hs.NgaySinh, hs.GioiTinh, l.TenLop
                     FROM HocSinh hs
                     JOIN Lop l ON hs.MaLop = l.MaLop
+                    WHERE hs.TrangThai = 1
                 """;
 
         Connection conn = null;
@@ -47,10 +48,10 @@ public class HocSinhDAO {
         return data;
     }
 
-    // Lấy học sinh theo mã lớp
+ // Lấy học sinh theo mã lớp (CHỈ LẤY TRẠNG THÁI = 1)
     public List<Object[]> getHocSinhByMaLop(int maLop) {
         List<Object[]> data = new ArrayList<>();
-        String sql = "SELECT MaHS, HoTen, GioiTinh, NgaySinh FROM HocSinh WHERE MaLop = ?";
+        String sql = "SELECT MaHS, HoTen, GioiTinh, NgaySinh FROM HocSinh WHERE MaLop = ? AND TrangThai = 1";
 
         Connection conn = null;
         PreparedStatement ps = null;
@@ -81,14 +82,14 @@ public class HocSinhDAO {
         return data;
     }
 
-    // Lấy học sinh theo mã HS
+ // Lấy học sinh theo mã HS (CHỈ LẤY TRẠNG THÁI = 1)
     public Object[] getHocSinhById(int maHS) {
         String sql = """
                     SELECT hs.MaHS, hs.HoTen, hs.NgaySinh, hs.GioiTinh,
                            hs.DiaChi, hs.SoDienThoai, hs.Email, l.TenLop
                     FROM HocSinh hs
                     JOIN Lop l ON hs.MaLop = l.MaLop
-                    WHERE hs.MaHS = ?
+                    WHERE hs.MaHS = ? AND hs.TrangThai = 1
                 """;
 
         Connection conn = null;
@@ -199,7 +200,7 @@ public class HocSinhDAO {
 
     // Xoá học sinh
     public boolean deleteHocSinh(int maHS) {
-        String sql = "DELETE FROM HocSinh WHERE MaHS=?";
+        String sql = "UPDATE HocSinh SET TrangThai = 0 WHERE MaHS = ?";
 
         Connection conn = null;
         PreparedStatement ps = null;
@@ -246,7 +247,7 @@ public class HocSinhDAO {
             FROM HocSinh hs
             JOIN Lop l ON l.MaLop = hs.MaLop
             JOIN TaiKhoan_HocSinh tkhs ON tkhs.MaHS = hs.MaHS
-            WHERE tkhs.MaND = ?
+            WHERE tkhs.MaND = ? AND hs.TrangThai = 1
             LIMIT 1
         """;
 
@@ -276,7 +277,7 @@ public class HocSinhDAO {
             SELECT hs.MaHS, hs.HoTen, hs.MaLop, l.TenLop
             FROM HocSinh hs
             LEFT JOIN Lop l ON hs.MaLop = l.MaLop
-            WHERE hs.MaHS = ?
+            WHERE hs.MaHS = ? AND hs.TrangThai = 1
         """;
 
         try (Connection conn = DatabaseConnection.getConnection();

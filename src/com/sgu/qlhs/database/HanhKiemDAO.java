@@ -5,9 +5,8 @@ import com.sgu.qlhs.dto.HanhKiemDTO;
 import java.sql.*;
 
 public class HanhKiemDAO {
-
     public HanhKiemDTO getHanhKiem(int maHS, int maNK, int hocKy) {
-        String sql = "SELECT MaHS, MaNK, HocKy, XepLoai, GhiChu FROM HanhKiem WHERE MaHS = ? AND MaNK = ? AND HocKy = ?";
+        String sql = "SELECT MaHS, MaNK, HocKy, XepLoai, GhiChu FROM HanhKiem WHERE MaHS = ? AND MaNK = ? AND HocKy = ? AND TrangThai = 1";
         try (Connection conn = DatabaseConnection.getConnection();
                 PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, maHS);
@@ -42,7 +41,7 @@ public class HanhKiemDAO {
                 in.append(',');
             in.append('?');
         }
-        String sql = "SELECT MaHS, XepLoai FROM HanhKiem WHERE MaNK = ? AND HocKy = ? AND MaHS IN (" + in + ")";
+        String sql = "SELECT MaHS, XepLoai FROM HanhKiem WHERE MaNK = ? AND HocKy = ? AND MaHS IN (" + in + ") AND TrangThai = 1";
         try (Connection conn = DatabaseConnection.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
             int idx = 1;
             ps.setInt(idx++, maNK);
@@ -80,7 +79,7 @@ public class HanhKiemDAO {
     }
 
     public boolean deleteHanhKiem(int maHS, int maNK, int hocKy) {
-        String sql = "DELETE FROM HanhKiem WHERE MaHS = ? AND MaNK = ? AND HocKy = ?";
+        String sql = "UPDATE HanhKiem SET TrangThai = 0 WHERE MaHS = ? AND MaNK = ? AND HocKy = ?";
         try (Connection conn = DatabaseConnection.getConnection();
                 PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, maHS);

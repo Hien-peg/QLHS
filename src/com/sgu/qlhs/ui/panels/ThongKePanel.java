@@ -694,8 +694,9 @@ public class ThongKePanel extends JPanel {
                 if (!"Phổ điểm theo Từng môn".equals(loaiTK)) {
                      cboThongKe.setSelectedItem("Phổ điểm theo Từng môn");
                      // Thoát ra, vì listener của cboThongKe sẽ tự gọi lại hàm này
-                     isUpdatingChart = false;
-                     return; 
+                     //isUpdatingChart = false;
+                     loaiTK = "Phổ điểm theo Từng môn";
+                     //return; 
                 }
                 cboThongKe.setEnabled(false);
                 cboMonGVCN.setVisible(true);
