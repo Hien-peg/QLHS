@@ -4,13 +4,12 @@ public class LopDTO {
     private int maLop;
     private String tenLop;
     private int khoi;
-    private int maPhong; // <-- THÊM MỚI
+    private int maPhong;
     private String tenPhong;
 
     public LopDTO() {
     }
 
-    // THAY ĐỔI: Cập nhật constructor
     public LopDTO(int maLop, String tenLop, int khoi, int maPhong, String tenPhong) {
         this.maLop = maLop;
         this.tenLop = tenLop;
@@ -43,12 +42,10 @@ public class LopDTO {
         this.khoi = khoi;
     }
 
-    // <-- THÊM MỚI
     public int getMaPhong() {
         return maPhong;
     }
 
-    // <-- THÊM MỚI
     public void setMaPhong(int maPhong) {
         this.maPhong = maPhong;
     }
@@ -61,10 +58,9 @@ public class LopDTO {
         this.tenPhong = tenPhong;
     }
 
-    // === SỬA LỖI TẠI ĐÂY ===
-    // Sửa hàm toString() để JComboBox hiển thị đúng tên lớp
+
     @Override
     public String toString() {
-        return tenLop; // Chỉ trả về tên lớp
+        return tenLop;
     }
 }

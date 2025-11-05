@@ -133,8 +133,9 @@ public class TKBPanel extends JPanel {
         btnThem.addActionListener(e -> openDialog(null));
         btnSua.addActionListener(e -> onEdit());
         btnXoa.addActionListener(e -> onDelete());
-        if (role.equals("Admin") && cboLop != null) cboLop.addActionListener(e -> reloadData());
         cboHocKy.addActionListener(e -> reloadData());
+        if (role.equals("Admin") && cboLop != null)
+            cboLop.addActionListener(e -> onLopChanged());
 
         // ===== Phân quyền hiển thị =====
         applyRolePermissions();
@@ -169,17 +170,34 @@ public class TKBPanel extends JPanel {
         for (var l : lopBUS.getAllLop()) cboLop.addItem(l.getTenLop());
     }
 
+    // ======= Load dữ liệu thời khóa biểu =======
     private void reloadData() {
         clearAll();
         String hocKy = (String) cboHocKy.getSelectedItem();
         if (hocKy == null) return;
 
-        String tenLop = cboLop != null ? (String) cboLop.getSelectedItem() : null;
+        Integer lopHienTai = maLop;
+        if (role.equals("Admin") && cboLop != null && cboLop.getSelectedItem() != null) {
+            // Khi admin chọn lớp, cập nhật mã lớp theo lựa chọn
+            LopBUS lopBUS = new LopBUS();
+            var dsLop = lopBUS.getAllLop();
+            String tenLopChon = (String) cboLop.getSelectedItem();
+            for (var l : dsLop)
+                if (l.getTenLop().equals(tenLopChon)) lopHienTai = l.getMaLop();
+        }
 
-        currentTkbList = tkbBUS.getByRole(role, maLop, maGV, hocKy, namHoc);
+        currentTkbList = tkbBUS.getByRole(role, lopHienTai, maGV, hocKy, namHoc);
+        System.out.println("=== DEBUG getByRole ===");
+        System.out.println("Role: " + role);
+        System.out.println("maLop: " + lopHienTai);
+        System.out.println("maGV: " + maGV);
+        System.out.println("hocKy: " + hocKy);
+        System.out.println("namHoc: " + namHoc);
+        System.out.println("========================");
+        System.out.println("Số bản ghi lấy được: " + currentTkbList.size());
 
+        // Vẽ dữ liệu lên bảng
         for (ThoiKhoaBieuDTO tkb : currentTkbList) {
-            if (!hocKy.equals(tkb.getHocKy())) continue;
             int thu = dayToNumber(tkb.getThu());
             for (int tiet = tkb.getTietBD(); tiet <= tkb.getTietKT(); tiet++) {
                 setCell(tiet, thu,
@@ -245,5 +263,21 @@ public class TKBPanel extends JPanel {
                 JOptionPane.showMessageDialog(this, "Xóa thất bại!");
             }
         }
+    }
+    private void onLopChanged() {
+        if (cboLop == null || cboLop.getSelectedItem() == null) return;
+        String tenLopChon = (String) cboLop.getSelectedItem();
+
+        LopBUS lopBUS = new LopBUS();
+        var dsLop = lopBUS.getAllLop();
+        for (var l : dsLop) {
+            if (l.getTenLop().equals(tenLopChon)) {
+                maLop = l.getMaLop(); // ⚡ Cập nhật lại mã lớp toàn cục
+                break;
+            }
+        }
+
+        System.out.println(">> Admin chọn lớp: " + tenLopChon + " (MaLop=" + maLop + ")");
+        reloadData();
     }
 }

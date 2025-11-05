@@ -154,6 +154,7 @@ public class ThoiKhoaBieuDAO {
         """;
         return checkConflict(sql, maPhong, hocKy, namHoc, thu, tietBD, tietKT, tietBD, tietKT, tietBD);
     }
+
     public List<ThoiKhoaBieuDTO> getByLop(int maLop, String hocKy, String namHoc) {
         List<ThoiKhoaBieuDTO> list = new ArrayList<>();
         String sql = """
@@ -166,7 +167,7 @@ public class ThoiKhoaBieuDAO {
             JOIN Lop lop ON lop.MaLop = pcd.MaLop
             JOIN PhongHoc phong ON phong.MaPhong = pcd.MaPhong
             WHERE pcd.MaLop = ? AND pcd.HocKy = ? AND pcd.NamHoc = ? AND tkb.TrangThai = 1
-            ORDER BY tkb.Thu, tkb.TietBD
+            ORDER BY FIELD(tkb.Thu, 'Thứ 2','Thứ 3','Thứ 4','Thứ 5','Thứ 6','Thứ 7'), tkb.TietBD;
         """;
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -194,7 +195,6 @@ public class ThoiKhoaBieuDAO {
         return list;
     }
 
-    // === Lấy TKB theo giáo viên (cho GV bộ môn / GVCN) ===
     public List<ThoiKhoaBieuDTO> getByGiaoVien(int maGV, String hocKy, String namHoc) {
         List<ThoiKhoaBieuDTO> list = new ArrayList<>();
         String sql = """
@@ -207,7 +207,7 @@ public class ThoiKhoaBieuDAO {
             JOIN Lop lop ON lop.MaLop = pcd.MaLop
             JOIN PhongHoc phong ON phong.MaPhong = pcd.MaPhong
             WHERE pcd.MaGV = ? AND pcd.HocKy = ? AND pcd.NamHoc = ? AND tkb.TrangThai = 1
-            ORDER BY tkb.Thu, tkb.TietBD
+            ORDER BY FIELD(tkb.Thu, 'Thứ 2','Thứ 3','Thứ 4','Thứ 5','Thứ 6','Thứ 7'), tkb.TietBD;
         """;
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -234,4 +234,5 @@ public class ThoiKhoaBieuDAO {
         }
         return list;
     }
+
 }

@@ -1,25 +1,30 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package com.sgu.qlhs.ui.components;
 
-/**
- *
- * @author minho
- */
 import javax.swing.*;
 import java.awt.*;
+import java.text.DecimalFormat; 
 
 public class BarChartCanvas extends JComponent {
     private final String title;
     private final String[] cats;
-    private final int[] values;
+    private final double[] values;
+    private final DecimalFormat df = new DecimalFormat("#.#");
 
-    public BarChartCanvas(String title, String[] categories, int[] values) {
+    public BarChartCanvas(String title, String[] categories, double[] values) {
         this.title = title;
         this.cats = categories;
         this.values = values;
+        setPreferredSize(new Dimension(600, 360));
+        setOpaque(false);
+    }
+    
+    public BarChartCanvas(String title, String[] categories, int[] intValues) {
+        this.title = title;
+        this.cats = categories;
+        this.values = new double[intValues.length];
+        for (int i = 0; i < intValues.length; i++) {
+            this.values[i] = (double) intValues[i];
+        }
         setPreferredSize(new Dimension(600, 360));
         setOpaque(false);
     }
@@ -33,32 +38,32 @@ public class BarChartCanvas extends JComponent {
         g2.setFont(getFont().deriveFont(Font.BOLD, 18f));
         g2.drawString(title, 12, 26);
 
-        // THAY ĐỔI: Tăng lề dưới (bottom) để có chỗ cho chữ xoay
         int left = 60, right = 20, top = 50, bottom = 100, pw = w - left - right, ph = h - top - bottom;
 
         g2.setColor(new Color(250, 250, 252));
         g2.fillRoundRect(left, top, pw, ph, 12, 12);
         g2.setColor(new Color(230, 235, 245));
         g2.drawRoundRect(left, top, pw, ph, 12, 12);
-        int max = 0;
-        for (int v : values)
+        
+        double max = 0.0;
+        for (double v : values)
             max = Math.max(max, v);
-        max = Math.max(max, 1);
+        max = Math.max(max, 1.0); 
 
-        // THAY ĐỔI: Tính toán lại barW và gap cho nhiều cột hơn
         int n = values.length, barW, gap;
         if (n <= 6) {
             barW = Math.max(20, (pw - 40) / (n * 2));
             gap = barW;
         } else {
-            gap = 15; // Cố định gap
+            gap = 15; 
             barW = Math.max(15, (pw - 40 - (gap * (n - 1))) / n);
         }
         int x = left + 20;
-        // ========================================================
 
         for (int i = 0; i < n; i++) {
-            int bh = (int) ((values[i] * 1.0 / max) * (ph - 30)), y = top + ph - bh - 10;
+            int bh = (int) ((values[i] / max) * (ph - 30));
+            int y = top + ph - bh - 10;
+
             g2.setColor(new Color(180, 205, 255));
             g2.fillRoundRect(x, y, barW, bh, 8, 8);
             g2.setColor(new Color(120, 160, 230));
@@ -67,24 +72,24 @@ public class BarChartCanvas extends JComponent {
             var fm = g2.getFontMetrics();
             String cat = cats[i];
 
-            // THAY ĐỔI: Xoay chữ 90 độ
-            Graphics2D g2r = (Graphics2D) g2.create(); // Tạo bản sao của g2
+            Graphics2D g2r = (Graphics2D) g2.create();
             try {
-                // Di chuyển tới vị trí (center-bottom của cột)
                 int tx = x + barW / 2;
-                int ty = top + ph + 8; // Dịch xuống 8px
+                int ty = top + ph + 8; 
                 g2r.translate(tx, ty);
-                g2r.rotate(Math.PI / 2); // Xoay 90 độ (PI/2 radians)
-
-                // Vẽ chữ tại tọa độ (0, 0) của g2r
-                // Dùng FontMetrics để căn trái (chữ sẽ đi "lên" trên)
+                g2r.rotate(Math.PI / 2); 
                 g2r.drawString(cat, 0, -fm.getDescent());
             } finally {
-                g2r.dispose(); // Hủy bản sao để khôi phục trạng thái (không xoay)
+                g2r.dispose(); 
             }
-            // Dòng cũ: g2.drawString(cat, x+(barW-fm.stringWidth(cat))/2, top+ph+16);
+            
+            String val;
+            if (values[i] == (long) values[i]) {
+                val = String.valueOf((long) values[i]);
+            } else {
+                val = df.format(values[i]);
+            }
 
-            String val = String.valueOf(values[i]);
             g2.drawString(val, x + (barW - fm.stringWidth(val)) / 2, y - 4);
             x += barW + gap;
         }

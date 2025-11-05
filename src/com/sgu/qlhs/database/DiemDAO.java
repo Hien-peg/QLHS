@@ -9,7 +9,6 @@ public class DiemDAO {
 
     public List<Object[]> getAllDiem() {
         List<Object[]> data = new ArrayList<>();
-        // THÊM: Lấy thêm mh.LoaiMon, d.KetQuaDanhGia
         String sql = "SELECT hs.MaHS, hs.HoTen, mh.TenMon, mh.LoaiMon, d.HocKy, d.DiemMieng, d.Diem15p, d.DiemGiuaKy, d.DiemCuoiKy, d.KetQuaDanhGia "
                 + "FROM Diem d "
                 + "JOIN HocSinh hs ON d.MaHS = hs.MaHS "
@@ -20,17 +19,17 @@ public class DiemDAO {
                 ResultSet rs = pstmt.executeQuery()) {
 
             while (rs.next()) {
-                Object[] row = new Object[10]; // Sửa size
+                Object[] row = new Object[10]; 
                 row[0] = rs.getInt("MaHS");
                 row[1] = rs.getString("HoTen");
                 row[2] = rs.getString("TenMon");
-                row[3] = rs.getString("LoaiMon"); // Thêm
+                row[3] = rs.getString("LoaiMon"); 
                 row[4] = rs.getInt("HocKy");
                 row[5] = rs.getDouble("DiemMieng");
                 row[6] = rs.getDouble("Diem15p");
                 row[7] = rs.getDouble("DiemGiuaKy");
                 row[8] = rs.getDouble("DiemCuoiKy");
-                row[9] = rs.getString("KetQuaDanhGia"); // Thêm
+                row[9] = rs.getString("KetQuaDanhGia");
                 data.add(row);
             }
         } catch (SQLException e) {
@@ -39,7 +38,6 @@ public class DiemDAO {
         return data;
     }
 
-    // Hàm này giờ không dùng KetQuaDanhGia
     public void insertDiem(int maHS, int maMon, int hocKy, int maNK, double mieng, double p15, double gk, double ck) {
         String sql = "INSERT INTO Diem (MaHS, MaMon, HocKy, MaNK, DiemMieng, Diem15p, DiemGiuaKy, DiemCuoiKy) " +
                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
@@ -66,7 +64,6 @@ public class DiemDAO {
      * Insert or update a Diem row identified by (MaHS, MaMon, HocKy, MaNK).
      * This uses MySQL's ON DUPLICATE KEY UPDATE; requires unique constraint uq_diem
      * on those columns.
-     * * CẬP NHẬT: Thêm KetQuaDanhGia
      */
     public void upsertDiem(int maHS, int maMon, int hocKy, int maNK, double mieng, double p15, double gk,
             double ck, String ketQuaDanhGia) {
@@ -94,7 +91,6 @@ public class DiemDAO {
 
     /**
      * Upsert with teacher note (GhiChu).
-     * CẬP NHẬT: Thêm KetQuaDanhGia
      */
     public void upsertDiemWithNote(int maHS, int maMon, int hocKy, int maNK, double mieng, double p15, double gk,
             double ck, String ghiChu, String ketQuaDanhGia) {
@@ -113,7 +109,7 @@ public class DiemDAO {
             pstmt.setDouble(7, gk);
             pstmt.setDouble(8, ck);
             pstmt.setString(9, ghiChu);
-            pstmt.setString(10, ketQuaDanhGia); // Thêm
+            pstmt.setString(10, ketQuaDanhGia); 
             pstmt.executeUpdate();
         } catch (SQLException e) {
             System.err.println("Lỗi upsert điểm (with note): " + e.getMessage());
@@ -123,7 +119,6 @@ public class DiemDAO {
 
     public List<Object[]> getDiemByLopHocKy(int maLop, int hocKy, int maNK) {
         List<Object[]> data = new ArrayList<>();
-        // THÊM: Lấy mh.LoaiMon, d.KetQuaDanhGia
         String sql = "SELECT hs.MaHS, hs.HoTen, l.TenLop, mh.MaMon, mh.TenMon, mh.LoaiMon, d.DiemMieng, d.Diem15p, d.DiemGiuaKy, d.DiemCuoiKy, d.KetQuaDanhGia "
                 +
                 "FROM Diem d " +
@@ -138,18 +133,18 @@ public class DiemDAO {
             pstmt.setInt(3, maNK);
             try (ResultSet rs = pstmt.executeQuery()) {
                 while (rs.next()) {
-                    Object[] row = new Object[11]; // Sửa size
+                    Object[] row = new Object[11];
                     row[0] = rs.getInt("MaHS");
                     row[1] = rs.getString("HoTen");
                     row[2] = rs.getString("TenLop");
                     row[3] = rs.getInt("MaMon");
                     row[4] = rs.getString("TenMon");
-                    row[5] = rs.getString("LoaiMon"); // Thêm
+                    row[5] = rs.getString("LoaiMon");
                     row[6] = rs.getDouble("DiemMieng");
                     row[7] = rs.getDouble("Diem15p");
                     row[8] = rs.getDouble("DiemGiuaKy");
                     row[9] = rs.getDouble("DiemCuoiKy");
-                    row[10] = rs.getString("KetQuaDanhGia"); // Thêm
+                    row[10] = rs.getString("KetQuaDanhGia"); 
                     data.add(row);
                 }
             }
@@ -161,8 +156,7 @@ public class DiemDAO {
 
     public List<Object[]> getDiemByMaHS(int maHS, int hocKy, int maNK) {
         List<Object[]> data = new ArrayList<>();
-        // THÊM: Lấy mh.LoaiMon, d.KetQuaDanhGia
-        String sql = "SELECT d.MaDiem, mh.MaMon, mh.TenMon, mh.LoaiMon, d.DiemMieng, d.Diem15p, d.DiemGiuaKy, d.DiemCuoiKy, d.GhiChu, d.KetQuaDanhGia "
+        String sql = "SELECT d.MaDiem, mh.MaMon, mh.TenMon, mh.LoaiMon, d.DiemMieng, d.Diem15p, d.DiemGiuaKy, d.DiemCuoiKy, d.GhiChu, d.KetQuaDanhGia, d.DiemTB "
                 +
                 "FROM Diem d JOIN MonHoc mh ON d.MaMon = mh.MaMon " +
                 "WHERE d.MaHS = ? AND d.HocKy = ? AND d.MaNK = ?";
@@ -173,17 +167,18 @@ public class DiemDAO {
             pstmt.setInt(3, maNK);
             try (ResultSet rs = pstmt.executeQuery()) {
                 while (rs.next()) {
-                    Object[] row = new Object[10]; // Sửa size
+                    Object[] row = new Object[11]; 
                     row[0] = rs.getInt("MaDiem");
                     row[1] = rs.getInt("MaMon");
                     row[2] = rs.getString("TenMon");
-                    row[3] = rs.getString("LoaiMon"); // Thêm
+                    row[3] = rs.getString("LoaiMon"); 
                     row[4] = rs.getDouble("DiemMieng");
                     row[5] = rs.getDouble("Diem15p");
                     row[6] = rs.getDouble("DiemGiuaKy");
                     row[7] = rs.getDouble("DiemCuoiKy");
                     row[8] = rs.getString("GhiChu");
-                    row[9] = rs.getString("KetQuaDanhGia"); // Thêm
+                    row[9] = rs.getString("KetQuaDanhGia");
+                    row[10] = rs.getDouble("DiemTB"); 
                     data.add(row);
                 }
             }
@@ -238,7 +233,6 @@ public class DiemDAO {
     /**
      * Flexible server-side filtered query for Diem rows.
      * Any filter parameter can be null to mean "no filter".
-     * CẬP NHẬT: Thêm LoaiMon, KetQuaDanhGia
      */
     public List<com.sgu.qlhs.dto.DiemDTO> getDiemFiltered(Integer maLop, Integer maMon, Integer hocKy, Integer maNK,
             Integer limit, Integer offset) {
@@ -307,7 +301,7 @@ public class DiemDAO {
                     d.setTenLop(rs.getString("TenLop"));
                     d.setMaMon(rs.getInt("MaMon"));
                     d.setTenMon(rs.getString("TenMon"));
-                    d.setLoaiMon(rs.getString("LoaiMon")); // Thêm
+                    d.setLoaiMon(rs.getString("LoaiMon")); 
                     d.setHocKy(rs.getInt("HocKy"));
                     d.setDiemMieng(rs.getDouble("DiemMieng"));
                     d.setDiem15p(rs.getDouble("Diem15p"));
@@ -315,8 +309,8 @@ public class DiemDAO {
                     d.setDiemCuoiKy(rs.getDouble("DiemCuoiKy"));
                     d.setDiemTB(rs.getDouble("DiemTB"));
                     d.setXepLoai(rs.getString("XepLoai"));
-                    d.setKetQuaDanhGia(rs.getString("KetQuaDanhGia")); // Thêm
-                    d.setGhiChu(rs.getString("GhiChu")); // Thêm
+                    d.setKetQuaDanhGia(rs.getString("KetQuaDanhGia")); 
+                    d.setGhiChu(rs.getString("GhiChu"));
                     result.add(d);
                 }
             }

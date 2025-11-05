@@ -73,26 +73,27 @@ public class ThoiKhoaBieuBUS {
     public List<ThoiKhoaBieuDTO> getByRole(String role, Integer maLop, Integer maGV, String hocKy, String namHoc) {
         switch (role) {
             case "Admin":
-                return getAll();
-
+                // ✅ Nếu có chọn lớp thì lọc theo lớp, ngược lại hiển thị tất cả
+                if (maLop != null)
+                    return getByLop(maLop, hocKy, namHoc);
+                else
+                    return getAll();
             case "HocSinh":
                 if (maLop != null)
                     return getByLop(maLop, hocKy, namHoc);
                 break;
-
             case "GiaoVien":
                 if (maGV != null)
                     return getByGiaoVien(maGV, hocKy, namHoc);
                 break;
-
             case "ChuNhiem":
-                // GVCN có thể xem cả TKB dạy và TKB lớp chủ nhiệm
                 if (maLop != null)
                     return getByLop(maLop, hocKy, namHoc);
                 else if (maGV != null)
                     return getByGiaoVien(maGV, hocKy, namHoc);
                 break;
         }
-        return List.of(); // Trả về list rỗng nếu không hợp lệ
+        return List.of();
     }
+
 }

@@ -12,7 +12,6 @@ import com.sgu.qlhs.ui.components.BarChartCanvas;
 import com.sgu.qlhs.bus.HocSinhBUS;
 import com.sgu.qlhs.bus.LopBUS;
 import com.sgu.qlhs.bus.PhanCongDayBUS;
-// THÊM: Import NienKhoaBUS
 import com.sgu.qlhs.bus.NienKhoaBUS;
 import com.sgu.qlhs.dto.HocSinhDTO;
 import com.sgu.qlhs.dto.NguoiDungDTO;
@@ -34,7 +33,6 @@ public class ThongKeGioiTinhDialog extends JDialog {
         int nam = 0, nu = 0, khac = 0;
         try {
             HocSinhBUS hsBus = new HocSinhBUS();
-            // If current user is a teacher, restrict to students in their assigned classes
             java.util.List<HocSinhDTO> all;
             try {
                 java.awt.Window w = javax.swing.SwingUtilities.getWindowAncestor(this);
@@ -42,19 +40,13 @@ public class ThongKeGioiTinhDialog extends JDialog {
                     com.sgu.qlhs.ui.MainDashboard md = (com.sgu.qlhs.ui.MainDashboard) w;
                     NguoiDungDTO nd = md.getNguoiDung();
                     if (nd != null && "giao_vien".equalsIgnoreCase(nd.getVaiTro())) {
+                        String namHoc = NienKhoaBUS.currentNamHoc(); 
                         
-                        // === SỬA LỖI: Lấy NamHoc (String) thay vì MaNK (int) ===
-                        String namHoc = NienKhoaBUS.currentNamHoc(); // Lấy chuỗi năm học
-                        // =======================================================
-
-                        // get assigned class ids and map them to names
                         PhanCongDayBUS phanCong = new PhanCongDayBUS();
                         LopBUS lopBus = new LopBUS();
                         
-                        // === SỬA LỖI: Truyền namHoc (String) vào hàm ===
                         java.util.List<Integer> assigned = phanCong.getDistinctMaLopByGiaoVien(nd.getId(), namHoc,
                                 null);
-                        // ===============================================
 
                         java.util.Set<String> allowedLopNames = new java.util.HashSet<>();
                         for (Integer ml : assigned) {
@@ -88,11 +80,11 @@ public class ThongKeGioiTinhDialog extends JDialog {
                     khac++;
             }
         } catch (Exception ex) {
-            // fallback to zeros on error
             System.err.println("Lỗi khi tải dữ liệu học sinh: " + ex.getMessage());
         }
-        String[] cats = { "Nam", "Nữ"};
-        int[] vals = { nam, nu };
+        String[] cats = { "Nam", "Nữ" };
+        
+        double[] vals = { (double)nam, (double)nu };
         root.add(new BarChartCanvas("Tỉ lệ giới tính học sinh", cats, vals), BorderLayout.CENTER);
 
         var south = new JPanel(new FlowLayout(FlowLayout.RIGHT));

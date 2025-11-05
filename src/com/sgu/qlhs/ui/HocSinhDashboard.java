@@ -2,23 +2,27 @@ package com.sgu.qlhs.ui;
 
 import com.sgu.qlhs.dto.NguoiDungDTO;
 import com.sgu.qlhs.ui.panels.*;
+
 import javax.swing.*;
 import java.awt.*;
 
 /**
  * Dashboard dành cho Học sinh
  * - Kế thừa MainDashboard
- * - Giữ 3 chức năng: Thời khóa biểu, Điểm, Thống kê
- * - Có nút Đăng xuất
+ * - Nhận MaLop trực tiếp từ lúc đăng nhập
+ * - Hiển thị Thời khóa biểu, Điểm, Thống kê
  */
 public class HocSinhDashboard extends MainDashboard {
 
     private JButton btnTkb, btnDiem, btnThongKe, btnLogout;
     private final NguoiDungDTO nd;
+    private final int maLopHS;
 
-    public HocSinhDashboard(NguoiDungDTO nd) {
+    // ✅ Constructor nhận MaLop từ DangNhapUI
+    public HocSinhDashboard(NguoiDungDTO nd, int maLopHS) {
         super(nd);
         this.nd = nd;
+        this.maLopHS = maLopHS;
         setTitle("Học sinh - " + nd.getHoTen());
         buildHocSinhUI();
     }
@@ -53,15 +57,15 @@ public class HocSinhDashboard extends MainDashboard {
         centerCards = new JPanel(cards);
         centerCards.setBackground(PAGE_BG);
 
-        // 1️⃣ Thời khóa biểu lớp học sinh (role: HocSinh)
-        JPanel pnlTkb = new TKBPanel("HocSinh", null, null);
+        // ✅ Hiển thị TKB đúng lớp học sinh
+        JPanel pnlTkb = new TKBPanel("HocSinh", null, maLopHS);
         centerCards.add(pnlTkb, "TKB");
 
-        // 2️⃣ Điểm học sinh
+        // Điểm học sinh
         JPanel pnlDiem = new DiemPanel();
         centerCards.add(pnlDiem, "DIEM");
 
-        // 3️⃣ Thống kê
+        // Thống kê
         JPanel pnlThongKe = new ThongKePanel();
         centerCards.add(pnlThongKe, "THONGKE");
 

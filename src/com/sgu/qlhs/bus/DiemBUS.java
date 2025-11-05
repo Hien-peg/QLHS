@@ -82,7 +82,7 @@ public class DiemBUS {
 
     public List<DiemDTO> getDiemByMaHS(int maHS, int hocKy, int maNK) {
         List<DiemDTO> list = new ArrayList<>();
-        // Đọc 10 cột
+        // === SỬA LỖI: Đọc 11 cột ===
         List<Object[]> rows = dao.getDiemByMaHS(maHS, hocKy, maNK);
         HocSinhDTO hsInfo = null;
         try {
@@ -96,13 +96,15 @@ public class DiemBUS {
             int maDiem = (r[0] instanceof Integer) ? (Integer) r[0] : Integer.parseInt(r[0].toString());
             int maMon = (r[1] instanceof Integer) ? (Integer) r[1] : Integer.parseInt(r[1].toString());
             String tenMon = r[2] != null ? r[2].toString() : "";
-            String loaiMon = r[3] != null ? r[3].toString() : ""; // Thêm
-            double mieng = r[4] != null ? Double.parseDouble(r[4].toString()) : 0.0; // Sửa index
-            double p15 = r[5] != null ? Double.parseDouble(r[5].toString()) : 0.0; // Sửa index
-            double gk = r[6] != null ? Double.parseDouble(r[6].toString()) : 0.0; // Sửa index
-            double ck = r[7] != null ? Double.parseDouble(r[7].toString()) : 0.0; // Sửa index
-            String ghiChu = r[8] != null ? r[8].toString() : ""; // Sửa index
-            String ketQuaDanhGia = r[9] != null ? r[9].toString() : null; // Thêm
+            String loaiMon = r[3] != null ? r[3].toString() : ""; 
+            double mieng = r[4] != null ? Double.parseDouble(r[4].toString()) : 0.0; 
+            double p15 = r[5] != null ? Double.parseDouble(r[5].toString()) : 0.0; 
+            double gk = r[6] != null ? Double.parseDouble(r[6].toString()) : 0.0; 
+            double ck = r[7] != null ? Double.parseDouble(r[7].toString()) : 0.0; 
+            String ghiChu = r[8] != null ? r[8].toString() : ""; 
+            String ketQuaDanhGia = r[9] != null ? r[9].toString() : null;
+            // === SỬA LỖI: Đọc DiemTB từ r[10] ===
+            double diemTB = (r[10] != null) ? Double.parseDouble(r[10].toString()) : 0.0;
 
             DiemDTO d = new DiemDTO();
             d.setMaDiem(maDiem);
@@ -112,13 +114,14 @@ public class DiemBUS {
             d.setHocKy(hocKy);
             d.setMaMon(maMon);
             d.setTenMon(tenMon);
-            d.setLoaiMon(loaiMon); // Thêm
+            d.setLoaiMon(loaiMon); 
             d.setDiemMieng(mieng);
             d.setDiem15p(p15);
             d.setDiemGiuaKy(gk);
             d.setDiemCuoiKy(ck);
             d.setGhiChu(ghiChu);
-            d.setKetQuaDanhGia(ketQuaDanhGia); // Thêm
+            d.setKetQuaDanhGia(ketQuaDanhGia); 
+            d.setDiemTB(diemTB); // Thêm dòng này
             list.add(d);
         }
         return list;
