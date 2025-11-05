@@ -5,7 +5,7 @@ public class MonHocDTO {
     private String tenMon;
     private int soTiet;
     private String ghiChu;
-    private String loaiMon; // <-- THÊM MỚI
+    private String loaiMon; 
 
     public MonHocDTO() {
     }
@@ -15,13 +15,12 @@ public class MonHocDTO {
         this.tenMon = tenMon;
     }
 
-    // <-- CẬP NHẬT CONSTRUCTOR -->
     public MonHocDTO(int maMon, String tenMon, int soTiet, String ghiChu, String loaiMon) {
         this.maMon = maMon;
         this.tenMon = tenMon;
         this.soTiet = soTiet;
         this.ghiChu = ghiChu;
-        this.loaiMon = loaiMon; // <-- THÊM MỚI
+        this.loaiMon = loaiMon; 
     }
 
     public int getMaMon() {
@@ -56,7 +55,6 @@ public class MonHocDTO {
         this.tenMon = tenMon;
     }
 
-    // <-- THÊM MỚI GETTER/SETTER -->
     public String getLoaiMon() {
         return loaiMon;
     }
@@ -65,8 +63,9 @@ public class MonHocDTO {
         this.loaiMon = loaiMon;
     }
 
+
     @Override
     public String toString() {
-        return "MonHocDTO{" + "maMon=" + maMon + ", tenMon='" + tenMon + '\'' + ", loaiMon='" + loaiMon + '\'' + '}';
+        return tenMon; 
     }
 }

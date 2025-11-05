@@ -6,13 +6,6 @@ import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
 
-/**
- * Màn hình đăng nhập hệ thống QLHS
- * Bổ sung:
- *  - Kiểm tra phân quyền GVCN (ưu tiên trước giáo viên thường)
- *  - Mở đúng Dashboard theo vai trò
- *  - Hỗ trợ đăng xuất quay lại giao diện này
- */
 public class DangNhapUI extends JFrame {
 
     private JTextField txtUser;
@@ -141,16 +134,22 @@ public class DangNhapUI extends JFrame {
 
                     case "giao_vien" -> {
                         System.out.println(">> Kiểm tra giáo viên có là GVCN không...");
+                        
+                        // === LOGIC CŨ (THEO YÊU CẦU CỦA BẠN) ===
+                        // Kiểm tra xem MaGV này có trong bảng ChuNhiem không
                         ChuNhiemBUS cnBus = new ChuNhiemBUS();
-                        ChuNhiemDTO cn = cnBus.getChuNhiemByGV(nd.getId());
+                        ChuNhiemDTO cn = cnBus.getChuNhiemByGV(nd.getId()); 
 
                         if (cn != null) {
+                            // Nếu CÓ chủ nhiệm -> Mở ChuNhiemDashboard
                             System.out.println(">> Là GVCN của lớp " + cn.getMaLop());
                             new ChuNhiemDashboard(nd, cn).setVisible(true);
                         } else {
+                            // Nếu KHÔNG chủ nhiệm -> Mở GiaoVienDashboard
                             System.out.println(">> Là giáo viên bộ môn");
                             new GiaoVienDashboard(nd).setVisible(true);
                         }
+                        // === KẾT THÚC LOGIC ===
                     }
 
                     case "hoc_sinh" -> {
@@ -184,7 +183,6 @@ public class DangNhapUI extends JFrame {
                     }
                 }
 
-                // ✅ Đóng form đăng nhập sau khi mở dashboard
                 this.dispose();
 
             } catch (Exception e) {
@@ -196,7 +194,6 @@ public class DangNhapUI extends JFrame {
         });
     }
 
-    // ==== Hàm tiện ích mở lại màn hình đăng nhập (dành cho nút "Đăng xuất") ====
     public static void moLaiDangNhap() {
         SwingUtilities.invokeLater(() -> new DangNhapUI().setVisible(true));
     }

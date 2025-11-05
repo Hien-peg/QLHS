@@ -102,6 +102,7 @@ public class MainDashboard extends JFrame {
         btntkb = new SidebarButton("Thời khóa biểu", false);
         btnDiem = new SidebarButton("Điểm", false);
         btnTk = new SidebarButton("Thống kê", false);
+        btnTk.setVisible(false);
 
         // Thêm vào sidebar
         sidebar.add(btnDash);

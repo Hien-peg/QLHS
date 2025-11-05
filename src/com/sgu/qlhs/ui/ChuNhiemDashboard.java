@@ -25,6 +25,15 @@ public class ChuNhiemDashboard extends MainDashboard {
         buildChuNhiemUI();
     }
 
+    // === THÊM HÀM MỚI ===
+    /**
+     * Cung cấp thông tin chủ nhiệm cho các panel con (như ThongKePanel).
+     */
+    public ChuNhiemDTO getChuNhiemInfo() {
+        return this.cn;
+    }
+    // ======================
+
     private void buildChuNhiemUI() {
         // Xóa sidebar mặc định để thay sidebar riêng
         sidebar.removeAll();
