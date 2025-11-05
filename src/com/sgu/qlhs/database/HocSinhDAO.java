@@ -1,6 +1,8 @@
 package com.sgu.qlhs.database;
 
 import com.sgu.qlhs.DatabaseConnection;
+import com.sgu.qlhs.dto.HocSinhDTO;
+
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -237,17 +239,60 @@ public class HocSinhDAO {
         } catch (Exception ignored) {
         }
     }
-    // public boolean deleteHocSinh(int maHS) {
-    // String sql = "UPDATE HocSinh SET TrangThai = 0 WHERE MaHS = ?";
-    // try (Connection conn = DbConnect.getConnection();
-    // PreparedStatement pstmt = conn.prepareStatement(sql)) {
-    // pstmt.setInt(1, maHS);
-    // int rows = pstmt.executeUpdate();
-    // return rows > 0;
-    // } catch (SQLException e) {
-    // System.err.println(" Lỗi khi xóa học sinh: " + e.getMessage());
-    // e.printStackTrace();
-    // }
-    // return false;
-    // }
+    public HocSinhDTO findByMaND(int maND) {
+        String sql = """
+            SELECT hs.MaHS, hs.HoTen, hs.NgaySinh, hs.GioiTinh,
+                   hs.MaLop, l.TenLop
+            FROM HocSinh hs
+            JOIN Lop l ON l.MaLop = hs.MaLop
+            JOIN TaiKhoan_HocSinh tkhs ON tkhs.MaHS = hs.MaHS
+            WHERE tkhs.MaND = ?
+            LIMIT 1
+        """;
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, maND);
+            ResultSet rs = ps.executeQuery();
+
+            if (rs.next()) {
+                HocSinhDTO hs = new HocSinhDTO();
+                hs.setMaHS(rs.getInt("MaHS"));
+                hs.setHoTen(rs.getString("HoTen"));
+                hs.setNgaySinh(rs.getDate("NgaySinh"));
+                hs.setGioiTinh(rs.getString("GioiTinh"));
+                hs.setMaLop(rs.getInt("MaLop"));
+                hs.setTenLop(rs.getString("TenLop"));
+                return hs;
+            }
+        } catch (SQLException e) {
+            System.err.println("❌ Lỗi khi lấy học sinh theo MaND: " + e.getMessage());
+        }
+        return null;
+    }
+    public HocSinhDTO findByMaHS(int maHS) {
+        HocSinhDTO hs = null;
+        String sql = """
+            SELECT hs.MaHS, hs.HoTen, hs.MaLop, l.TenLop
+            FROM HocSinh hs
+            LEFT JOIN Lop l ON hs.MaLop = l.MaLop
+            WHERE hs.MaHS = ?
+        """;
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, maHS);
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) {
+                hs = new HocSinhDTO();
+                hs.setMaHS(rs.getInt("MaHS"));
+                hs.setHoTen(rs.getString("HoTen"));
+                hs.setMaLop(rs.getInt("MaLop"));
+                hs.setTenLop(rs.getString("TenLop"));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return hs;
+    }
 }

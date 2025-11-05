@@ -12,79 +12,82 @@ public class NguoiDungDAO {
     }
 
     public NguoiDungDTO dangNhap(String tenDangNhap, String matKhau) throws SQLException {
-        // New schema: use TaiKhoan + TaiKhoan_GiaoVien / TaiKhoan_HocSinh tables.
-        String sql = "SELECT MaTK, TenDangNhap, MatKhau, VaiTro FROM TaiKhoan WHERE TenDangNhap = ? AND MatKhau = ?";
+        String sql = """
+            SELECT MaTK, TenDangNhap, MatKhau, VaiTro
+            FROM TaiKhoan
+            WHERE TenDangNhap = ? AND MatKhau = ?
+        """;
+
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, tenDangNhap);
             stmt.setString(2, matKhau);
+
             try (ResultSet rs = stmt.executeQuery()) {
-                if (rs.next()) {
-                    int maTK = rs.getInt("MaTK");
-                    String roleRaw = rs.getString("VaiTro");
-                    String normalizedRole;
-                    // normalize DB role values to app role codes used in UI
-                    if (roleRaw == null)
-                        roleRaw = "";
-                    String r = roleRaw.trim().toLowerCase();
-                    if (r.contains("admin") || r.contains("quan_tri")) {
-                        normalizedRole = "quan_tri_vien";
-                    } else if (r.contains("giao") || r.contains("gv")) {
-                        normalizedRole = "giao_vien";
-                    } else if (r.contains("hoc") || r.contains("hs")) {
-                        normalizedRole = "hoc_sinh";
-                    } else {
-                        normalizedRole = r.isEmpty() ? "" : r;
+                if (!rs.next()) return null;
+
+                // === Lấy thông tin cơ bản ===
+                int maTK = rs.getInt("MaTK");
+                String vaiTroRaw = rs.getString("VaiTro");
+                String role = chuanHoaVaiTro(vaiTroRaw);
+                String displayName = tenDangNhap;
+                int mappedId = maTK; // mặc định (Admin)
+
+                // === Phân nhánh theo vai trò ===
+                switch (role) {
+                    case "giao_vien" -> {
+                        // Lấy MaGV theo MaTK
+                        String q1 = "SELECT MaGV FROM TaiKhoan_GiaoVien WHERE MaTK = ?";
+                        try (PreparedStatement ps = conn.prepareStatement(q1)) {
+                            ps.setInt(1, maTK);
+                            ResultSet r = ps.executeQuery();
+                            if (r.next()) mappedId = r.getInt("MaGV");
+                        }
+
+                        // Lấy tên giáo viên
+                        String q2 = "SELECT HoTen FROM GiaoVien WHERE MaGV = ?";
+                        try (PreparedStatement ps = conn.prepareStatement(q2)) {
+                            ps.setInt(1, mappedId);
+                            ResultSet r = ps.executeQuery();
+                            if (r.next()) displayName = r.getString("HoTen");
+                        }
                     }
 
-                    String displayName = tenDangNhap;
-                    int mappedId = maTK;
+                    case "hoc_sinh" -> {
+                        // Lấy MaHS theo MaTK
+                        String q1 = "SELECT MaHS FROM TaiKhoan_HocSinh WHERE MaTK = ?";
+                        try (PreparedStatement ps = conn.prepareStatement(q1)) {
+                            ps.setInt(1, maTK);
+                            ResultSet r = ps.executeQuery();
+                            if (r.next()) mappedId = r.getInt("MaHS");
+                        }
 
-                    if ("giao_vien".equals(normalizedRole)) {
-                        // lookup MaGV by MaTK
-                        String q = "SELECT MaGV FROM TaiKhoan_GiaoVien WHERE MaTK = ?";
-                        try (PreparedStatement p2 = conn.prepareStatement(q)) {
-                            p2.setInt(1, maTK);
-                            try (ResultSet r2 = p2.executeQuery()) {
-                                if (r2.next())
-                                    mappedId = r2.getInt("MaGV");
-                            }
+                        // Lấy tên học sinh
+                        String q2 = "SELECT HoTen FROM HocSinh WHERE MaHS = ?";
+                        try (PreparedStatement ps = conn.prepareStatement(q2)) {
+                            ps.setInt(1, mappedId);
+                            ResultSet r = ps.executeQuery();
+                            if (r.next()) displayName = r.getString("HoTen");
                         }
-                        // try fill HoTen from GiaoVien
-                        String qname = "SELECT HoTen FROM GiaoVien WHERE MaGV = ?";
-                        try (PreparedStatement p3 = conn.prepareStatement(qname)) {
-                            p3.setInt(1, mappedId);
-                            try (ResultSet r3 = p3.executeQuery()) {
-                                if (r3.next())
-                                    displayName = r3.getString("HoTen");
-                            }
-                        }
-                    } else if ("hoc_sinh".equals(normalizedRole)) {
-                        // lookup MaHS by MaTK
-                        String q = "SELECT MaHS FROM TaiKhoan_HocSinh WHERE MaTK = ?";
-                        try (PreparedStatement p2 = conn.prepareStatement(q)) {
-                            p2.setInt(1, maTK);
-                            try (ResultSet r2 = p2.executeQuery()) {
-                                if (r2.next())
-                                    mappedId = r2.getInt("MaHS");
-                            }
-                        }
-                        // try fill HoTen from HocSinh
-                        String qname = "SELECT HoTen FROM HocSinh WHERE MaHS = ?";
-                        try (PreparedStatement p3 = conn.prepareStatement(qname)) {
-                            p3.setInt(1, mappedId);
-                            try (ResultSet r3 = p3.executeQuery()) {
-                                if (r3.next())
-                                    displayName = r3.getString("HoTen");
-                            }
-                        }
-                    } else if ("quan_tri_vien".equals(normalizedRole)) {
-                        // displayName remains TenDangNhap for admin
                     }
 
-                    return new NguoiDungDTO(mappedId, tenDangNhap, matKhau, displayName, normalizedRole);
+                    case "quan_tri_vien" -> {
+                        displayName = "Quản trị viên";
+                    }
                 }
+
+                // === Trả về DTO (id là mã thực: MaGV / MaHS / MaTK) ===
+                return new NguoiDungDTO(mappedId, tenDangNhap, matKhau, displayName, role);
             }
         }
-        return null;
+    }
+
+    // === Chuẩn hóa vai trò (Admin, GiaoVien, HocSinh) ===
+    private String chuanHoaVaiTro(String roleRaw) {
+        if (roleRaw == null) return "";
+        String r = roleRaw.trim().toLowerCase();
+        if (r.contains("admin") || r.contains("quan_tri")) return "quan_tri_vien";
+        if (r.contains("giao") || r.contains("gv")) return "giao_vien";
+        if (r.contains("hoc") || r.contains("hs")) return "hoc_sinh";
+        return r;
     }
 }

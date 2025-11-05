@@ -12,53 +12,95 @@ public class HocSinhBUS {
         dao = new HocSinhDAO();
     }
 
+    /**
+     * Lấy toàn bộ học sinh (JOIN với tên lớp)
+     */
     public List<HocSinhDTO> getAllHocSinh() {
         List<HocSinhDTO> list = new ArrayList<>();
         List<Object[]> rows = dao.getAllHocSinh();
+
         for (Object[] r : rows) {
-            int maHS = (r[0] instanceof Integer) ? (Integer) r[0] : Integer.parseInt(r[0].toString());
-            String hoTen = r[1] != null ? r[1].toString() : "";
-            String ngaySinh = r[2] != null ? r[2].toString() : "";
-            String gioiTinh = r[3] != null ? r[3].toString() : "";
-            String tenLop = r.length > 4 && r[4] != null ? r[4].toString() : "";
-            list.add(new HocSinhDTO(maHS, hoTen, ngaySinh, gioiTinh, tenLop));
+            int maHS = parseInt(r[0]);
+            String hoTen = str(r[1]);
+            String ngaySinh = str(r[2]);
+            String gioiTinh = str(r[3]);
+            String tenLop = (r.length > 4) ? str(r[4]) : "";
+            list.add(new HocSinhDTO());
         }
+
         return list;
     }
 
+    /**
+     * Lấy danh sách học sinh theo mã lớp
+     */
     public List<HocSinhDTO> getHocSinhByMaLop(int maLop) {
         List<HocSinhDTO> list = new ArrayList<>();
         List<Object[]> rows = dao.getHocSinhByMaLop(maLop);
+
         for (Object[] r : rows) {
-            int maHS = (r[0] instanceof Integer) ? (Integer) r[0] : Integer.parseInt(r[0].toString());
-            String hoTen = r[1] != null ? r[1].toString() : "";
-            String gioiTinh = r[2] != null ? r[2].toString() : "";
-            String ngaySinh = r[3] != null ? r[3].toString() : "";
-            list.add(new HocSinhDTO(maHS, hoTen, ngaySinh, gioiTinh, null));
+            int maHS = parseInt(r[0]);
+            String hoTen = str(r[1]);
+            String gioiTinh = str(r[2]);
+            String ngaySinh = str(r[3]);
+            list.add(new HocSinhDTO());
         }
+
         return list;
     }
 
-    // Write facades (match DAO signatures)
-    public void saveHocSinh(String hoTen, java.util.Date ngaySinh, String gioiTinh, String diaChi, String sdt,
-            String email, int maLop) {
+    /**
+     * Thêm học sinh mới
+     */
+    public void saveHocSinh(String hoTen, java.util.Date ngaySinh, String gioiTinh,
+                            String diaChi, String sdt, String email, int maLop) {
         dao.addHocSinh(hoTen, ngaySinh, gioiTinh, diaChi, sdt, email, maLop);
     }
 
-    public void updateHocSinh(int maHS, String hoTen, java.util.Date ngaySinh, String gioiTinh, String diaChi,
-            String sdt, String email, int maLop) {
+    /**
+     * Cập nhật học sinh
+     */
+    public void updateHocSinh(int maHS, String hoTen, java.util.Date ngaySinh, String gioiTinh,
+                              String diaChi, String sdt, String email, int maLop) {
         dao.updateHocSinh(maHS, hoTen, ngaySinh, gioiTinh, diaChi, sdt, email, maLop);
     }
 
+    /**
+     * Xóa học sinh
+     */
     public void deleteHocSinh(int maHS) {
         dao.deleteHocSinh(maHS);
     }
 
+    /**
+     * Tìm học sinh theo mã HS
+     */
     public HocSinhDTO getHocSinhByMaHS(int maHS) {
         for (HocSinhDTO h : getAllHocSinh()) {
             if (h.getMaHS() == maHS)
                 return h;
         }
         return null;
+    }
+
+    /**
+     * 🔍 Tìm học sinh theo tài khoản đăng nhập (MaND)
+     *  → Dùng khi học sinh đăng nhập để xem thời khóa biểu
+     */
+    public HocSinhDTO getByMaND(int maND) {
+        return dao.findByMaND(maND);
+    }
+
+    // =================== Tiện ích nội bộ ===================
+    private int parseInt(Object o) {
+        if (o == null) return 0;
+        return (o instanceof Integer) ? (Integer) o : Integer.parseInt(o.toString());
+    }
+
+    private String str(Object o) {
+        return (o == null) ? "" : o.toString();
+    }
+    public HocSinhDTO getByMaHS(int maHS) {
+        return dao.findByMaHS(maHS);
     }
 }

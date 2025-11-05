@@ -136,6 +136,7 @@ public class DangNhapUI extends JFrame {
                     case "quan_tri_vien" -> {
                         System.out.println(">> Mở giao diện Quản trị viên");
                         new MainDashboard(nd).setVisible(true);
+                        
                     }
 
                     case "giao_vien" -> {
@@ -154,8 +155,26 @@ public class DangNhapUI extends JFrame {
 
                     case "hoc_sinh" -> {
                         System.out.println(">> Mở giao diện Học sinh");
-                        new HocSinhDashboard(nd).setVisible(true);
+
+                        // Khởi tạo BUS để lấy thông tin học sinh
+                        HocSinhBUS hsBUS = new HocSinhBUS();
+                        HocSinhDTO hs = hsBUS.getByMaHS(nd.getId());  // ✅ Lấy theo MaHS, không dùng MaTK
+
+                        if (hs != null) {
+                            System.out.println("🟢 Học sinh đăng nhập: " + hs.getHoTen());
+                            System.out.println("   MaHS: " + hs.getMaHS() + " | MaLop: " + hs.getMaLop());
+
+                            // Mở giao diện dashboard học sinh
+                            new HocSinhDashboard(nd, hs.getMaLop()).setVisible(true);
+                        } else {
+                            System.err.println("⚠ Không tìm thấy thông tin học sinh với MaHS = " + nd.getId());
+                            JOptionPane.showMessageDialog(this,
+                                    "Không tìm thấy thông tin học sinh!",
+                                    "Lỗi đăng nhập", JOptionPane.ERROR_MESSAGE);
+                        }
                     }
+
+
 
                     default -> {
                         JOptionPane.showMessageDialog(this,
