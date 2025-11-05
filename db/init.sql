@@ -93,11 +93,10 @@ CREATE TABLE PhanCongDay (
     TrangThai TINYINT DEFAULT 1,
     NgayTao DATETIME DEFAULT CURRENT_TIMESTAMP,
     NgayCapNhat DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-
-    CONSTRAINT fk_pcd_gv FOREIGN KEY (MaGV) REFERENCES GiaoVien(MaGV) ON DELETE CASCADE ON UPDATE CASCADE,
-    CONSTRAINT fk_pcd_lop FOREIGN KEY (MaLop) REFERENCES Lop(MaLop) ON DELETE CASCADE ON UPDATE CASCADE,
-    CONSTRAINT fk_pcd_mon FOREIGN KEY (MaMon) REFERENCES MonHoc(MaMon) ON DELETE CASCADE ON UPDATE CASCADE,
-    CONSTRAINT fk_pcd_phong FOREIGN KEY (MaPhong) REFERENCES PhongHoc(MaPhong) ON DELETE CASCADE ON UPDATE CASCADE
+    CONSTRAINT fk_pcd_gv FOREIGN KEY (MaGV) REFERENCES GiaoVien (MaGV) ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT fk_pcd_lop FOREIGN KEY (MaLop) REFERENCES Lop (MaLop) ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT fk_pcd_mon FOREIGN KEY (MaMon) REFERENCES MonHoc (MaMon) ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT fk_pcd_phong FOREIGN KEY (MaPhong) REFERENCES PhongHoc (MaPhong) ON DELETE CASCADE ON UPDATE CASCADE
 );
 
 CREATE TABLE ChuNhiem (
@@ -121,11 +120,7 @@ CREATE TABLE ThoiKhoaBieu (
     TrangThai TINYINT DEFAULT 1,
     NgayTao DATETIME DEFAULT CURRENT_TIMESTAMP,
     NgayCapNhat DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-
-    CONSTRAINT fk_tkb_pcd FOREIGN KEY (MaPCD)
-        REFERENCES PhanCongDay(MaPCD)
-        ON DELETE CASCADE
-        ON UPDATE CASCADE
+    CONSTRAINT fk_tkb_pcd FOREIGN KEY (MaPCD) REFERENCES PhanCongDay (MaPCD) ON DELETE CASCADE ON UPDATE CASCADE
 );
 
 -- === BẢNG ĐIỂM (GỘP) + CỘT SINH ===
@@ -8523,358 +8518,6 @@ VALUES (10, 6, 'Mẹ'),
     (253, 249, 'Bố'),
     (254, 250, 'Mẹ');
 
-INSERT INTO
-    ThoiKhoaBieu (
-        MaLop,
-        MaGV,
-        MaMon,
-        MaPhong,
-        HocKy,
-        NamHoc,
-        ThuTrongTuan,
-        TietBatDau,
-        TietKetThuc
-    )
-VALUES
-    -- 12A1 (MaLop=4, MaPhong=301) - HK1
-    (
-        4,
-        101,
-        101,
-        301,
-        'HK1',
-        '2024-2025',
-        'Thứ 2',
-        1,
-        2
-    ),
-    (
-        4,
-        102,
-        102,
-        301,
-        'HK1',
-        '2024-2025',
-        'Thứ 2',
-        3,
-        4
-    ),
-    (
-        4,
-        103,
-        103,
-        301,
-        'HK1',
-        '2024-2025',
-        'Thứ 3',
-        1,
-        2
-    ),
-    (
-        4,
-        104,
-        104,
-        301,
-        'HK1',
-        '2024-2025',
-        'Thứ 3',
-        3,
-        4
-    ),
-    (
-        4,
-        105,
-        105,
-        301,
-        'HK1',
-        '2024-2025',
-        'Thứ 4',
-        1,
-        2
-    ),
-    -- 12A1 (MaLop=4, MaPhong=301) - HK2
-    (
-        4,
-        101,
-        101,
-        301,
-        'HK2',
-        '2024-2025',
-        'Thứ 5',
-        1,
-        2
-    ),
-    (
-        4,
-        102,
-        102,
-        301,
-        'HK2',
-        '2024-2025',
-        'Thứ 5',
-        3,
-        4
-    ),
-    (
-        4,
-        103,
-        103,
-        301,
-        'HK2',
-        '2024-2025',
-        'Thứ 6',
-        1,
-        2
-    ),
-    (
-        4,
-        104,
-        104,
-        301,
-        'HK2',
-        '2024-2025',
-        'Thứ 6',
-        3,
-        4
-    ),
-    -- 10A3 (MaLop=5, MaPhong=102) - HK1 
-    (
-        5,
-        107,
-        101,
-        103,
-        'HK1',
-        '2024-2025',
-        'Thứ 5',
-        1,
-        2
-    ),
-    (
-        5,
-        108,
-        102,
-        103,
-        'HK1',
-        '2024-2025',
-        'Thứ 5',
-        3,
-        4
-    ),
-    (
-        5,
-        109,
-        103,
-        103,
-        'HK1',
-        '2024-2025',
-        'Thứ 6',
-        1,
-        2
-    ),
-    (
-        5,
-        110,
-        104,
-        103,
-        'HK1',
-        '2024-2025',
-        'Thứ 6',
-        3,
-        4
-    ),
-    -- 10A3 (MaLop=5, MaPhong=102/202) - HK2
-    (
-        5,
-        107,
-        101,
-        103,
-        'HK2',
-        '2024-2025',
-        'Thứ 2',
-        1,
-        2
-    ),
-    (
-        5,
-        108,
-        102,
-        103,
-        'HK2',
-        '2024-2025',
-        'Thứ 3',
-        3,
-        4
-    ),
-    (
-        5,
-        109,
-        103,
-        103,
-        'HK2',
-        '2024-2025',
-        'Thứ 4',
-        1,
-        2
-    ),
-    -- 11A2 (MaLop=6, MaPhong=201) - HK1 
-    (
-        6,
-        111,
-        101,
-        203,
-        'HK1',
-        '2024-2025',
-        'Thứ 5',
-        1,
-        2
-    ),
-    (
-        6,
-        112,
-        102,
-        203,
-        'HK1',
-        '2024-2025',
-        'Thứ 5',
-        3,
-        4
-    ),
-    (
-        6,
-        113,
-        103,
-        203,
-        'HK1',
-        '2024-2025',
-        'Thứ 6',
-        1,
-        2
-    ),
-    (
-        6,
-        114,
-        104,
-        203,
-        'HK1',
-        '2024-2025',
-        'Thứ 6',
-        3,
-        4
-    ),
-    -- 11A2 (MaLop=6, MaPhong=201) - HK2
-    (
-        6,
-        111,
-        101,
-        203,
-        'HK2',
-        '2024-2025',
-        'Thứ 2',
-        1,
-        2
-    ),
-    (
-        6,
-        112,
-        102,
-        203,
-        'HK2',
-        '2024-2025',
-        'Thứ 3',
-        3,
-        4
-    ),
-    (
-        6,
-        113,
-        103,
-        203,
-        'HK2',
-        '2024-2025',
-        'Thứ 4',
-        1,
-        2
-    ),
-    -- 12A2 (MaLop=7, MaPhong=301) - HK1 
-    (
-        7,
-        115,
-        101,
-        302,
-        'HK1',
-        '2024-2025',
-        'Thứ 5',
-        1,
-        2
-    ),
-    (
-        7,
-        105,
-        102,
-        302,
-        'HK1',
-        '2024-2025',
-        'Thứ 5',
-        3,
-        4
-    ),
-    (
-        7,
-        106,
-        103,
-        302,
-        'HK1',
-        '2024-2025',
-        'Thứ 6',
-        1,
-        2
-    ),
-    (
-        7,
-        107,
-        104,
-        302,
-        'HK1',
-        '2024-2025',
-        'Thứ 6',
-        3,
-        4
-    ),
-    -- 12A2 (MaLop=7, MaPhong=301) - HK2
-    (
-        7,
-        115,
-        101,
-        302,
-        'HK2',
-        '2024-2025',
-        'Thứ 2',
-        1,
-        2
-    ),
-    (
-        7,
-        105,
-        102,
-        302,
-        'HK2',
-        '2024-2025',
-        'Thứ 3',
-        3,
-        4
-    ),
-    (
-        7,
-        106,
-        103,
-        302,
-        'HK2',
-        '2024-2025',
-        'Thứ 4',
-        1,
-        2
-    );
-
 -- Thêm dữ liệu mẫu hạnh kiểm
 INSERT INTO
     HanhKiem (
@@ -8959,30 +8602,6 @@ VALUES
         'Trung bình',
         'Đã cố gắng hơn.'
     );
-
-INSERT INTO
-    PhanCongDay (
-        MaGV,
-        MaMon,
-        MaLop,
-        MaNK,
-        HocKy
-    )
-SELECT DISTINCT
-    MaGV,
-    MaMon,
-    MaLop,
-    1 AS MaNK, -- Giả định tất cả thuộc Niên Khóa 1
-    CASE
-        WHEN HocKy = 'HK1' THEN 1
-        WHEN HocKy = 'HK2' THEN 2
-        ELSE 0 -- Xử lý nếu có Hè (nhưng ở đây là 1 hoặc 2)
-    END AS HocKyInt
-FROM ThoiKhoaBieu
-WHERE
-    NamHoc = '2024-2025';
-
--- === VIEW PHỤC VỤ HIỂN THỊ/BÁO CÁO ===
 
 -- Điểm từng môn theo HK (từ Diem)
 CREATE OR REPLACE VIEW v_DiemMon_HK AS
@@ -9298,21 +8917,6 @@ VALUES (5, 1),
     (6, 2),
     (7, 3);
 
--- Truy vấn test tài khoản liên kết
--- Lấy danh sách tài khoản giáo viên
--- SELECT tk.MaTK, tk.TenDangNhap, gv.HoTen, gv.Emailphancongday
--- FROM TaiKhoan tk
--- JOIN TaiKhoan_GiaoVien tkgv ON tkgv.MaTK = tk.MaTK
--- JOIN GiaoVien gv ON gv.MaGV = tkgv.MaGV;
--- Lấy danh sách tài khoản học sinh
--- SELECT tk.MaTK, tk.TenDangNhap, hs.HoTen, hs.Email
--- FROM TaiKhoan tk
--- JOIN TaiKhoan_HocSinh tkhs ON tkhs.MaTK = tk.MaTK
--- JOIN HocSinh hs ON hs.MaHS = tkhs.MaHS;
-
--- Đảm bảo bạn đang dùng đúng database
-USE QLHS;
-
 -- Chèn các bản ghi điểm còn thiếu cho tất cả học sinh, tất cả các môn, cả 2 học kỳ
 INSERT INTO
     Diem (
@@ -9365,6 +8969,7 @@ FROM (
 ALTER TABLE MonHoc
 ADD COLUMN LoaiMon ENUM('TinhDiem', 'DanhGia') NOT NULL DEFAULT 'TinhDiem' COMMENT 'TinhDiem = Môn tính điểm số, DanhGia = Môn chỉ đánh giá Đ/KĐ';
 
+SET SQL_SAFE_UPDATES = 0;
 -- Cập nhật các môn đánh giá (Thể dục, GDCD)
 UPDATE MonHoc
 SET
@@ -9379,8 +8984,7 @@ WHERE
 ALTER TABLE Diem
 ADD COLUMN KetQuaDanhGia ENUM('Đ', 'KĐ') DEFAULT NULL COMMENT 'Chỉ dùng cho các môn có LoaiMon = DanhGia';
 
--- Đảm bảo bạn đang dùng đúng database
-USE QLHS;
+SET SQL_SAFE_UPDATES = 1;
 
 -- === PHẦN 1: ĐIỀN ĐIỂM SỐ CHO CÁC MÔN TÍNH ĐIỂM ===
 INSERT INTO
@@ -9473,83 +9077,407 @@ FROM (
         WHERE
             d.MaDiem IS NULL
     ) AS missing;
-    
-    USE QLHS;
 
-INSERT INTO PhanCongDay (
-    MaGV, 
-    MaLop, 
-    MaMon, 
-    MaPhong, 
-    HocKy, 
-    NamHoc
-)
+-- BUOC 4: THEM DU LIEU MOI CHO PHANCONGDAY
+-- (MaPCD se tu dong tang tu 1 den 31)
+INSERT INTO
+    PhanCongDay (
+        MaGV,
+        MaLop,
+        MaMon,
+        MaPhong,
+        HocKy,
+        NamHoc
+    )
+VALUES
+    -- Lop 4, HK1 (PCD 1-5) 
+    (
+        101,
+        4,
+        101,
+        301,
+        'HK1',
+        '2024-2025'
+    ),
+    (
+        102,
+        4,
+        102,
+        301,
+        'HK1',
+        '2024-2025'
+    ),
+    (
+        103,
+        4,
+        103,
+        301,
+        'HK1',
+        '2024-2025'
+    ),
+    (
+        104,
+        4,
+        104,
+        301,
+        'HK1',
+        '2024-2025'
+    ),
+    (
+        105,
+        4,
+        105,
+        301,
+        'HK1',
+        '2024-2025'
+    ),
+    -- Lop 4, HK2 (PCD 6-9) 
+    (
+        101,
+        4,
+        101,
+        301,
+        'HK2',
+        '2024-2025'
+    ),
+    (
+        102,
+        4,
+        102,
+        301,
+        'HK2',
+        '2024-2025'
+    ),
+    (
+        103,
+        4,
+        103,
+        301,
+        'HK2',
+        '2024-2025'
+    ),
+    (
+        104,
+        4,
+        104,
+        301,
+        'HK2',
+        '2024-2025'
+    ),
+    -- Lop 5, HK1 (PCD 10-13) 
+    (
+        107,
+        5,
+        101,
+        103,
+        'HK1',
+        '2024-2025'
+    ),
+    (
+        108,
+        5,
+        102,
+        103,
+        'HK1',
+        '2024-2025'
+    ),
+    (
+        109,
+        5,
+        103,
+        103,
+        'HK1',
+        '2024-2025'
+    ),
+    (
+        110,
+        5,
+        104,
+        103,
+        'HK1',
+        '2024-2025'
+    ),
+    -- Lop 5, HK2 (PCD 14-16)
+    (
+        107,
+        5,
+        101,
+        103,
+        'HK2',
+        '2024-2025'
+    ),
+    (
+        108,
+        5,
+        102,
+        103,
+        'HK2',
+        '2024-2025'
+    ),
+    (
+        109,
+        5,
+        103,
+        103,
+        'HK2',
+        '2024-2025'
+    ),
+    -- Lop 6, HK1 (PCD 17-20) 
+    (
+        111,
+        6,
+        101,
+        203,
+        'HK1',
+        '2024-2025'
+    ),
+    (
+        112,
+        6,
+        102,
+        203,
+        'HK1',
+        '2024-2025'
+    ),
+    (
+        113,
+        6,
+        103,
+        203,
+        'HK1',
+        '2024-2025'
+    ),
+    (
+        114,
+        6,
+        104,
+        203,
+        'HK1',
+        '2024-2025'
+    ),
+    -- Lop 6, HK2 (PCD 21-23) */
+    (
+        111,
+        6,
+        101,
+        203,
+        'HK2',
+        '2024-2025'
+    ),
+    (
+        112,
+        6,
+        102,
+        203,
+        'HK2',
+        '2024-2025'
+    ),
+    (
+        113,
+        6,
+        103,
+        203,
+        'HK2',
+        '2024-2025'
+    ),
+    -- Lop 7, HK1 (PCD 24-27) 
+    (
+        115,
+        7,
+        101,
+        302,
+        'HK1',
+        '2024-2025'
+    ),
+    (
+        105,
+        7,
+        102,
+        302,
+        'HK1',
+        '2024-2025'
+    ),
+    (
+        106,
+        7,
+        103,
+        302,
+        'HK1',
+        '2024-2025'
+    ),
+    (
+        107,
+        7,
+        104,
+        302,
+        'HK1',
+        '2024-2025'
+    ),
+    -- Lop 7, HK2 (PCD 28-31) 
+    (
+        115,
+        7,
+        101,
+        302,
+        'HK2',
+        '2024-2025'
+    ),
+    (
+        105,
+        7,
+        102,
+        302,
+        'HK2',
+        '2024-2025'
+    ),
+    (
+        106,
+        7,
+        103,
+        302,
+        'HK2',
+        '2024-2025'
+    ),
+    (
+        107,
+        7,
+        104,
+        302,
+        'HK2',
+        '2024-2025'
+    );
+
+-- BUOC 5: THEM DU LIEU MOI CHO THOIKHOABIEU
+-- (Tham chiếu đến MaPCD 1-31 ở trên)
+INSERT INTO
+    ThoiKhoaBieu (MaPCD, Thu, TietBD, TietKT)
+VALUES (1, 'Thứ 2', 1, 2),
+    (2, 'Thứ 2', 3, 4),
+    (3, 'Thứ 3', 1, 2),
+    (4, 'Thứ 3', 3, 4),
+    (5, 'Thứ 4', 1, 2),
+    (6, 'Thứ 5', 1, 2),
+    (7, 'Thứ 5', 3, 4),
+    (8, 'Thứ 6', 1, 2),
+    (9, 'Thứ 6', 3, 4),
+    (10, 'Thứ 5', 1, 2),
+    (11, 'Thứ 5', 3, 4),
+    (12, 'Thứ 6', 1, 2),
+    (13, 'Thứ 6', 3, 4),
+    (14, 'Thứ 2', 1, 2),
+    (15, 'Thứ 3', 3, 4),
+    (16, 'Thứ 4', 1, 2),
+    (17, 'Thứ 5', 1, 2),
+    (18, 'Thứ 5', 3, 4),
+    (19, 'Thứ 6', 1, 2),
+    (20, 'Thứ 6', 3, 4),
+    (21, 'Thứ 2', 1, 2),
+    (22, 'Thứ 3', 3, 4),
+    (23, 'Thứ 4', 1, 2),
+    (24, 'Thứ 5', 1, 2),
+    (25, 'Thứ 5', 3, 4),
+    (26, 'Thứ 6', 1, 2),
+    (27, 'Thứ 6', 3, 4),
+    (28, 'Thứ 2', 1, 2),
+    (29, 'Thứ 3', 3, 4),
+    (30, 'Thứ 4', 1, 2),
+    (31, 'Thứ 4', 1, 2);
+
+INSERT INTO
+    PhanCongDay (
+        MaGV,
+        MaLop,
+        MaMon,
+        MaPhong,
+        HocKy,
+        NamHoc
+    )
 SELECT
     -- Chọn một MaGV ngẫu nhiên từ bảng GiaoVien
-    (SELECT MaGV FROM GiaoVien ORDER BY RAND() LIMIT 1) AS MaGV, 
-    
-    all_combos.MaLop, 
-    all_combos.MaMon, 
-    
-    -- Lấy MaPhong mặc định đã gán cho Lớp đó
-    all_combos.MaPhong, 
-    
-    all_combos.HocKy, 
-    all_combos.NamHoc
-FROM
-(
-    -- 1. Tạo tất cả tổ hợp Lớp x Môn x Học Kỳ x Năm Học
-    SELECT
-        l.MaLop,
-        l.MaPhong,
-        m.MaMon,
-        hk.HocKy,
-        '2024-2025' AS NamHoc
-    FROM
-        Lop l
-    CROSS JOIN
-        MonHoc m
-    CROSS JOIN
-        (SELECT 'HK1' AS HocKy UNION SELECT 'HK2' AS HocKy) hk
-) AS all_combos
-LEFT JOIN
+    (
+        SELECT MaGV
+        FROM GiaoVien
+        ORDER BY RAND()
+        LIMIT 1
+    ) AS MaGV, all_combos.MaLop, all_combos.MaMon,
+
+-- Lấy MaPhong mặc định đã gán cho Lớp đó
+all_combos.MaPhong,
+all_combos.HocKy,
+all_combos.NamHoc
+FROM (
+        -- 1. Tạo tất cả tổ hợp Lớp x Môn x Học Kỳ x Năm Học
+        SELECT l.MaLop, l.MaPhong, m.MaMon, hk.HocKy, '2024-2025' AS NamHoc
+        FROM Lop l
+            CROSS JOIN MonHoc m
+            CROSS JOIN (
+                SELECT 'HK1' AS HocKy
+                UNION
+                SELECT 'HK2' AS HocKy
+            ) hk
+    ) AS all_combos
+    LEFT JOIN
     -- 2. Kiểm tra xem tổ hợp này đã tồn tại trong PhanCongDay chưa
     PhanCongDay pcd ON all_combos.MaLop = pcd.MaLop
-                   AND all_combos.MaMon = pcd.MaMon
-                   AND all_combos.HocKy = pcd.HocKy
-                   AND all_combos.NamHoc = pcd.NamHoc
+    AND all_combos.MaMon = pcd.MaMon
+    AND all_combos.HocKy = pcd.HocKy
+    AND all_combos.NamHoc = pcd.NamHoc
 WHERE
-    pcd.MaPCD IS NULL; -- 3. Chỉ chèn những tổ hợp còn thiếu
-    
-    USE QLHS;
+    pcd.MaPCD IS NULL;
+-- 3. Chỉ chèn những tổ hợp còn thiếu
+
+USE QLHS;
 
 -- Bước 1: Thêm tài khoản cho 2 giáo viên mới
-INSERT INTO TaiKhoan (TenDangNhap, MatKhau, VaiTro)
-VALUES 
-('gv104', '123456', 'GiaoVien'),
-('gv105', '123456', 'GiaoVien');
+INSERT INTO
+    TaiKhoan (TenDangNhap, MatKhau, VaiTro)
+VALUES ('gv104', '123456', 'GiaoVien'),
+    ('gv105', '123456', 'GiaoVien');
 
 -- Bước 2: Liên kết tài khoản với giáo viên
 -- (Giả sử MaTK của gv104, gv105 là 8, 9 nếu bạn đã có 7 tài khoản)
-INSERT INTO TaiKhoan_GiaoVien (MaTK, MaGV)
-VALUES
-((SELECT MaTK FROM TaiKhoan WHERE TenDangNhap = 'gv104'), 104),
-((SELECT MaTK FROM TaiKhoan WHERE TenDangNhap = 'gv105'), 105);
+INSERT INTO
+    TaiKhoan_GiaoVien (MaTK, MaGV)
+VALUES (
+        (
+            SELECT MaTK
+            FROM TaiKhoan
+            WHERE
+                TenDangNhap = 'gv104'
+        ),
+        104
+    ),
+    (
+        (
+            SELECT MaTK
+            FROM TaiKhoan
+            WHERE
+                TenDangNhap = 'gv105'
+        ),
+        105
+    );
 
 -- Bước 3: Thêm dữ liệu Chủ nhiệm cho 2 giáo viên này
 -- (MaNK = 1 là 2024-2025)
-INSERT INTO ChuNhiem (MaGV, MaLop, MaNK, NgayNhanNhiem)
-VALUES
-(104, 1, 1, '2024-09-05'), -- GV 104 (Hoàng Minh Dũng) chủ nhiệm lớp 10A1
-(105, 2, 1, '2024-09-05'); -- GV 105 (Bùi Thanh Mai) chủ nhiệm lớp 10A2
+INSERT INTO
+    ChuNhiem (
+        MaGV,
+        MaLop,
+        MaNK,
+        NgayNhanNhiem
+    )
+VALUES (104, 1, 1, '2024-09-05'), -- GV 104 (Hoàng Minh Dũng) chủ nhiệm lớp 10A1
+    (105, 2, 1, '2024-09-05');
+-- GV 105 (Bùi Thanh Mai) chủ nhiệm lớp 10A2
 
 USE QLHS;
 
 -- 3. Gán GV 101 làm chủ nhiệm lớp 11A1 (MaLop=3)
-INSERT INTO ChuNhiem (MaGV, MaLop, MaNK, NgayNhanNhiem)
-VALUES (
-    101, 
-    3, 
-    1, 
-    '2024-09-05'
-);
+INSERT INTO
+    ChuNhiem (
+        MaGV,
+        MaLop,
+        MaNK,
+        NgayNhanNhiem
+    )
+VALUES (101, 3, 1, '2024-09-05');
