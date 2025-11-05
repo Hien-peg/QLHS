@@ -128,6 +128,42 @@ public class TKBPanel extends JPanel {
         JScrollPane scroll = new JScrollPane(tblTKB);
         scroll.setBorder(new EmptyBorder(15, 15, 15, 15));
         add(scroll, BorderLayout.CENTER);
+        
+     // ==== Lắng nghe click chuột chọn tiết học ====
+        tblTKB.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
+            public void mouseClicked(java.awt.event.MouseEvent e) {
+                int row = tblTKB.getSelectedRow();
+                int col = tblTKB.getSelectedColumn();
+
+                // Bỏ qua nếu click vào cột "Tiết"
+                if (col == 0) {
+                    selectedTKB = null;
+                    return;
+                }
+
+                int tiet = row + 1;
+                String thu = "Thứ " + (col + 1);
+
+                selectedTKB = null;
+                for (ThoiKhoaBieuDTO t : currentTkbList) {
+                    if (t.getThu().equalsIgnoreCase(thu)
+                            && t.getTietBD() <= tiet && tiet <= t.getTietKT()) {
+                        selectedTKB = t;
+                        break;
+                    }
+                }
+
+                if (selectedTKB != null) {
+                    System.out.println(">> Đã chọn tiết: " + selectedTKB.getTenMon() +
+                            " - GV: " + selectedTKB.getTenGV() + " - " + selectedTKB.getThu() +
+                            " (Tiết " + selectedTKB.getTietBD() + "-" + selectedTKB.getTietKT() + ")");
+                } else {
+                    System.out.println(">> Không tìm thấy tiết phù hợp (" + thu + ", Tiết " + tiet + ")");
+                }
+            }
+        });
+
 
         // ===== Nút sự kiện =====
         btnThem.addActionListener(e -> openDialog(null));
@@ -279,5 +315,9 @@ public class TKBPanel extends JPanel {
 
         System.out.println(">> Admin chọn lớp: " + tenLopChon + " (MaLop=" + maLop + ")");
         reloadData();
+   
+ 
     }
+    
 }
+
