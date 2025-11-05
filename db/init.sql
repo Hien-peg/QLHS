@@ -8917,54 +8917,6 @@ VALUES (5, 1),
     (6, 2),
     (7, 3);
 
--- Chèn các bản ghi điểm còn thiếu cho tất cả học sinh, tất cả các môn, cả 2 học kỳ
-INSERT INTO
-    Diem (
-        MaHS,
-        MaMon,
-        HocKy,
-        MaNK,
-        DiemMieng,
-        Diem15p,
-        DiemGiuaKy,
-        DiemCuoiKy
-    )
-SELECT
-    missing.MaHS,
-    missing.MaMon,
-    missing.HocKy,
-    missing.MaNK,
-    -- Tạo điểm ngẫu nhiên từ 5.0 đến 10.0, làm tròn 1 chữ số
-    ROUND(5.0 + RAND() * 5.0, 1) AS DiemMieng,
-    ROUND(5.0 + RAND() * 5.0, 1) AS Diem15p,
-    ROUND(5.0 + RAND() * 5.0, 1) AS DiemGiuaKy,
-    ROUND(5.0 + RAND() * 5.0, 1) AS DiemCuoiKy
-FROM (
-        -- 1. Tạo tất cả các kết hợp (MaHS, MaMon, HocKy, MaNK) có thể có
-        SELECT all_combos.MaHS, all_combos.MaMon, all_combos.HocKy, all_combos.MaNK
-        FROM (
-                SELECT hs.MaHS, mh.MaMon, hk.HocKy, nk.MaNK
-                FROM
-                    HocSinh hs
-                    CROSS JOIN MonHoc mh
-                    CROSS JOIN (
-                        SELECT 1 AS HocKy
-                        UNION
-                        SELECT 2 AS HocKy
-                    ) hk
-                    CROSS JOIN NienKhoa nk
-                WHERE
-                    nk.MaNK = 1 -- Chỉ thêm cho niên khóa 1 (2024-2025)
-            ) AS all_combos
-            -- 2. Loại bỏ những kết hợp đã tồn tại trong bảng Diem
-            LEFT JOIN Diem d ON all_combos.MaHS = d.MaHS
-            AND all_combos.MaMon = d.MaMon
-            AND all_combos.HocKy = d.HocKy
-            AND all_combos.MaNK = d.MaNK
-        WHERE
-            d.MaDiem IS NULL -- Chỉ lấy những bản ghi còn thiếu
-    ) AS missing;
-
 -- Bước 1: Thêm cột vào MonHoc để phân loại môn
 ALTER TABLE MonHoc
 ADD COLUMN LoaiMon ENUM('TinhDiem', 'DanhGia') NOT NULL DEFAULT 'TinhDiem' COMMENT 'TinhDiem = Môn tính điểm số, DanhGia = Môn chỉ đánh giá Đ/KĐ';
