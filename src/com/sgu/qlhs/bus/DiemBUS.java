@@ -10,8 +10,6 @@ import java.sql.SQLException;
 import com.sgu.qlhs.database.DiemDAO;
 import com.sgu.qlhs.bus.HocSinhBUS;
 import com.sgu.qlhs.dto.HocSinhDTO;
-import com.sgu.qlhs.bus.ChuNhiemBUS;
-import com.sgu.qlhs.dto.ChuNhiemDTO;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -98,12 +96,12 @@ public class DiemBUS {
             int maDiem = (r[0] instanceof Integer) ? (Integer) r[0] : Integer.parseInt(r[0].toString());
             int maMon = (r[1] instanceof Integer) ? (Integer) r[1] : Integer.parseInt(r[1].toString());
             String tenMon = r[2] != null ? r[2].toString() : "";
-            String loaiMon = r[3] != null ? r[3].toString() : "";
-            double mieng = r[4] != null ? Double.parseDouble(r[4].toString()) : 0.0;
-            double p15 = r[5] != null ? Double.parseDouble(r[5].toString()) : 0.0;
-            double gk = r[6] != null ? Double.parseDouble(r[6].toString()) : 0.0;
-            double ck = r[7] != null ? Double.parseDouble(r[7].toString()) : 0.0;
-            String ghiChu = r[8] != null ? r[8].toString() : "";
+            String loaiMon = r[3] != null ? r[3].toString() : ""; 
+            double mieng = r[4] != null ? Double.parseDouble(r[4].toString()) : 0.0; 
+            double p15 = r[5] != null ? Double.parseDouble(r[5].toString()) : 0.0; 
+            double gk = r[6] != null ? Double.parseDouble(r[6].toString()) : 0.0; 
+            double ck = r[7] != null ? Double.parseDouble(r[7].toString()) : 0.0; 
+            String ghiChu = r[8] != null ? r[8].toString() : ""; 
             String ketQuaDanhGia = r[9] != null ? r[9].toString() : null;
             // === SỬA LỖI: Đọc DiemTB từ r[10] ===
             double diemTB = (r[10] != null) ? Double.parseDouble(r[10].toString()) : 0.0;
@@ -116,13 +114,13 @@ public class DiemBUS {
             d.setHocKy(hocKy);
             d.setMaMon(maMon);
             d.setTenMon(tenMon);
-            d.setLoaiMon(loaiMon);
+            d.setLoaiMon(loaiMon); 
             d.setDiemMieng(mieng);
             d.setDiem15p(p15);
             d.setDiemGiuaKy(gk);
             d.setDiemCuoiKy(ck);
             d.setGhiChu(ghiChu);
-            d.setKetQuaDanhGia(ketQuaDanhGia);
+            d.setKetQuaDanhGia(ketQuaDanhGia); 
             d.setDiemTB(diemTB); // Thêm dòng này
             list.add(d);
         }
@@ -157,9 +155,7 @@ public class DiemBUS {
     public boolean saveNhanXet(int maHS, int maNK, int hocKy, String ghiChu, NguoiDungDTO user) {
         if (user != null && "giao_vien".equalsIgnoreCase(user.getVaiTro())) {
             try {
-                // For saving nhận xét, require explicit PhanCongDay assignment (no
-                // homeroom-only write)
-                if (!isTeacherAssignedStrict(user.getId(), maHS, null, hocKy, maNK))
+                if (!isTeacherAssigned(user.getId(), maHS, null, hocKy, maNK))
                     return false;
             } catch (Exception ex) {
                 System.err.println("Lỗi kiểm tra quyền trước khi lưu nhận xét: " + ex.getMessage());
@@ -198,9 +194,8 @@ public class DiemBUS {
             String ghiChu, String ketQuaDanhGia, NguoiDungDTO user) {
         if (user != null && "giao_vien".equalsIgnoreCase(user.getVaiTro())) {
             try {
-                // For write operations require explicit PhanCongDay assignment; do not
-                // grant write permission solely because the teacher is chủ nhiệm.
-                if (!isTeacherAssignedStrict(user.getId(), maHS, maMon, hocKy, maNK))
+                // SỬA: Lỗi của bạn ở đây. Truyền hocKy (int) và maNK (int)
+                if (!isTeacherAssigned(user.getId(), maHS, maMon, hocKy, maNK))
                     return false;
             } catch (Exception ex) {
                 System.err.println("Lỗi kiểm tra quyền trước khi lưu điểm (ghi chú): " + ex.getMessage());
@@ -220,7 +215,7 @@ public class DiemBUS {
             return false;
         }
     }
-
+    
     // === KẾT THÚC PHẦN SỬA LỖI ===
 
     public void deleteDiem(int maHS, int maMon, int hocKy, int maNK) {
@@ -230,9 +225,8 @@ public class DiemBUS {
     public boolean deleteDiem(int maHS, int maMon, int hocKy, int maNK, NguoiDungDTO user) {
         if (user != null && "giao_vien".equalsIgnoreCase(user.getVaiTro())) {
             try {
-                // For delete operations require explicit PhanCongDay assignment (no
-                // homeroom-only write)
-                if (!isTeacherAssignedStrict(user.getId(), maHS, maMon, hocKy, maNK))
+                // SỬA: Lỗi của bạn ở đây. Truyền hocKy (int) và maNK (int)
+                if (!isTeacherAssigned(user.getId(), maHS, maMon, hocKy, maNK))
                     return false;
             } catch (Exception ex) {
                 System.err.println("Lỗi kiểm tra quyền trước khi xóa điểm: " + ex.getMessage());
@@ -255,16 +249,16 @@ public class DiemBUS {
      * If maMon is not null, also require teacher assigned for that subject.
      */
     private boolean isTeacherAssigned(int maGV, int maHS, Integer maMon, int hocKyInt, int maNK) throws SQLException {
-
+        
         // 1. Chuyển đổi int HocKy (1) -> String HocKy ("HK1")
         String hocKyString = "HK" + hocKyInt;
-
+        
         // 2. Lấy chuỗi NamHoc (vd: "2024-2025") từ MaNK
         String namHocString = null;
         // Dùng NienKhoaBUS đã tạo
         NienKhoaBUS nkBUS = new NienKhoaBUS();
         namHocString = nkBUS.getNamHocString(maNK);
-
+        
         if (namHocString == null) {
             throw new SQLException("Không tìm thấy Niên Khóa cho MaNK: " + maNK);
         }
@@ -275,68 +269,13 @@ public class DiemBUS {
         if (maMon != null) {
             sql += " AND pc.MaMon = ?";
         }
-
+        
         try (Connection conn = DatabaseConnection.getConnection();
                 PreparedStatement ps = conn.prepareStatement(sql)) {
             int idx = 1;
             ps.setInt(idx++, maGV);
-            ps.setString(idx++, namHocString); // SỬA: Dùng NamHoc (String)
-            ps.setString(idx++, hocKyString); // SỬA: Dùng HocKy (String)
-            ps.setInt(idx++, maHS);
-            if (maMon != null) {
-                ps.setInt(idx++, maMon);
-            }
-            try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) {
-                    return rs.getInt("cnt") > 0;
-                }
-            }
-        }
-        // If not assigned via PhanCongDay, allow access when the teacher is the
-        // chủ nhiệm (homeroom) of the student's class.
-        try {
-            ChuNhiemBUS cnBUS = new ChuNhiemBUS();
-            ChuNhiemDTO cn = cnBUS.getChuNhiemByGV(maGV);
-            if (cn != null) {
-                // fetch student info and compare MaLop
-                HocSinhDTO hs = hocSinhBUS.getHocSinhByMaHS(maHS);
-                if (hs != null && hs.getMaLop() == cn.getMaLop()) {
-                    return true;
-                }
-            }
-        } catch (Exception ex) {
-            // ignore and fall through to deny
-        }
-        return false;
-    }
-
-    /**
-     * Strict assignment check used for write operations: only consider explicit
-     * PhanCongDay assignments (do NOT grant permission based on ChuNhiem/homeroom).
-     */
-    private boolean isTeacherAssignedStrict(int maGV, int maHS, Integer maMon, int hocKyInt, int maNK)
-            throws SQLException {
-        // convert hocKy int to string "HK1"/"HK2"
-        String hocKyString = "HK" + hocKyInt;
-        // get NamHoc string from MaNK
-        NienKhoaBUS nkBUS = new NienKhoaBUS();
-        String namHocString = nkBUS.getNamHocString(maNK);
-        if (namHocString == null) {
-            throw new SQLException("Không tìm thấy Niên Khóa cho MaNK: " + maNK);
-        }
-
-        String sql = "SELECT COUNT(*) AS cnt FROM PhanCongDay pc JOIN HocSinh hs ON hs.MaLop = pc.MaLop "
-                + "WHERE pc.MaGV = ? AND pc.NamHoc = ? AND pc.HocKy = ? AND hs.MaHS = ?";
-        if (maMon != null) {
-            sql += " AND pc.MaMon = ?";
-        }
-
-        try (Connection conn = DatabaseConnection.getConnection();
-                PreparedStatement ps = conn.prepareStatement(sql)) {
-            int idx = 1;
-            ps.setInt(idx++, maGV);
-            ps.setString(idx++, namHocString);
-            ps.setString(idx++, hocKyString);
+            ps.setString(idx++, namHocString);  // SỬA: Dùng NamHoc (String)
+            ps.setString(idx++, hocKyString);   // SỬA: Dùng HocKy (String)
             ps.setInt(idx++, maHS);
             if (maMon != null) {
                 ps.setInt(idx++, maMon);
@@ -349,6 +288,7 @@ public class DiemBUS {
         }
         return false;
     }
+
 
     public List<DiemDTO> getDiemFiltered(Integer maLop, Integer maMon, Integer hocKy, Integer maNK,
             Integer limit, Integer offset) {
@@ -378,16 +318,6 @@ public class DiemBUS {
             return isTeacherAssigned(maGV, maHS, maMon, hocKy, maNK);
         } catch (SQLException ex) {
             System.err.println("Lỗi khi kiểm tra phân công: " + ex.getMessage());
-            return false;
-        }
-    }
-
-    /** Public wrapper for strict assignment check (no ChuNhiem fallback). */
-    public boolean isTeacherAssignedStrictPublic(int maGV, int maHS, Integer maMon, int hocKy, int maNK) {
-        try {
-            return isTeacherAssignedStrict(maGV, maHS, maMon, hocKy, maNK);
-        } catch (SQLException ex) {
-            System.err.println("Lỗi khi kiểm tra phân công (strict): " + ex.getMessage());
             return false;
         }
     }

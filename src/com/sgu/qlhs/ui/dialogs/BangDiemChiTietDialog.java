@@ -77,8 +77,6 @@ public class BangDiemChiTietDialog extends JDialog {
     private int initialMaLopContext = -1;
     private int initialMaHS = -1;
     private java.util.List<Boolean> rowCanEditList = new java.util.ArrayList<>();
-    private java.util.List<Boolean> rowCanEditStrictList = new java.util.ArrayList<>();
-    private boolean anyRowEditableStrict = false;
 
     public BangDiemChiTietDialog(Window owner) {
         super(owner, "Bảng điểm chi tiết học sinh", ModalityType.APPLICATION_MODAL);
@@ -470,7 +468,7 @@ public class BangDiemChiTietDialog extends JDialog {
                 com.sgu.qlhs.ui.MainDashboard md = (com.sgu.qlhs.ui.MainDashboard) w;
                 com.sgu.qlhs.dto.NguoiDungDTO nd = md.getNguoiDung();
                 if (nd != null && "giao_vien".equalsIgnoreCase(nd.getVaiTro())) {
-
+                    
                     // === PHẦN SỬA ===
                     int maNK = com.sgu.qlhs.bus.NienKhoaBUS.current();
                     int selNk = cboNamHoc.getSelectedIndex();
@@ -480,8 +478,8 @@ public class BangDiemChiTietDialog extends JDialog {
 
                     int hkIdx = cboHocKy.getSelectedIndex();
                     // Chuyển Integer (0, 1) -> String ("HK1", "HK2")
-                    String hkParam = (hkIdx >= 0) ? ("HK" + (hkIdx + 1)) : null;
-
+                    String hkParam = (hkIdx >= 0) ? ("HK" + (hkIdx + 1)) : null; 
+                    
                     java.util.List<Integer> lopIdsAssigned = phanCongBUS.getDistinctMaLopByGiaoVien(nd.getId(), namHoc,
                             hkParam);
                     // === KẾT THÚC PHẦN SỬA ===
@@ -712,17 +710,13 @@ public class BangDiemChiTietDialog extends JDialog {
             currentMaNK = maNK;
             currentDiemList = diemList;
 
-            // Precompute per-row edit permission: for each subject row, allow viewing
-            // and also compute strict write permission (PhanCongDay-only) so we can
-            // prevent ChuNhiem-only teachers from editing.
+            // Precompute per-row edit permission: for each subject row, allow editing
+            // only if the logged-in teacher is assigned to that student's class+subject
             rowCanEditList.clear();
-            rowCanEditStrictList.clear();
             boolean anyRowEditable = false;
-            anyRowEditableStrict = false;
             // THAY ĐỔI: Cần check LoaiMon từ DTO (đã được BUS nạp)
             for (int i = 0; i < diemList.size(); i++) {
-                rowCanEditList.add(Boolean.FALSE); // Khởi tạo là false (view-side)
-                rowCanEditStrictList.add(Boolean.FALSE); // Khởi tạo là false (write-side)
+                rowCanEditList.add(Boolean.FALSE); // Khởi tạo là false
             }
 
             try {
@@ -738,34 +732,22 @@ public class BangDiemChiTietDialog extends JDialog {
                 if (ndCheck != null && "giao_vien".equalsIgnoreCase(ndCheck.getVaiTro())) {
                     for (int i = 0; i < diemList.size(); i++) {
                         DiemDTO d = diemList.get(i);
-                        boolean okView = diemBUS.isTeacherAssignedPublic(ndCheck.getId(), maHS, d.getMaMon(), hkNum,
+                        boolean ok = diemBUS.isTeacherAssignedPublic(ndCheck.getId(), maHS, d.getMaMon(), hkNum,
                                 maNK);
-                        boolean okWrite = diemBUS.isTeacherAssignedStrictPublic(ndCheck.getId(), maHS, d.getMaMon(),
-                                hkNum,
-                                maNK);
-                        rowCanEditList.set(i, okView);
-                        rowCanEditStrictList.set(i, okWrite);
-                        if (okView)
+                        rowCanEditList.set(i, ok);
+                        if (ok)
                             anyRowEditable = true;
-                        if (okWrite)
-                            anyRowEditableStrict = true;
                     }
                 } else if (ndCheck != null && "quan_tri_vien".equalsIgnoreCase(ndCheck.getVaiTro())) {
                     // Admin được sửa tất cả
-                    for (int i = 0; i < rowCanEditList.size(); i++) {
+                    for (int i = 0; i < rowCanEditList.size(); i++)
                         rowCanEditList.set(i, Boolean.TRUE);
-                        rowCanEditStrictList.set(i, Boolean.TRUE);
-                    }
                     anyRowEditable = true;
-                    anyRowEditableStrict = true;
                 }
             } catch (Exception ex) {
                 // on errors, conservatively disable edits
-                for (int i = 0; i < rowCanEditList.size(); i++) {
+                for (int i = 0; i < rowCanEditList.size(); i++)
                     rowCanEditList.set(i, Boolean.FALSE);
-                    if (i < rowCanEditStrictList.size())
-                        rowCanEditStrictList.set(i, Boolean.FALSE);
-                }
             }
 
             int idx = 1;
@@ -777,9 +759,9 @@ public class BangDiemChiTietDialog extends JDialog {
                     if (!tableEditing)
                         return false;
                     // Lấy quyền edit chung của hàng này
-                    if (row < 0 || row >= rowCanEditStrictList.size())
+                    if (row < 0 || row >= rowCanEditList.size())
                         return false;
-                    Boolean allowed = rowCanEditStrictList.get(row);
+                    Boolean allowed = rowCanEditList.get(row);
                     if (allowed == null || !allowed.booleanValue())
                         return false;
 
@@ -849,9 +831,7 @@ public class BangDiemChiTietDialog extends JDialog {
             table.getColumnModel().getColumn(6).setCellEditor(new DefaultCellEditor(danhGiaEditor));
 
             // compute whether any edit is allowed for the currently loaded dataset
-            // Use strict write permissions: homeroom (ChuNhiem) will have view=true but
-            // write=false, so they won't be allowed to enter edit mode.
-            boolean canEdit = (!isStudentView) && anyRowEditableStrict;
+            boolean canEdit = (!isStudentView) && anyRowEditable;
 
             // ===== Hạnh kiểm =====
             HanhKiemDTO hk = hanhKiemBUS.getHanhKiem(maHS, maNK, hkNum, nd);
@@ -959,8 +939,8 @@ public class BangDiemChiTietDialog extends JDialog {
                 try {
                     // int modelRow = table.convertRowIndexToModel(row);
                     boolean canEdit = false;
-                    if (modelRow >= 0 && modelRow < rowCanEditStrictList.size()) {
-                        Boolean b = rowCanEditStrictList.get(modelRow);
+                    if (modelRow >= 0 && modelRow < rowCanEditList.size()) {
+                        Boolean b = rowCanEditList.get(modelRow);
                         canEdit = b != null && b.booleanValue();
                     }
                     if (isSelected) {
@@ -972,14 +952,7 @@ public class BangDiemChiTietDialog extends JDialog {
                         c.setBackground(normalBg);
                     }
                     if (c instanceof JComponent) {
-                        // Use strict write permission for tooltip (indicates whether the
-                        // current user can actually edit this row).
-                        boolean canWrite = false;
-                        if (modelRow >= 0 && modelRow < rowCanEditStrictList.size()) {
-                            Boolean b2 = rowCanEditStrictList.get(modelRow);
-                            canWrite = b2 != null && b2.booleanValue();
-                        }
-                        if (canWrite) {
+                        if (canEdit) {
                             ((JComponent) c).setToolTipText("Hàng này có thể sửa bởi giáo viên được phân công");
                         } else {
                             ((JComponent) c).setToolTipText(null);
@@ -1181,16 +1154,8 @@ public class BangDiemChiTietDialog extends JDialog {
                 System.err.println("Lỗi khi lưu nhận xét: " + ex.getMessage());
             }
             if (failed > 0) {
-                // If the current user is a teacher but has no strict write rights,
-                // show a clearer message explaining read-only (ChuNhiem) status.
-                if (isTeacherView && !anyRowEditableStrict) {
-                    JOptionPane.showMessageDialog(this,
-                            "Bạn không có quyền chỉnh sửa bảng điểm này (bạn chỉ là chủ nhiệm hoặc không được phân công dạy môn).",
-                            "Không có quyền", JOptionPane.WARNING_MESSAGE);
-                } else {
-                    JOptionPane.showMessageDialog(this, "Một số mục không được lưu do thiếu quyền.", "Chú ý",
-                            JOptionPane.WARNING_MESSAGE);
-                }
+                JOptionPane.showMessageDialog(this, "Một số mục không được lưu do thiếu quyền.", "Chú ý",
+                        JOptionPane.WARNING_MESSAGE);
             } else {
                 JOptionPane.showMessageDialog(this, "Lưu bảng điểm thành công.", "Thành công",
                         JOptionPane.INFORMATION_MESSAGE);
