@@ -29,7 +29,6 @@ import java.util.Map;
 import java.util.HashMap;
 import java.util.Comparator;
 import java.util.stream.Collectors;
-// === THÊM IMPORT MỚI ===
 import com.sgu.qlhs.bus.PhongBUS;
 import com.sgu.qlhs.dto.PhongDTO;
 import com.sgu.qlhs.ui.components.PieChartCanvas;
@@ -576,10 +575,8 @@ public class ThongKePanel extends JPanel {
      * (GVBM / GVCN) Tải danh sách MÔN mà GV dạy cho LỚP đã chọn
      */
     private void loadTeacherMonOptions(JComboBox<MonHocDTO> cbo) {
-        // === SỬA LỖI: Thêm dòng này ===
         Object selectedMon = cbo.getSelectedItem();
         cbo.removeAllItems(); 
-        // =============================
         
         LopDTO selectedLop = (LopDTO) cboLopGV.getSelectedItem();
         if (selectedLop == null) {
@@ -609,7 +606,6 @@ public class ThongKePanel extends JPanel {
         MonBUS monBUS = new MonBUS(); 
         List<MonHocDTO> allMon = monBUS.getAllMon();
         
-        // === SỬA LỖI TRÙNG MÔN ===
         List<Integer> uniqueMonIds = pcdHopLe.stream()
                                     .map(PhanCongDayDTO::getMaMon)
                                     .distinct() 
@@ -627,7 +623,6 @@ public class ThongKePanel extends JPanel {
                 }
             }
         }
-        // ==========================
         
         if (monTrungKhop != null) {
             cbo.setSelectedItem(monTrungKhop);
@@ -639,10 +634,8 @@ public class ThongKePanel extends JPanel {
      * (GVCN) Tải TẤT CẢ môn học vào combobox
      */
     private void loadAllMonOptions(JComboBox<MonHocDTO> cbo) {
-        // === SỬA LỖI: Thêm dòng này ===
         Object selectedMon = cbo.getSelectedItem();
         cbo.removeAllItems();
-        // =============================
         
         MonBUS monBUS = new MonBUS();
         List<MonHocDTO> allMon = monBUS.getAllMon();
@@ -677,7 +670,6 @@ public class ThongKePanel extends JPanel {
             LopDTO selectedLop = (LopDTO) cboLopGV.getSelectedItem();
             if (selectedLop == null) {
                 chartCards.show(chartContainer, CARD_EMPTY);
-                isUpdatingChart = false;
                 return;
             }
             
@@ -688,29 +680,23 @@ public class ThongKePanel extends JPanel {
             int maNK = NienKhoaBUS.current();
             int maLop = selectedLop.getMaLop();
     
-            // === SỬA LOGIC HIỂN THỊ ===
             if (!isHomeroom) {
-                // Nếu không phải lớp CN, BẮT BUỘC xem "Phổ điểm theo Từng môn"
                 if (!"Phổ điểm theo Từng môn".equals(loaiTK)) {
                      cboThongKe.setSelectedItem("Phổ điểm theo Từng môn");
-                     // Thoát ra, vì listener của cboThongKe sẽ tự gọi lại hàm này
-                     //isUpdatingChart = false;
-                     loaiTK = "Phổ điểm theo Từng môn";
-                     //return; 
+                     loaiTK = "Phổ điểm theo Từng môn"; 
                 }
                 cboThongKe.setEnabled(false);
                 cboMonGVCN.setVisible(true);
-                loadTeacherMonOptions(cboMonGVCN); // Tải môn GV dạy ở lớp này
+                loadTeacherMonOptions(cboMonGVCN); 
             } else {
                 cboThongKe.setEnabled(true);
                 if ("Phổ điểm theo Từng môn".equals(loaiTK)) {
                      cboMonGVCN.setVisible(true);
-                     loadAllMonOptions(cboMonGVCN); // Tải tất cả các môn
+                     loadAllMonOptions(cboMonGVCN); 
                 } else {
                      cboMonGVCN.setVisible(false);
                 }
             }
-            // =============================
             
             // --- Vẽ biểu đồ ---
             if ("Phân loại Học lực (TB Chung)".equals(loaiTK)) {
@@ -939,7 +925,7 @@ public class ThongKePanel extends JPanel {
 
 
     /**
-     * Giao diện cho Học sinh (như cũ)
+     * Giao diện cho Học sinh
      */
     private void initStudentView() {
         this.removeAll(); 
@@ -969,9 +955,8 @@ public class ThongKePanel extends JPanel {
         cboThongKe = new JComboBox<>(new String[]{
                 "Thứ hạng ĐTB theo môn", 
                 "Điểm TB các môn",
-                "Xếp hạng TB Chung (Lớp)"
+                "Xếp hạng TB (Lớp)" // <-- Đổi tên
         });
-        
         filterPanel.add(cboThongKe);
 
         filterPanel.add(new JLabel("Học kỳ:"));
@@ -1013,25 +998,25 @@ public class ThongKePanel extends JPanel {
                 isUpdatingChart = false;
                 return;
             }
-
+    
             String loaiTK = (String) cboThongKe.getSelectedItem();
             int hocKy = (cboHocKy.getSelectedIndex() == 0) ? 1 : 2;
             int maNK = NienKhoaBUS.current();
-
+    
             int maLop = -1;
             if (currentHocSinh.getMaLop() != 0) {
                  maLop = currentHocSinh.getMaLop();
             }
-
+    
             if (maLop == -1) {
                 chartContainer.add(new JLabel("Không tìm thấy thông tin lớp của học sinh."), "LopError");
                 chartCards.show(chartContainer, "LopError");
                 isUpdatingChart = false;
                 return;
             }
-
+    
             String cardKey = loaiTK + "_" + hocKy;
-
+    
             if ("Thứ hạng ĐTB theo môn".equals(loaiTK)) {
                 JComponent chart = createRankingChart(currentMaHS, maLop, hocKy, maNK);
                 chartContainer.add(chart, cardKey);
@@ -1041,8 +1026,9 @@ public class ThongKePanel extends JPanel {
                 chartContainer.add(chart, cardKey);
                 chartCards.show(chartContainer, cardKey);
             }
-            else if ("Xếp hạng TB Chung (Lớp)".equals(loaiTK)) {
-                JComponent display = createOverallRankingDisplay(currentMaHS, maLop, hocKy, maNK);
+            // SỬA: Cập nhật else if
+            else if ("Xếp hạng TB (Lớp)".equals(loaiTK)) {
+                JComponent display = createOverallRankingAndHocLucDisplay(currentMaHS, maLop, hocKy, maNK);
                 chartContainer.add(display, cardKey);
                 chartCards.show(chartContainer, cardKey);
             }
@@ -1052,7 +1038,7 @@ public class ThongKePanel extends JPanel {
     }
 
     /**
-     * (HS) Biểu đồ 1: Điểm TB cá nhân (ĐÃ SỬA LỖI)
+     * (HS) Biểu đồ 1: Điểm TB cá nhân
      */
     private JComponent createAverageScoreChart(int maHS, int hocKy, int maNK) {
         List<DiemDTO> scores = diemBUS.getDiemByMaHS(maHS, hocKy, maNK, currentUser);
@@ -1133,6 +1119,9 @@ public class ThongKePanel extends JPanel {
         return new BarChartCanvas(title, cats, values);
     }
     
+    /**
+     * (HS) Tính toán điểm TB học kỳ cho CHỈ MỘT học sinh
+     */
     private double tinhDiemTBHKChoMotHS(int maHS, int hocKy, int maNK) {
         List<DiemDTO> diemCuaHS = diemBUS.getDiemByMaHS(maHS, hocKy, maNK, currentUser);
         if (diemCuaHS == null || diemCuaHS.isEmpty()) return 0.0;
@@ -1147,8 +1136,11 @@ public class ThongKePanel extends JPanel {
         }
         return (soMon > 0) ? (tongDiem / soMon) : 0.0;
     }
-    
-    private JComponent createOverallRankingDisplay(int maHS, int maLop, int hocKy, int maNK) {
+
+    /**
+     * (HS) Hiển thị xếp hạng TB Chung VÀ HỌC LỰC
+     */
+    private JComponent createOverallRankingAndHocLucDisplay(int maHS, int maLop, int hocKy, int maNK) {
         // 1. Lấy điểm TBHK của cả lớp
         List<Double> dsDiemTBHK_Lop = tinhDiemTBHKChoLop(maLop, hocKy, maNK);
         if (dsDiemTBHK_Lop.isEmpty()) {
@@ -1158,19 +1150,25 @@ public class ThongKePanel extends JPanel {
         // 2. Lấy điểm TBHK của học sinh này
         double myTBHK = tinhDiemTBHKChoMotHS(maHS, hocKy, maNK);
 
-        // 3. Sắp xếp giảm dần
+        // 3. THÊM MỚI: Tính Học lực
+        String hocLucStr;
+        if (myTBHK >= 8.0) hocLucStr = "Giỏi";
+        else if (myTBHK >= 6.5) hocLucStr = "Khá";
+        else if (myTBHK >= 5.0) hocLucStr = "Trung bình";
+        else hocLucStr = "Yếu";
+        // ========================
+
+        // 4. Sắp xếp giảm dần
         dsDiemTBHK_Lop.sort(Comparator.reverseOrder());
 
-        // 4. Tìm thứ hạng
+        // 5. Tìm thứ hạng
         int rank = 0;
         for (int i = 0; i < dsDiemTBHK_Lop.size(); i++) {
-            // So sánh điểm (với sai số nhỏ)
             if (Math.abs(dsDiemTBHK_Lop.get(i) - myTBHK) < 0.001) {
                 rank = i + 1;
                 break;
             }
         }
-        // Nếu không tìm thấy (ví dụ: HS chưa có điểm), xếp cuối
         if (rank == 0) {
             for (int i = 0; i < dsDiemTBHK_Lop.size(); i++) {
                 if (myTBHK >= dsDiemTBHK_Lop.get(i) - 0.001) {
@@ -1183,19 +1181,28 @@ public class ThongKePanel extends JPanel {
 
         int siSo = dsDiemTBHK_Lop.size();
 
-        // 5. Tạo giao diện hiển thị
+        // 6. Tạo giao diện hiển thị
         JPanel panel = new JPanel(new GridBagLayout());
         panel.setOpaque(false);
         JLabel lblRank = new JLabel(String.format("Hạng: %d / %d (Lớp)", rank, siSo));
         lblRank.setFont(new Font("Arial", Font.BOLD, 36));
         lblRank.setForeground(new Color(29, 35, 66));
         
+        // Label Học Lực
+        JLabel lblHocLuc = new JLabel("Học lực: " + hocLucStr);
+        lblHocLuc.setFont(new Font("Arial", Font.BOLD, 24));
+        lblHocLuc.setForeground(new Color(33, 84, 170)); // ICON_FG
+        
         JLabel lblScore = new JLabel(String.format("ĐTB Học kỳ: %.2f", myTBHK));
         lblScore.setFont(new Font("Arial", Font.PLAIN, 18));
         
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.gridy = 0; panel.add(lblRank, gbc);
-        gbc.gridy = 1; gbc.insets = new Insets(10, 0, 0, 0); panel.add(lblScore, gbc);
+        
+        // Thêm Học lực vào GBC
+        gbc.gridy = 1; gbc.insets = new Insets(10, 0, 0, 0); panel.add(lblHocLuc, gbc);
+        
+        gbc.gridy = 2; gbc.insets = new Insets(10, 0, 0, 0); panel.add(lblScore, gbc);
         
         return panel;
     }

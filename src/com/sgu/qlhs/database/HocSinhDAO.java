@@ -9,7 +9,6 @@ import java.util.List;
 
 public class HocSinhDAO {
 
-	// Lấy tất cả học sinh kèm tên lớp (CHỈ LẤY TRẠNG THÁI = 1)
     public List<Object[]> getAllHocSinh() {
         List<Object[]> data = new ArrayList<>();
         String sql = """
@@ -48,7 +47,6 @@ public class HocSinhDAO {
         return data;
     }
 
- // Lấy học sinh theo mã lớp (CHỈ LẤY TRẠNG THÁI = 1)
     public List<Object[]> getHocSinhByMaLop(int maLop) {
         List<Object[]> data = new ArrayList<>();
         String sql = "SELECT MaHS, HoTen, GioiTinh, NgaySinh FROM HocSinh WHERE MaLop = ? AND TrangThai = 1";
@@ -82,7 +80,6 @@ public class HocSinhDAO {
         return data;
     }
 
- // Lấy học sinh theo mã HS (CHỈ LẤY TRẠNG THÁI = 1)
     public Object[] getHocSinhById(int maHS) {
         String sql = """
                     SELECT hs.MaHS, hs.HoTen, hs.NgaySinh, hs.GioiTinh,
@@ -125,43 +122,138 @@ public class HocSinhDAO {
         }
         return null;
     }
-
-    // Thêm học sinh mới
+    
+    // Thêm học sinh mới (và 2 phụ huynh)
     public boolean addHocSinh(String hoTen, java.util.Date ngaySinh, String gioiTinh,
-            String diaChi, String soDienThoai, String email, int maLop) {
-        String sql = """
-                    INSERT INTO HocSinh (HoTen, NgaySinh, GioiTinh, DiaChi, SoDienThoai, Email, MaLop)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
-                """;
+            String diaChi, String soDienThoai, String email, int maLop,
+            String ph1HoTen, String ph1MQH, String ph1Sdt, String ph1Email,
+            String ph2HoTen, String ph2MQH, String ph2Sdt, String ph2Email) {
 
+        String sqlInsertHS = """
+            INSERT INTO HocSinh (HoTen, NgaySinh, GioiTinh, DiaChi, SoDienThoai, Email, MaLop, TrangThai)
+            VALUES (?, ?, ?, ?, ?, ?, ?, 1)
+        """;
+        
+        // INSERT vào PhuHuynh (không có MaHS)
+        String sqlInsertPH = """
+            INSERT INTO PhuHuynh (HoTen, SoDienThoai, Email, DiaChi, TrangThai)
+            VALUES (?, ?, ?, ?, 1)
+        """;
+        
+        // INSERT vào bảng liên kết HocSinh_PhuHuynh
+        String sqlInsertLink = """
+            INSERT INTO HocSinh_PhuHuynh (MaHS, MaPH, QuanHe)
+            VALUES (?, ?, ?)
+        """;
+        
         Connection conn = null;
-        PreparedStatement ps = null;
-
+        PreparedStatement psHS = null;
+        PreparedStatement psPH = null;
+        PreparedStatement psLink = null;
+        
         try {
             conn = DatabaseConnection.getConnection();
-            if (conn == null)
-                throw new SQLException("Không thể kết nối CSDL!");
+            if (conn == null) throw new SQLException("Không thể kết nối CSDL!");
 
-            ps = conn.prepareStatement(sql);
-            ps.setString(1, hoTen);
-            ps.setDate(2, new java.sql.Date(ngaySinh.getTime()));
-            ps.setString(3, gioiTinh);
-            ps.setString(4, diaChi);
-            ps.setString(5, soDienThoai);
-            ps.setString(6, email);
-            ps.setInt(7, maLop);
+            // === BẮT ĐẦU TRANSACTION ===
+            conn.setAutoCommit(false);
+            
+            // 1. Thêm Học Sinh (Lấy MaHS)
+            psHS = conn.prepareStatement(sqlInsertHS, Statement.RETURN_GENERATED_KEYS);
+            psHS.setString(1, hoTen);
+            psHS.setDate(2, new java.sql.Date(ngaySinh.getTime()));
+            psHS.setString(3, gioiTinh);
+            psHS.setString(4, diaChi);
+            psHS.setString(5, soDienThoai);
+            psHS.setString(6, email);
+            psHS.setInt(7, maLop);
 
-            return ps.executeUpdate() > 0;
+            int affected = psHS.executeUpdate();
+            if (affected == 0) throw new SQLException("Thêm học sinh thất bại, không có dòng nào được thêm.");
+
+            int maHS = -1;
+            try (ResultSet rsGenKeys = psHS.getGeneratedKeys()) {
+                if (rsGenKeys.next()) {
+                    maHS = rsGenKeys.getInt(1);
+                } else {
+                    throw new SQLException("Không thể lấy MaHS vừa tạo.");
+                }
+            }
+            
+            psPH = conn.prepareStatement(sqlInsertPH, Statement.RETURN_GENERATED_KEYS);
+            psLink = conn.prepareStatement(sqlInsertLink);
+
+            // 2. Xử lý Phụ Huynh 1 (Nếu có tên)
+            if (ph1HoTen != null && !ph1HoTen.trim().isEmpty()) {
+                // 2a. INSERT vào PhuHuynh (Lấy MaPH1)
+                psPH.setString(1, ph1HoTen);
+                psPH.setString(2, ph1Sdt);
+                psPH.setString(3, ph1Email);
+                psPH.setString(4, diaChi); // Dùng chung địa chỉ với học sinh
+                psPH.executeUpdate();
+                
+                int maPH1 = -1;
+                try (ResultSet rsPH1 = psPH.getGeneratedKeys()) {
+                    if (rsPH1.next()) maPH1 = rsPH1.getInt(1);
+                }
+                
+                // 2b. INSERT vào HocSinh_PhuHuynh (Liên kết MaHS và MaPH1)
+                if (maPH1 != -1) {
+                    psLink.setInt(1, maHS);
+                    psLink.setInt(2, maPH1);
+                    psLink.setString(3, ph1MQH);
+                    psLink.executeUpdate();
+                }
+            }
+
+            // 3. Xử lý Phụ Huynh 2 (Nếu có tên)
+            if (ph2HoTen != null && !ph2HoTen.trim().isEmpty()) {
+                // 3a. INSERT vào PhuHuynh (Lấy MaPH2)
+                psPH.setString(1, ph2HoTen);
+                psPH.setString(2, ph2Sdt);
+                psPH.setString(3, ph2Email);
+                psPH.setString(4, diaChi); // Dùng chung địa chỉ với học sinh
+                psPH.executeUpdate();
+                
+                int maPH2 = -1;
+                try (ResultSet rsPH2 = psPH.getGeneratedKeys()) {
+                    if (rsPH2.next()) maPH2 = rsPH2.getInt(1);
+                }
+                
+                // 3b. INSERT vào HocSinh_PhuHuynh (Liên kết MaHS và MaPH2)
+                if (maPH2 != -1) {
+                    psLink.setInt(1, maHS);
+                    psLink.setInt(2, maPH2);
+                    psLink.setString(3, ph2MQH);
+                    psLink.executeUpdate();
+                }
+            }
+
+            // === HOÀN TẤT TRANSACTION ===
+            conn.commit(); 
+            return true;
 
         } catch (SQLException e) {
-            System.err.println("❌ Lỗi khi thêm học sinh: " + e.getMessage());
+            System.err.println("❌ Lỗi khi thêm học sinh và phụ huynh (Transaction): " + e.getMessage());
+            try {
+                if(conn != null) conn.rollback(); // Hủy bỏ
+            } catch (SQLException ex) {
+                System.err.println("❌ Lỗi khi rollback: " + ex.getMessage());
+            }
+            return false;
         } finally {
-            closeQuietly(null, ps, conn);
+            try {
+                if (conn != null) conn.setAutoCommit(true); // Trả lại auto commit
+            } catch (SQLException ex) {}
+            
+            // Đóng tất cả PreparedStatement và Connection
+            closeQuietly(null, psHS, null);
+            closeQuietly(null, psPH, null);
+            closeQuietly(null, psLink, conn);
         }
-        return false;
     }
 
-    // Cập nhật học sinh
+
     public boolean updateHocSinh(int maHS, String hoTen, java.util.Date ngaySinh, String gioiTinh,
             String diaChi, String soDienThoai, String email, int maLop) {
         String sql = """
@@ -198,29 +290,62 @@ public class HocSinhDAO {
         return false;
     }
 
-    // Xoá học sinh
     public boolean deleteHocSinh(int maHS) {
-        String sql = "UPDATE HocSinh SET TrangThai = 0 WHERE MaHS = ?";
+        String sqlHS = "UPDATE HocSinh SET TrangThai = 0 WHERE MaHS = ?";
+        
+        String sqlPH = """
+            UPDATE PhuHuynh ph
+            JOIN HocSinh_PhuHuynh hsph ON ph.MaPH = hsph.MaPH
+            SET ph.TrangThai = 0
+            WHERE hsph.MaHS = ?
+        """;
 
         Connection conn = null;
-        PreparedStatement ps = null;
+        PreparedStatement psHS = null;
+        PreparedStatement psPH = null;
 
         try {
             conn = DatabaseConnection.getConnection();
             if (conn == null)
                 throw new SQLException("Không thể kết nối CSDL!");
 
-            ps = conn.prepareStatement(sql);
-            ps.setInt(1, maHS);
+            conn.setAutoCommit(false); 
 
-            return ps.executeUpdate() > 0;
+            psHS = conn.prepareStatement(sqlHS);
+            psHS.setInt(1, maHS);
+            int hsRowsAffected = psHS.executeUpdate();
+
+            if (hsRowsAffected == 0) {
+                 conn.rollback(); 
+                 return false;
+            }
+
+            psPH = conn.prepareStatement(sqlPH);
+            psPH.setInt(1, maHS);
+            psPH.executeUpdate(); 
+            
+            conn.commit(); 
+            return true;
 
         } catch (SQLException e) {
-            System.err.println(" Lỗi khi xoá học sinh: " + e.getMessage());
+            System.err.println(" Lỗi khi xoá mềm học sinh và phụ huynh: " + e.getMessage());
+            try {
+                if (conn != null) conn.rollback();
+            } catch (SQLException exRollback) {
+                 System.err.println(" Lỗi khi rollback: " + exRollback.getMessage());
+            }
+            return false;
         } finally {
-            closeQuietly(null, ps, conn);
+            try {
+                if (conn != null) {
+                    conn.setAutoCommit(true);
+                }
+            } catch (SQLException exAutoCommit) {
+                 System.err.println(" Lỗi khi reset AutoCommit: " + exAutoCommit.getMessage());
+            }
+            closeQuietly(null, psHS, null);
+            closeQuietly(null, psPH, conn);
         }
-        return false;
     }
 
     private void closeQuietly(ResultSet rs, PreparedStatement ps, Connection conn) {

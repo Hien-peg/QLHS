@@ -9685,3 +9685,38 @@ WHERE
 LIMIT 1;
 
 SET SQL_MODE = "ONLY_FULL_GROUP_BY";
+
+-- THÊM 18 PHỤ HUYNH MỚI (CHO 9 HỌC SINH ĐẦU)
+INSERT INTO PhuHuynh (HoTen, SoDienThoai, Email, DiaChi)
+VALUES
+    ('Ông Bùi Văn Tâm (PH 1)', '0901000001', 'tam@ph.com', 'Địa chỉ PH 1'),
+    ('Bà Nguyễn Thị Hoa (PH 1)', '0901000002', 'hoa@ph.com', 'Địa chỉ PH 1'),
+    ('Ông Trần Hùng (PH 2)', '0901000003', 'hung@ph.com', 'Địa chỉ PH 2'),
+    ('Bà Lê Thị Lan (PH 2)', '0901000004', 'lan@ph.com', 'Địa chỉ PH 2'),
+    ('Ông Phạm Văn Long (PH 3)', '0901000005', 'long@ph.com', 'Địa chỉ PH 3'),
+    ('Bà Vũ Thị Mai (PH 3)', '0901000006', 'mai@ph.com', 'Địa chỉ PH 3'),
+    ('Ông Lê Văn Nam (PH 4)', '0901000007', 'nam@ph.com', 'Địa chỉ PH 4'),
+    ('Bà Hoàng Thị Nga (PH 4)', '0901000008', 'nga@ph.com', 'Địa chỉ PH 4'),
+    ('Ông Đỗ Văn Phong (PH 5)', '0901000009', 'phong@ph.com', 'Địa chỉ PH 5'),
+    ('Bà Đặng Thị Quý (PH 5)', '0901000010', 'quy@ph.com', 'Địa chỉ PH 5'),
+    ('Ông Phạm Gia Bảo (PH 6)', '0901000011', 'bao@ph.com', 'Địa chỉ PH 6'),
+    ('Bà Vũ Thị Cúc (PH 6)', '0901000012', 'cuc@ph.com', 'Địa chỉ PH 6'),
+    ('Ông Ngô Nhật Minh (PH 7)', '0901000013', 'minh@ph.com', 'Địa chỉ PH 7'),
+    ('Bà Trần Thị Dao (PH 7)', '0901000014', 'dao@ph.com', 'Địa chỉ PH 7'),
+    ('Ông Vũ Hoàng Nam (PH 8)', '0901000015', 'namvh@ph.com', 'Địa chỉ PH 8'),
+    ('Bà Bùi Thị Em (PH 8)', '0901000016', 'em@ph.com', 'Địa chỉ PH 8'),
+    ('Ông Trần Minh Huy (PH 9)', '0901000017', 'huy@ph.com', 'Địa chỉ PH 9'),
+    ('Bà Phạm Thị Giang (PH 9)', '0901000018', 'giang@ph.com', 'Địa chỉ PH 9');
+
+-- LIÊN KẾT 18 PHỤ HUYNH VỚI 9 HỌC SINH
+INSERT INTO HocSinh_PhuHuynh (MaHS, MaPH, QuanHe)
+VALUES
+    (1, 251, 'Bố'), (1, 252, 'Mẹ'),
+    (2, 253, 'Bố'), (2, 254, 'Mẹ'),
+    (3, 255, 'Bố'), (3, 256, 'Mẹ'),
+    (4, 257, 'Bố'), (4, 258, 'Mẹ'),
+    (5, 259, 'Bố'), (5, 260, 'Mẹ'),
+    (6, 261, 'Bố'), (6, 262, 'Mẹ'),
+    (7, 263, 'Bố'), (7, 264, 'Mẹ'),
+    (8, 265, 'Bố'), (8, 266, 'Mẹ'),
+    (9, 267, 'Bố'), (9, 268, 'Mẹ');

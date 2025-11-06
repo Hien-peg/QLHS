@@ -2,16 +2,16 @@ package com.sgu.qlhs.ui.dialogs;
 
 import javax.swing.*;
 import java.awt.*;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.util.HashMap;
-import java.util.Map;
+// import java.sql.Connection; // Bỏ
+// import java.sql.PreparedStatement; // Bỏ
+// import java.sql.ResultSet; // Bỏ
+// import java.sql.SQLException; // Bỏ
+// import java.util.HashMap; // Bỏ
+// import java.util.Map; // Bỏ
 import com.sgu.qlhs.bus.HocSinhBUS;
-import com.sgu.qlhs.database.HocSinhDAO;
+// import com.sgu.qlhs.database.HocSinhDAO; // Bỏ
 import com.sgu.qlhs.dto.HocSinhDTO;
-import com.sgu.qlhs.DatabaseConnection;
+// import com.sgu.qlhs.DatabaseConnection; // Bỏ
 
 public class HocSinhDeleteDialog extends JDialog {
     private JTextField txtMaHS;
@@ -72,11 +72,7 @@ public class HocSinhDeleteDialog extends JDialog {
 
         // ===== Sự kiện =====
         btnCancel.addActionListener(e -> dispose());
-
-        // 🔍 Nút TÌM — tìm học sinh theo mã (từ database)
         btnTim.addActionListener(e -> timHocSinh());
-
-        // ❌ Nút XÓA — xóa học sinh khỏi database
         btnDelete.addActionListener(e -> xoaHocSinh());
     }
 
@@ -89,31 +85,27 @@ public class HocSinhDeleteDialog extends JDialog {
 
         try {
             int maHS = Integer.parseInt(maText);
+            
+            HocSinhDTO hs = hocSinhBUS.getHocSinhByMaHS(maHS);
 
-            // Truy vấn trực tiếp để lấy thông tin
-            String sql = "SELECT hs.HoTen, l.TenLop FROM HocSinh hs JOIN Lop l ON hs.MaLop = l.MaLop WHERE hs.MaHS = ?";
-            try (Connection conn = DatabaseConnection.getConnection();
-                    PreparedStatement ps = conn.prepareStatement(sql)) {
-                ps.setInt(1, maHS);
-                try (ResultSet rs = ps.executeQuery()) {
-                    if (rs.next()) {
-                        lblHoTen.setText(rs.getString("HoTen"));
-                        lblLop.setText(rs.getString("TenLop"));
-                        lblKetQua.setText("Đã tìm thấy học sinh!");
-                        lblKetQua.setForeground(new Color(0, 128, 0));
-                        btnDelete.setEnabled(true);
-                    } else {
-                        lblHoTen.setText("-");
-                        lblLop.setText("-");
-                        lblKetQua.setText("Không tìm thấy học sinh có mã " + maHS);
-                        lblKetQua.setForeground(Color.RED);
-                        btnDelete.setEnabled(false);
-                    }
-                }
+            if (hs != null) {
+                lblHoTen.setText(hs.getHoTen());
+                lblLop.setText(hs.getTenLop());
+                lblKetQua.setText("Đã tìm thấy học sinh!");
+                lblKetQua.setForeground(new Color(0, 128, 0));
+                btnDelete.setEnabled(true);
+            } else {
+                lblHoTen.setText("-");
+                lblLop.setText("-");
+                // Sửa: Thông báo rõ là không tìm thấy hoặc đã bị xóa
+                lblKetQua.setText("Không tìm thấy học sinh (hoặc học sinh đã bị xóa)");
+                lblKetQua.setForeground(Color.RED);
+                btnDelete.setEnabled(false);
             }
+            
         } catch (NumberFormatException ex) {
             JOptionPane.showMessageDialog(this, "Mã học sinh phải là số!");
-        } catch (SQLException e) {
+        } catch (Exception e) {
             JOptionPane.showMessageDialog(this, "Lỗi khi truy vấn học sinh: " + e.getMessage());
             e.printStackTrace();
         }
@@ -128,7 +120,7 @@ public class HocSinhDeleteDialog extends JDialog {
         }
 
         int confirm = JOptionPane.showConfirmDialog(this,
-                "Bạn có chắc chắn muốn xóa học sinh:\n" + ten + " (Mã: " + maText + ")?",
+                "Bạn có chắc chắn muốn xóa học sinh:\n" + ten + " (Mã: " + maText + ")?\n(Phụ huynh liên quan cũng sẽ bị ẩn đi)",
                 "Xác nhận xóa", JOptionPane.YES_NO_OPTION);
 
         if (confirm == JOptionPane.YES_OPTION) {
@@ -143,7 +135,6 @@ public class HocSinhDeleteDialog extends JDialog {
         }
     }
 
-    // Để test riêng
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> new HocSinhDeleteDialog(null).setVisible(true));
     }

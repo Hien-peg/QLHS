@@ -3,32 +3,33 @@ package com.sgu.qlhs.ui.dialogs;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
-import com.sgu.qlhs.bus.HocSinhBUS;
-import com.sgu.qlhs.bus.LopBUS;
-import com.sgu.qlhs.database.HocSinhDAO;
-
-import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.ArrayList;
+import com.sgu.qlhs.bus.LopBUS;
+import com.sgu.qlhs.bus.HocSinhBUS;
+// import com.sgu.qlhs.database.HocSinhDAO; 
 
 public class HocSinhAddDialog extends JDialog {
     private JTextField txtHoTen, txtSdt, txtEmail, txtDiaChi;
     private JComboBox<String> cboGioiTinh, cboLop;
     private JSpinner spNgaySinh;
+    private JTextField txtPH1HoTen, txtPH1MQH, txtPH1Sdt, txtPH1Email;
+    private JTextField txtPH2HoTen, txtPH2MQH, txtPH2Sdt, txtPH2Email;
 
-    // DAO
-    private HocSinhDAO hocSinhDAO = new HocSinhDAO();
-    // LopBUS to load classes dynamically
+    // private HocSinhDAO hocSinhDAO = new HocSinhDAO();
+    private HocSinhBUS hocSinhBUS = new HocSinhBUS(); 
     private LopBUS lopBUS = new LopBUS();
-    private java.util.List<Integer> lopIds = new java.util.ArrayList<>();
+    private java.util.List<Integer> lopIds = new ArrayList<>();
 
     public HocSinhAddDialog(Window owner) {
         super(owner, "Thêm học sinh", ModalityType.APPLICATION_MODAL);
-        setSize(600, 500);
+        setSize(700, 600);
         setLocationRelativeTo(owner);
         setLayout(new BorderLayout(12, 12));
         buildForm();
     }
 
+    // ... (Hàm buildForm() giữ nguyên y hệt) ...
     private void buildForm() {
         var mainPanel = new JPanel();
         mainPanel.setLayout(new BoxLayout(mainPanel, BoxLayout.Y_AXIS));
@@ -42,11 +43,9 @@ public class HocSinhAddDialog extends JDialog {
         txtSdt = new JTextField();
         txtEmail = new JTextField();
         txtDiaChi = new JTextField();
-
         cboGioiTinh = new JComboBox<>(new String[] { "Nam", "Nữ", "Khác" });
         cboLop = new JComboBox<>();
 
-        // load lop list from LopBUS
         try {
             var lops = lopBUS.getAllLop();
             for (var l : lops) {
@@ -54,7 +53,6 @@ public class HocSinhAddDialog extends JDialog {
                 lopIds.add(l.getMaLop());
             }
         } catch (Exception ex) {
-            // fallback to defaults if loading fails
             cboLop.addItem("10A1");
             cboLop.addItem("10A2");
             cboLop.addItem("11A1");
@@ -80,7 +78,46 @@ public class HocSinhAddDialog extends JDialog {
         pnlHS.add(new JLabel("Email:"));
         pnlHS.add(txtEmail);
 
-        mainPanel.add(pnlHS);
+        // ===== Thông tin phụ huynh 1 =====
+        var pnlPH1 = new JPanel(new GridLayout(0, 2, 10, 10));
+        pnlPH1.setBorder(BorderFactory.createTitledBorder("Phụ huynh 1"));
+
+        txtPH1HoTen = new JTextField();
+        txtPH1MQH = new JTextField();
+        txtPH1Sdt = new JTextField();
+        txtPH1Email = new JTextField();
+
+        pnlPH1.add(new JLabel("Họ tên:"));
+        pnlPH1.add(txtPH1HoTen);
+        pnlPH1.add(new JLabel("Mối quan hệ:"));
+        pnlPH1.add(txtPH1MQH);
+        pnlPH1.add(new JLabel("SĐT:"));
+        pnlPH1.add(txtPH1Sdt);
+        pnlPH1.add(new JLabel("Email:"));
+        pnlPH1.add(txtPH1Email);
+
+        // ===== Thông tin phụ huynh 2 =====
+        var pnlPH2 = new JPanel(new GridLayout(0, 2, 10, 10));
+        pnlPH2.setBorder(BorderFactory.createTitledBorder("Phụ huynh 2"));
+
+        txtPH2HoTen = new JTextField();
+        txtPH2MQH = new JTextField();
+        txtPH2Sdt = new JTextField();
+        txtPH2Email = new JTextField();
+
+        pnlPH2.add(new JLabel("Họ tên:"));
+        pnlPH2.add(txtPH2HoTen);
+        pnlPH2.add(new JLabel("Mối quan hệ:"));
+        pnlPH2.add(txtPH2MQH);
+        pnlPH2.add(new JLabel("SĐT:"));
+        pnlPH2.add(txtPH2Sdt);
+        pnlPH2.add(new JLabel("Email:"));
+        pnlPH2.add(txtPH2Email);
+
+        mainPanel.add(pnlHS);   
+        mainPanel.add(pnlPH1);
+        mainPanel.add(pnlPH2);
+
         add(new JScrollPane(mainPanel), BorderLayout.CENTER);
 
         // ===== Nút =====
@@ -96,7 +133,6 @@ public class HocSinhAddDialog extends JDialog {
         add(btnPane, BorderLayout.SOUTH);
     }
 
-    // Hàm xử lý thêm học sinh
     private void themHocSinh() {
         String hoTen = txtHoTen.getText().trim();
         String soDienThoai = txtSdt.getText().trim();
@@ -106,29 +142,38 @@ public class HocSinhAddDialog extends JDialog {
         String tenLop = cboLop.getSelectedItem().toString();
         Date ngaySinh = (Date) spNgaySinh.getValue();
 
+        // Phụ huynh
+        String ph1HoTen = txtPH1HoTen.getText().trim();
+        String ph1MQH = txtPH1MQH.getText().trim();
+        String ph1Sdt = txtPH1Sdt.getText().trim();
+        String ph1Email = txtPH1Email.getText().trim();
+
+        String ph2HoTen = txtPH2HoTen.getText().trim();
+        String ph2MQH = txtPH2MQH.getText().trim();
+        String ph2Sdt = txtPH2Sdt.getText().trim();
+        String ph2Email = txtPH2Email.getText().trim();
+
         if (hoTen.isEmpty()) {
             JOptionPane.showMessageDialog(this, "Vui lòng nhập họ tên học sinh!");
             return;
         }
 
         try {
-            // 🔹 Xác định mã lớp từ tên lớp
             int maLop = getMaLopByTenLop(tenLop);
 
-            boolean success = hocSinhDAO.addHocSinh(
-                    hoTen,
-                    ngaySinh,
-                    gioiTinh,
-                    diaChi,
-                    soDienThoai,
-                    email,
-                    maLop);
+            // SỬA LỖI: Gọi qua BUS (hocSinhBUS.saveHocSinh)
+            // SỬA LỖI: Truyền đúng 15 tham số (không còn ph2Email lặp lại)
+            boolean success = hocSinhBUS.saveHocSinh(
+                    hoTen, ngaySinh, gioiTinh, diaChi, soDienThoai, email, maLop,
+                    ph1HoTen, ph1MQH, ph1Sdt, ph1Email,
+                    ph2HoTen, ph2MQH, ph2Sdt, ph2Email
+            );
 
             if (success) {
-                JOptionPane.showMessageDialog(this, "✅ Đã thêm học sinh mới thành công!");
+                JOptionPane.showMessageDialog(this, "Đã thêm học sinh mới thành công!");
                 dispose();
             } else {
-                JOptionPane.showMessageDialog(this, "❌ Lỗi khi thêm học sinh!");
+                JOptionPane.showMessageDialog(this, "Lỗi khi thêm học sinh!");
             }
 
         } catch (Exception ex) {
@@ -137,9 +182,7 @@ public class HocSinhAddDialog extends JDialog {
         }
     }
 
-    // 🔍 Lấy mã lớp từ tên lớp (dùng danh sách nạp từ DB)
     private int getMaLopByTenLop(String tenLop) throws Exception {
-        // try to find in loaded list
         for (int i = 0; i < cboLop.getItemCount(); i++) {
             String t = cboLop.getItemAt(i);
             if (t != null && t.equals(tenLop)) {
@@ -147,7 +190,6 @@ public class HocSinhAddDialog extends JDialog {
                     return lopIds.get(i);
             }
         }
-        // fallback: search via LopBUS
         var lops = lopBUS.getAllLop();
         for (var l : lops) {
             if (l.getTenLop().equals(tenLop))
@@ -156,7 +198,6 @@ public class HocSinhAddDialog extends JDialog {
         throw new Exception("Không tìm thấy mã lớp cho " + tenLop);
     }
 
-    // Test riêng
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> new HocSinhAddDialog(null).setVisible(true));
     }

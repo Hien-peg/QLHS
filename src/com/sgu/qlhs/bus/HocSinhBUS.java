@@ -65,10 +65,15 @@ public class HocSinhBUS {
     /**
      * Thêm học sinh mới
      */
-    public void saveHocSinh(String hoTen, java.util.Date ngaySinh, String gioiTinh,
-                            String diaChi, String sdt, String email, int maLop) {
-        dao.addHocSinh(hoTen, ngaySinh, gioiTinh, diaChi, sdt, email, maLop);
-    }
+    public boolean saveHocSinh(String hoTen, java.util.Date ngaySinh, String gioiTinh,
+            String diaChi, String sdt, String email, int maLop,
+            String ph1HoTen, String ph1MQH, String ph1Sdt, String ph1Email,
+            String ph2HoTen, String ph2MQH, String ph2Sdt, String ph2Email) {
+
+    	return dao.addHocSinh(hoTen, ngaySinh, gioiTinh, diaChi, sdt, email, maLop,
+           ph1HoTen, ph1MQH, ph1Sdt, ph1Email,
+           ph2HoTen, ph2MQH, ph2Sdt, ph2Email);
+}
 
     /**
      * Cập nhật học sinh
