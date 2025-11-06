@@ -9480,3 +9480,208 @@ GROUP BY
     hs.HoTen,
     d.MaNK,
     d.HocKy;
+
+SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
+
+-- --- LỚP 10A1 (MaLop = 1) - HK1 ---
+INSERT INTO
+    ThoiKhoaBieu (MaPCD, Thu, TietBD, TietKT)
+SELECT MaPCD, 'Thứ 2', 1, 2
+FROM PhanCongDay
+WHERE
+    MaLop = 1
+    AND MaMon = 101
+    AND HocKy = 'HK1'
+    AND NamHoc = '2024-2025'
+LIMIT 1;
+
+INSERT INTO
+    ThoiKhoaBieu (MaPCD, Thu, TietBD, TietKT)
+SELECT MaPCD, 'Thứ 2', 3, 4
+FROM PhanCongDay
+WHERE
+    MaLop = 1
+    AND MaMon = 102
+    AND HocKy = 'HK1'
+    AND NamHoc = '2024-2025'
+LIMIT 1;
+
+INSERT INTO
+    ThoiKhoaBieu (MaPCD, Thu, TietBD, TietKT)
+SELECT MaPCD, 'Thứ 3', 1, 2
+FROM PhanCongDay
+WHERE
+    MaLop = 1
+    AND MaMon = 103
+    AND HocKy = 'HK1'
+    AND NamHoc = '2024-2025'
+LIMIT 1;
+
+INSERT INTO
+    ThoiKhoaBieu (MaPCD, Thu, TietBD, TietKT)
+SELECT MaPCD, 'Thứ 3', 3, 4
+FROM PhanCongDay
+WHERE
+    MaLop = 1
+    AND MaMon = 104
+    AND HocKy = 'HK1'
+    AND NamHoc = '2024-2025'
+LIMIT 1;
+
+INSERT INTO
+    ThoiKhoaBieu (MaPCD, Thu, TietBD, TietKT)
+SELECT MaPCD, 'Thứ 4', 1, 2
+FROM PhanCongDay
+WHERE
+    MaLop = 1
+    AND MaMon = 105
+    AND HocKy = 'HK1'
+    AND NamHoc = '2024-2025'
+LIMIT 1;
+
+INSERT INTO
+    ThoiKhoaBieu (MaPCD, Thu, TietBD, TietKT)
+SELECT MaPCD, 'Thứ 4', 3, 4
+FROM PhanCongDay
+WHERE
+    MaLop = 1
+    AND MaMon = 106
+    AND HocKy = 'HK1'
+    AND NamHoc = '2024-2025'
+LIMIT 1;
+
+-- --- LỚP 10A2 (MaLop = 2) - HK1 ---
+INSERT INTO
+    ThoiKhoaBieu (MaPCD, Thu, TietBD, TietKT)
+SELECT MaPCD, 'Thứ 2', 1, 2
+FROM PhanCongDay
+WHERE
+    MaLop = 2
+    AND MaMon = 102
+    AND HocKy = 'HK1'
+    AND NamHoc = '2024-2025'
+LIMIT 1;
+
+INSERT INTO
+    ThoiKhoaBieu (MaPCD, Thu, TietBD, TietKT)
+SELECT MaPCD, 'Thứ 2', 3, 4
+FROM PhanCongDay
+WHERE
+    MaLop = 2
+    AND MaMon = 101
+    AND HocKy = 'HK1'
+    AND NamHoc = '2024-2025'
+LIMIT 1;
+
+INSERT INTO
+    ThoiKhoaBieu (MaPCD, Thu, TietBD, TietKT)
+SELECT MaPCD, 'Thứ 3', 1, 2
+FROM PhanCongDay
+WHERE
+    MaLop = 2
+    AND MaMon = 104
+    AND HocKy = 'HK1'
+    AND NamHoc = '2024-2025'
+LIMIT 1;
+
+INSERT INTO
+    ThoiKhoaBieu (MaPCD, Thu, TietBD, TietKT)
+SELECT MaPCD, 'Thứ 3', 3, 4
+FROM PhanCongDay
+WHERE
+    MaLop = 2
+    AND MaMon = 103
+    AND HocKy = 'HK1'
+    AND NamHoc = '2024-2025'
+LIMIT 1;
+
+INSERT INTO
+    ThoiKhoaBieu (MaPCD, Thu, TietBD, TietKT)
+SELECT MaPCD, 'Thứ 4', 1, 2
+FROM PhanCongDay
+WHERE
+    MaLop = 2
+    AND MaMon = 106
+    AND HocKy = 'HK1'
+    AND NamHoc = '2024-2025'
+LIMIT 1;
+
+INSERT INTO
+    ThoiKhoaBieu (MaPCD, Thu, TietBD, TietKT)
+SELECT MaPCD, 'Thứ 4', 3, 4
+FROM PhanCongDay
+WHERE
+    MaLop = 2
+    AND MaMon = 105
+    AND HocKy = 'HK1'
+    AND NamHoc = '2024-2025'
+LIMIT 1;
+
+-- --- LỚP 11A1 (MaLop = 3) - HK1 ---
+INSERT INTO
+    ThoiKhoaBieu (MaPCD, Thu, TietBD, TietKT)
+SELECT MaPCD, 'Thứ 2', 1, 2
+FROM PhanCongDay
+WHERE
+    MaLop = 3
+    AND MaMon = 101
+    AND HocKy = 'HK1'
+    AND NamHoc = '2024-2025'
+LIMIT 1;
+
+INSERT INTO
+    ThoiKhoaBieu (MaPCD, Thu, TietBD, TietKT)
+SELECT MaPCD, 'Thứ 2', 3, 4
+FROM PhanCongDay
+WHERE
+    MaLop = 3
+    AND MaMon = 103
+    AND HocKy = 'HK1'
+    AND NamHoc = '2024-2025'
+LIMIT 1;
+
+INSERT INTO
+    ThoiKhoaBieu (MaPCD, Thu, TietBD, TietKT)
+SELECT MaPCD, 'Thứ 3', 1, 2
+FROM PhanCongDay
+WHERE
+    MaLop = 3
+    AND MaMon = 102
+    AND HocKy = 'HK1'
+    AND NamHoc = '2024-2025'
+LIMIT 1;
+
+INSERT INTO
+    ThoiKhoaBieu (MaPCD, Thu, TietBD, TietKT)
+SELECT MaPCD, 'Thứ 3', 3, 4
+FROM PhanCongDay
+WHERE
+    MaLop = 3
+    AND MaMon = 105
+    AND HocKy = 'HK1'
+    AND NamHoc = '2024-2025'
+LIMIT 1;
+
+INSERT INTO
+    ThoiKhoaBieu (MaPCD, Thu, TietBD, TietKT)
+SELECT MaPCD, 'Thứ 4', 1, 2
+FROM PhanCongDay
+WHERE
+    MaLop = 3
+    AND MaMon = 104
+    AND HocKy = 'HK1'
+    AND NamHoc = '2024-2025'
+LIMIT 1;
+
+INSERT INTO
+    ThoiKhoaBieu (MaPCD, Thu, TietBD, TietKT)
+SELECT MaPCD, 'Thứ 4', 3, 4
+FROM PhanCongDay
+WHERE
+    MaLop = 3
+    AND MaMon = 106
+    AND HocKy = 'HK1'
+    AND NamHoc = '2024-2025'
+LIMIT 1;
+
+SET SQL_MODE = "ONLY_FULL_GROUP_BY";
