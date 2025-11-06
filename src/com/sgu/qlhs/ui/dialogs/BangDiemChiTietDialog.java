@@ -839,6 +839,13 @@ public class BangDiemChiTietDialog extends JDialog {
         // ===== HEADER =====
         JPanel headerPanel = new JPanel(new BorderLayout());
         headerPanel.setBackground(Color.WHITE);
+        // SỬA: Bọc header trong một panel căn giữa
+        JPanel headerWrapper = new JPanel(new BorderLayout());
+        headerWrapper.setOpaque(false);
+        headerWrapper.add(headerPanel, BorderLayout.CENTER);
+        headerWrapper.setAlignmentX(Component.CENTER_ALIGNMENT); // Căn giữa khối này
+        // (Để header không bị co lại)
+        headerWrapper.setMaximumSize(new Dimension(900, headerPanel.getPreferredSize().height));
 
         // Cột trái
         JPanel leftHeader = new JPanel();
@@ -872,10 +879,10 @@ public class BangDiemChiTietDialog extends JDialog {
 
         headerPanel.add(leftHeader, BorderLayout.WEST);
         headerPanel.add(rightHeader, BorderLayout.EAST);
-        content.add(headerPanel);
+        content.add(headerWrapper); // Thêm panel bọc
         content.add(Box.createVerticalStrut(30));
 
-        // ===== TIÊU ĐỀ =====
+        // ===== TIÊU ĐỀ (Giữ căn giữa) =====
         JLabel lblTitle = new JLabel("BẢNG ĐIỂM HỌC SINH");
         lblTitle.setFont(new Font("Arial", Font.BOLD, 18));
         lblTitle.setAlignmentX(Component.CENTER_ALIGNMENT);
@@ -892,17 +899,15 @@ public class BangDiemChiTietDialog extends JDialog {
         lblHocKyNam.setFont(new Font("Arial", Font.BOLD, 13));
         lblHocKyNam.setAlignmentX(Component.CENTER_ALIGNMENT);
         content.add(lblHocKyNam);
+
         content.add(Box.createVerticalStrut(20));
 
         // ===== BẢNG ĐIỂM =====
-        // THAY ĐỔI: Đổi tên cột "TBHK" -> "Kết quả"
         String[] columns = { "STT", "Tên môn học", "Miệng", "15 Phút", "1 Tiết", "Cuối kỳ", "Kết quả", "Ghi chú" };
 
-        // Build table rows from DiemBUS for the selected student and semester
         Object sel = cboHocSinh.getSelectedItem();
         if (sel == null) {
-            // nothing selected
-            model = new DefaultTableModel(columns, 0); // tạo model rỗng
+            model = new DefaultTableModel(columns, 0);
             table = new JTable(model);
         } else {
             String s = sel.toString();
@@ -913,16 +918,13 @@ public class BangDiemChiTietDialog extends JDialog {
             } catch (Exception ex) {
                 maHS = 0;
             }
-            int hkNum = cboHocKy.getSelectedIndex() + 1; // Học kỳ 1 -> 1
-            // determine niên khóa: use selected combo mapping if available, otherwise
-            // current()
+            int hkNum = cboHocKy.getSelectedIndex() + 1;
             int maNK = com.sgu.qlhs.bus.NienKhoaBUS.current();
             int selNk = cboNamHoc.getSelectedIndex();
             if (selNk >= 0 && selNk < nienKhoaIds.size()) {
                 maNK = nienKhoaIds.get(selNk);
             }
 
-            // resolve current user to enforce read-side rules
             com.sgu.qlhs.dto.NguoiDungDTO nd = null;
             try {
                 java.awt.Window w = javax.swing.SwingUtilities.getWindowAncestor(this);
@@ -931,60 +933,21 @@ public class BangDiemChiTietDialog extends JDialog {
                     nd = md.getNguoiDung();
                 }
             } catch (Exception ex) {
-                // ignore
             }
 
-            // THAY ĐỔI: getDiemByMaHS giờ trả về DTO đã có LoaiMon
+            // Lấy dữ liệu điểm
             java.util.List<DiemDTO> diemList = diemBUS.getDiemByMaHS(maHS, hkNum, maNK, nd);
-
-            // Build a combined list: include existing Diem rows plus placeholder rows
-            // for subjects that don't yet have a Diem entry so a teacher can add new
-            // grades. We obtain the full subject list from MonBUS and create placeholder
-            // DiemDTOs when needed.
-            java.util.List<com.sgu.qlhs.dto.MonHocDTO> allMons = monBUS.getAllMon();
-            java.util.Map<Integer, DiemDTO> mapByMon = new java.util.HashMap<>();
-            if (diemList != null) {
-                for (DiemDTO d : diemList) {
-                    mapByMon.put(d.getMaMon(), d);
-                }
-            }
-
-            java.util.List<DiemDTO> combined = new java.util.ArrayList<>();
-            // Ensure we keep the existing Diem rows (so their saved MaDiem/GhiChu etc
-            // remain)
-            if (diemList != null) {
-                combined.addAll(diemList);
-            }
-            // Add placeholders for missing subjects (those in MonHoc but not in Diem)
-            for (com.sgu.qlhs.dto.MonHocDTO m : allMons) {
-                if (!mapByMon.containsKey(m.getMaMon())) {
-                    DiemDTO placeholder = new DiemDTO();
-                    placeholder.setMaDiem(0);
-                    placeholder.setMaHS(maHS);
-                    placeholder.setMaMon(m.getMaMon());
-                    placeholder.setTenMon(m.getTenMon());
-                    placeholder.setLoaiMon(m.getLoaiMon());
-                    // leave numeric fields at default 0.0 and strings null/empty
-                    placeholder.setGhiChu("");
-                    combined.add(placeholder);
-                }
-            }
-
-            // store current context so Save can use it
             currentMaHS = maHS;
             currentHocKy = hkNum;
             currentMaNK = maNK;
-            currentDiemList = combined;
+            currentDiemList = diemList;
 
-            // Precompute per-row edit permission: for each subject row, allow editing
-            // only if the logged-in teacher is assigned to that student's class+subject
+            // Tính toán quyền sửa
             rowCanEditList.clear();
             boolean anyRowEditable = false;
-            // Initialize all rows to false (will update below)
-            for (int i = 0; i < currentDiemList.size(); i++) {
+            for (int i = 0; i < diemList.size(); i++) {
                 rowCanEditList.add(Boolean.FALSE);
             }
-
             try {
                 com.sgu.qlhs.dto.NguoiDungDTO ndCheck = null;
                 try {
@@ -996,60 +959,48 @@ public class BangDiemChiTietDialog extends JDialog {
                 } catch (Exception ex) {
                 }
                 if (ndCheck != null && "giao_vien".equalsIgnoreCase(ndCheck.getVaiTro())) {
-                    for (int i = 0; i < currentDiemList.size(); i++) {
-                        DiemDTO d = currentDiemList.get(i);
+                    for (int i = 0; i < diemList.size(); i++) {
+                        DiemDTO d = diemList.get(i);
                         boolean ok = diemBUS.isTeacherAssignedPublic(ndCheck.getId(), maHS, d.getMaMon(), hkNum,
                                 maNK);
                         rowCanEditList.set(i, ok);
                         if (ok)
                             anyRowEditable = true;
                     }
-                } else if (ndCheck != null && ("quan_tri_vien".equalsIgnoreCase(ndCheck.getVaiTro())
-                        || "Admin".equalsIgnoreCase(ndCheck.getVaiTro()))) {
-                    // Admin (may be represented as 'quan_tri_vien' or 'Admin') được sửa tất cả
+                } else if (ndCheck != null && "quan_tri_vien".equalsIgnoreCase(ndCheck.getVaiTro())) {
                     for (int i = 0; i < rowCanEditList.size(); i++)
                         rowCanEditList.set(i, Boolean.TRUE);
                     anyRowEditable = true;
                 }
             } catch (Exception ex) {
-                // on errors, conservatively disable edits
                 for (int i = 0; i < rowCanEditList.size(); i++)
                     rowCanEditList.set(i, Boolean.FALSE);
             }
 
-            int idx = 1;
-
-            // create model now that rowCanEditList is computed
+            // Tạo model
             model = new DefaultTableModel(columns, 0) {
                 @Override
                 public boolean isCellEditable(int row, int column) {
                     if (!tableEditing)
                         return false;
-                    // Lấy quyền edit chung của hàng này
                     if (row < 0 || row >= rowCanEditList.size())
                         return false;
                     Boolean allowed = rowCanEditList.get(row);
                     if (allowed == null || !allowed.booleanValue())
                         return false;
-
-                    // Lấy LoaiMon của hàng
                     if (row < 0 || row >= currentDiemList.size())
                         return false;
                     DiemDTO dto = currentDiemList.get(row);
                     String loaiMon = dto.getLoaiMon();
-
                     if ("DanhGia".equals(loaiMon)) {
-                        // Môn Đánh Giá: chỉ sửa cột "Kết quả" (6) và "Ghi chú" (7)
                         return (column == 6 || column == 7);
                     } else {
-                        // Môn Tính Điểm: chỉ sửa cột điểm (2-5) và "Ghi chú" (7)
                         return (column >= 2 && column <= 5) || (column == 7);
                     }
                 }
 
                 @Override
                 public Class<?> getColumnClass(int columnIndex) {
-                    // Cột 6 (Kết quả) giờ có thể là Double (TB) hoặc String (Đ/KĐ)
                     if (columnIndex == 6)
                         return Object.class;
                     if (columnIndex >= 2 && columnIndex <= 5)
@@ -1058,128 +1009,126 @@ public class BangDiemChiTietDialog extends JDialog {
                 }
             };
 
-            // THAY ĐỔI: Lặp và điền dữ liệu dựa trên LoaiMon (dùng currentDiemList)
-            for (DiemDTO d : currentDiemList) {
+            // Điền dữ liệu vào model
+            int idx = 1;
+            for (DiemDTO d : diemList) {
                 String loaiMon = d.getLoaiMon();
-                boolean isPlaceholder = (d.getMaDiem() == 0);
-
                 if ("DanhGia".equals(loaiMon)) {
                     model.addRow(new Object[] {
                             String.valueOf(idx++),
                             d.getTenMon(),
-                            null, // Miệng
-                            null, // 15p
-                            null, // 1 Tiết
-                            null, // Cuối kỳ
-                            isPlaceholder ? null : d.getKetQuaDanhGia(), // Kết quả (Đ/KĐ)
+                            null, null, null, null,
+                            d.getKetQuaDanhGia(),
                             d.getGhiChu() != null ? d.getGhiChu() : ""
                     });
-                } else { // Mặc định là TinhDiem
-                    // If placeholder (no saved Diem row), show empty cells instead of 0.0
-                    Object mieng = isPlaceholder ? null : d.getDiemMieng();
-                    Object p15 = isPlaceholder ? null : d.getDiem15p();
-                    Object gk = isPlaceholder ? null : d.getDiemGiuaKy();
-                    Object ck = isPlaceholder ? null : d.getDiemCuoiKy();
-                    Object tb = null;
-                    if (!isPlaceholder) {
-                        double dm = d.getDiemMieng();
-                        double dp = d.getDiem15p();
-                        double dg = d.getDiemGiuaKy();
-                        double dc = d.getDiemCuoiKy();
-                        tb = Math.round((dm * 0.10 + dp * 0.20 + dg * 0.30 + dc * 0.40) * 10.0) / 10.0;
-                    }
+                } else {
+                    double mieng = d.getDiemMieng();
+                    double p15 = d.getDiem15p();
+                    double gk = d.getDiemGiuaKy();
+                    double ck = d.getDiemCuoiKy();
+                    double tb = Math.round((mieng * 0.10 + p15 * 0.20 + gk * 0.30 + ck * 0.40) * 10.0) / 10.0;
                     model.addRow(new Object[] {
                             String.valueOf(idx++),
                             d.getTenMon(),
-                            mieng,
-                            p15,
-                            gk,
-                            ck,
-                            tb, // Kết quả (TB)
+                            mieng, p15, gk, ck,
+                            tb,
                             d.getGhiChu() != null ? d.getGhiChu() : ""
                     });
                 }
             }
             table = new JTable(model);
 
-            // THAY ĐỔI: Thêm CellEditor cho cột "Kết quả" (6)
+            // Thêm CellEditor
             JComboBox<String> danhGiaEditor = new JComboBox<>(new String[] { "Đ", "KĐ" });
             table.getColumnModel().getColumn(6).setCellEditor(new DefaultCellEditor(danhGiaEditor));
 
-            // compute whether any edit is allowed for the currently loaded dataset
             boolean canEdit = (!isStudentView) && anyRowEditable;
 
-            // compute whether the current user is allowed to edit Hạnh kiểm
-            // Only Admin or the homeroom teacher (Giáo viên chủ nhiệm) of the student's
-            // class may edit Hạnh kiểm
-            boolean canEditHanhKiem = false;
+            // === SỬA KHỐI HIỂN THỊ HẠNH KIỂM / XẾP HẠNG ===
+
+            // --- 1. Lấy dữ liệu Hạnh kiểm ---
+            HanhKiemDTO hk = hanhKiemBUS.getHanhKiem(maHS, maNK, hkNum, nd);
+            String hanhKiemStr = hk != null ? hk.getXepLoai() : "(chưa có)";
+
+            // --- 2. Tính toán Xếp hạng, ĐTB, và Học Lực ---
+            double myTBHK = 0.0;
+            int rank = 0;
+            int siSo = 0;
+            String hocLucStr = "(chưa có)";
+
             try {
-                com.sgu.qlhs.dto.NguoiDungDTO ndForHk = null;
-                try {
-                    java.awt.Window w = javax.swing.SwingUtilities.getWindowAncestor(this);
-                    if (w instanceof com.sgu.qlhs.ui.MainDashboard) {
-                        com.sgu.qlhs.ui.MainDashboard md = (com.sgu.qlhs.ui.MainDashboard) w;
-                        ndForHk = md.getNguoiDung();
-                    }
-                } catch (Exception ex) {
-                }
-                if (ndForHk != null) {
-                    // Admins may edit
-                    if ("quan_tri_vien".equalsIgnoreCase(ndForHk.getVaiTro())
-                            || "Admin".equalsIgnoreCase(ndForHk.getVaiTro())) {
-                        canEditHanhKiem = true;
-                    } else if ("giao_vien".equalsIgnoreCase(ndForHk.getVaiTro())) {
-                        // If dialog was opened from the Chủ nhiệm tab we allow editing as
-                        // the tab itself is only shown to the chủ nhiệm teacher for that
-                        // class. This is a safe, UX-friendly shortcut that avoids failing
-                        // when subtle DB schema/assignment differences exist.
-                        if (this.openedFromChuNhiem) {
-                            canEditHanhKiem = true;
-                        } else {
-                            // Otherwise check explicitly via ChuNhiemBUS that this teacher is
-                            // the homeroom for the student's class.
-                            try {
-                                HocSinhDTO hsForHk = hocSinhBUS.getHocSinhByMaHS(maHS);
-                                if (hsForHk != null) {
-                                    com.sgu.qlhs.dto.ChuNhiemDTO cn = new com.sgu.qlhs.bus.ChuNhiemBUS()
-                                            .getChuNhiemByGV(ndForHk.getId());
-                                    if (cn != null && cn.getMaLop() == hsForHk.getMaLop()) {
-                                        canEditHanhKiem = true;
-                                    }
-                                }
-                            } catch (Exception ex) {
-                                // ignore and keep canEditHanhKiem = false
+                HocSinhDTO hs = hocSinhBUS.getHocSinhByMaHS(maHS);
+                if (hs != null && hs.getMaLop() != 0) {
+                    int maLop = hs.getMaLop();
+                    myTBHK = getStudentTBHK(maHS, hkNum, maNK, nd);
+                    java.util.List<Double> classScores = getClassTBHKs(maLop, hkNum, maNK);
+
+                    if (myTBHK >= 8.0)
+                        hocLucStr = "Giỏi";
+                    else if (myTBHK >= 6.5)
+                        hocLucStr = "Khá";
+                    else if (myTBHK >= 5.0)
+                        hocLucStr = "Trung bình";
+                    else
+                        hocLucStr = "Yếu";
+
+                    if (classScores != null && !classScores.isEmpty()) {
+                        classScores.sort(java.util.Comparator.reverseOrder());
+                        siSo = classScores.size();
+                        for (int i = 0; i < classScores.size(); i++) {
+                            if (Math.abs(classScores.get(i) - myTBHK) < 0.001) {
+                                rank = i + 1;
+                                break;
                             }
+                        }
+                        if (rank == 0) {
+                            for (int i = 0; i < classScores.size(); i++) {
+                                if (myTBHK >= classScores.get(i) - 0.001) {
+                                    rank = i + 1;
+                                    break;
+                                }
+                            }
+                            if (rank == 0)
+                                rank = classScores.size() + 1;
                         }
                     }
                 }
-            } catch (Exception ex) {
-                // conservative default: do not allow editing hạnh kiểm if any error
-                canEditHanhKiem = false;
+            } catch (Exception e) {
+                e.printStackTrace();
             }
 
-            // ===== Hạnh kiểm =====
-            HanhKiemDTO hk = hanhKiemBUS.getHanhKiem(maHS, maNK, hkNum, nd);
-            String hanhKiemStr = hk != null ? hk.getXepLoai() : "(chưa có)";
-            JLabel lblHanhKiem = new JLabel("Hạnh kiểm: " + hanhKiemStr);
-            lblHanhKiem.setFont(new Font("Arial", Font.BOLD, 13));
-            lblHanhKiem.setAlignmentX(Component.LEFT_ALIGNMENT);
+            // --- 3. Tạo Panel hiển thị (dùng FlowLayout sát lề trái) ---
 
-            // put label + value label + combobox (combobox hidden when not editing)
-            JPanel pnlHK = new JPanel(new FlowLayout(FlowLayout.LEFT));
-            pnlHK.setBackground(Color.WHITE);
+            // SỬA: Bọc pnlFooterInfo trong một panel căn giữa (tableWrapper)
+            // để khối này căn giữa, nhưng nội dung bên trong nó căn trái.
+            JPanel footerWrapper = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 0));
+            footerWrapper.setOpaque(false);
+            footerWrapper.setAlignmentX(Component.CENTER_ALIGNMENT); // Căn giữa khối
+            // Set kích thước cố định để nó khớp với bảng
+            footerWrapper.setPreferredSize(new Dimension(900, 30));
+            footerWrapper.setMaximumSize(new Dimension(900, 30));
+
+            JPanel pnlFooterInfo = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
+            pnlFooterInfo.setBackground(Color.WHITE);
+            // Kích thước của panel con này nên vừa đủ nội dung
+            pnlFooterInfo.setPreferredSize(new Dimension(900, 30));
+
+            Font infoFont = new Font("Arial", Font.BOLD, 13);
+
+            // 3.1. Hạnh kiểm
             JLabel lblHKLabel = new JLabel("Hạnh kiểm:");
-            pnlHK.add(lblHKLabel);
-            pnlHK.add(Box.createHorizontalStrut(6));
-            // value label (shown when not in edit mode)
+            lblHKLabel.setFont(infoFont);
+            lblHKLabel.setForeground(Color.BLACK);
+            pnlFooterInfo.add(lblHKLabel);
+
             lblHanhKiemValue = new JLabel(hanhKiemStr);
-            lblHanhKiemValue.setFont(new Font("Arial", Font.BOLD, 13));
-            pnlHK.add(lblHanhKiemValue);
-            pnlHK.add(Box.createHorizontalStrut(10));
+            lblHanhKiemValue.setFont(infoFont);
+            lblHanhKiemValue.setForeground(Color.BLACK);
+            pnlFooterInfo.add(lblHanhKiemValue);
+
             if (cboHanhKiemEditor == null) {
                 cboHanhKiemEditor = new JComboBox<>(new String[] { "Tốt", "Khá", "Trung bình", "Yếu" });
             }
-            // set current selection from DB
             if (hk != null && hk.getXepLoai() != null) {
                 String cur = hk.getXepLoai();
                 boolean matched = false;
@@ -1195,22 +1144,55 @@ public class BangDiemChiTietDialog extends JDialog {
             } else {
                 cboHanhKiemEditor.setSelectedItem("Trung bình");
             }
-            // Hạn chế việc sửa hạnh kiểm chỉ cho GVCN hoặc Admin
-            cboHanhKiemEditor.setEnabled(tableEditing && canEditHanhKiem);
-            cboHanhKiemEditor.setVisible(tableEditing && canEditHanhKiem);
-            // show value label when not editing (or when user not permitted)
-            lblHanhKiemValue.setVisible(!(tableEditing && canEditHanhKiem));
-            if (!canEditHanhKiem) {
-                // provide a helpful tooltip for the user
-                lblHanhKiemValue
-                        .setToolTipText("Chỉ giáo viên chủ nhiệm hoặc quản trị viên mới được chỉnh sửa Hạnh kiểm.");
-            } else {
-                lblHanhKiemValue.setToolTipText(null);
-            }
-            pnlHK.add(cboHanhKiemEditor);
+            cboHanhKiemEditor.setEnabled(tableEditing);
+            cboHanhKiemEditor.setVisible(tableEditing);
+            lblHanhKiemValue.setVisible(!tableEditing);
+            pnlFooterInfo.add(cboHanhKiemEditor);
+
+            // 3.2. Học Lực
+            pnlFooterInfo.add(Box.createHorizontalStrut(20));
+            JLabel lblHocLucLabel = new JLabel("Học lực:");
+            lblHocLucLabel.setFont(infoFont);
+            lblHocLucLabel.setForeground(Color.BLACK);
+            pnlFooterInfo.add(lblHocLucLabel);
+
+            JLabel lblHocLucValue = new JLabel(hocLucStr);
+            lblHocLucValue.setFont(infoFont);
+            lblHocLucValue.setForeground(Color.BLACK);
+            pnlFooterInfo.add(lblHocLucValue);
+
+            // 3.3. Xếp hạng
+            pnlFooterInfo.add(Box.createHorizontalStrut(20));
+            JLabel lblRankLabel = new JLabel("Xếp hạng:");
+            lblRankLabel.setFont(infoFont);
+            lblRankLabel.setForeground(Color.BLACK);
+            pnlFooterInfo.add(lblRankLabel);
+
+            String rankText = String.format("%d / %d (Lớp)", rank, siSo);
+            JLabel lblRankValue = new JLabel(rankText);
+            lblRankValue.setFont(infoFont);
+            lblRankValue.setForeground(Color.BLACK);
+            pnlFooterInfo.add(lblRankValue);
+
+            // 3.4. Điểm trung bình
+            pnlFooterInfo.add(Box.createHorizontalStrut(20));
+            JLabel lblTBLabel = new JLabel("Điểm TB Học kỳ:");
+            lblTBLabel.setFont(infoFont);
+            lblTBLabel.setForeground(Color.BLACK);
+            pnlFooterInfo.add(lblTBLabel);
+
+            String tbText = String.format("%.2f", myTBHK);
+            JLabel lblTBValue = new JLabel(tbText);
+            lblTBValue.setFont(infoFont);
+            lblTBValue.setForeground(Color.BLACK);
+            pnlFooterInfo.add(lblTBValue);
+
+            footerWrapper.add(pnlFooterInfo); // Thêm panel FlowLayout(LEFT) vào panel FlowLayout(CENTER)
+
             content.add(Box.createVerticalStrut(10));
-            content.add(pnlHK);
-            // apply computed permission: enable/disable edit actions for teachers
+            content.add(footerWrapper); // Thêm panel bọc
+
+            // Cập nhật quyền (giữ nguyên)
             try {
                 if (btnEdit != null)
                     // allow Edit when there is any subject-edit permission OR when the
@@ -1246,7 +1228,6 @@ public class BangDiemChiTietDialog extends JDialog {
                         lblHanhKiemValue.setVisible(true);
                 }
             } catch (Exception ex) {
-                // ignore
             }
         }
 
@@ -1254,51 +1235,38 @@ public class BangDiemChiTietDialog extends JDialog {
         table.setRowHeight(30);
         table.getTableHeader().setFont(new Font("Arial", Font.BOLD, 12));
         table.getTableHeader().setBackground(new Color(240, 240, 240));
-
-        // Căn giữa các cột and apply permission-aware row highlighting.
         DefaultTableCellRenderer centerRenderer = new DefaultTableCellRenderer();
         centerRenderer.setHorizontalAlignment(JLabel.CENTER);
-
-        // Renderer that indicates which rows are editable by background color and
-        // optional tooltip. It delegates to centerRenderer for alignment and basic
-        // rendering, then adjusts background based on rowCanEditList.
         DefaultTableCellRenderer permissionRenderer = new DefaultTableCellRenderer() {
             @Override
             public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected,
                     boolean hasFocus, int row, int column) {
-
-                // THAY ĐỔI: Hiển thị rỗng cho điểm của môn Đánh Giá
                 int modelRow = -1;
                 try {
                     modelRow = table.convertRowIndexToModel(row);
                 } catch (Exception ex) {
-                    /* ignore */ }
-
+                }
                 if (modelRow >= 0 && modelRow < currentDiemList.size()) {
                     DiemDTO dto = currentDiemList.get(modelRow);
                     if ("DanhGia".equals(dto.getLoaiMon()) && column >= 2 && column <= 5) {
-                        value = ""; // Hiển thị rỗng thay vì "0.0" hoặc "null"
+                        value = "";
                     }
                 }
-
                 Component c = centerRenderer.getTableCellRendererComponent(table, value, isSelected, hasFocus,
                         row, column);
-                // default backgrounds
-                Color editableBg = new Color(225, 255, 225); // light green for editable
+                Color editableBg = new Color(225, 255, 225);
                 Color normalBg = Color.WHITE;
                 Color disabledBg = new Color(245, 245, 245);
 
                 try {
-                    // int modelRow = table.convertRowIndexToModel(row);
                     boolean canEdit = false;
                     if (modelRow >= 0 && modelRow < rowCanEditList.size()) {
                         Boolean b = rowCanEditList.get(modelRow);
                         canEdit = b != null && b.booleanValue();
                     }
                     if (isSelected) {
-                        // keep selection color when selected
                         c.setBackground(table.getSelectionBackground());
-                    } else if (canEdit && tableEditing) { // Chỉ tô màu khi đang ở chế độ Sửa
+                    } else if (canEdit && tableEditing) {
                         c.setBackground(editableBg);
                     } else {
                         c.setBackground(normalBg);
@@ -1321,35 +1289,34 @@ public class BangDiemChiTietDialog extends JDialog {
             table.getColumnModel().getColumn(i).setCellRenderer(permissionRenderer);
         }
 
-        // Đặt độ rộng cột
-        table.getColumnModel().getColumn(0).setPreferredWidth(40); // STT
-        table.getColumnModel().getColumn(1).setPreferredWidth(120); // Tên môn
-        table.getColumnModel().getColumn(2).setPreferredWidth(60); // Miệng
-        table.getColumnModel().getColumn(3).setPreferredWidth(100); // 15 phút
-        table.getColumnModel().getColumn(4).setPreferredWidth(100); // 1 tiết
-        table.getColumnModel().getColumn(5).setPreferredWidth(60); // Cuối kỳ
-        table.getColumnModel().getColumn(6).setPreferredWidth(60); // Kết quả (TB/ĐKĐ)
-        table.getColumnModel().getColumn(7).setPreferredWidth(100); // Ghi chú
+        table.getColumnModel().getColumn(0).setPreferredWidth(40);
+        table.getColumnModel().getColumn(1).setPreferredWidth(120);
+        table.getColumnModel().getColumn(2).setPreferredWidth(60);
+        table.getColumnModel().getColumn(3).setPreferredWidth(100);
+        table.getColumnModel().getColumn(4).setPreferredWidth(100);
+        table.getColumnModel().getColumn(5).setPreferredWidth(60);
+        table.getColumnModel().getColumn(6).setPreferredWidth(60);
+        table.getColumnModel().getColumn(7).setPreferredWidth(100);
 
-        // Thêm viền cho bảng
         table.setShowGrid(true);
         table.setGridColor(Color.BLACK);
         table.setBorder(BorderFactory.createLineBorder(Color.BLACK, 1));
 
         JScrollPane tableScroll = new JScrollPane(table);
         tableScroll.setBorder(BorderFactory.createLineBorder(Color.BLACK, 2));
-        // widen the table area to better use the larger dialog size
-        tableScroll.setPreferredSize(new Dimension(1100, 650));
-        content.add(tableScroll);
+        tableScroll.setPreferredSize(new Dimension(900, 450));
+
+        // SỬA: Bọc tableScroll trong panel căn giữa
+        JPanel tableWrapper = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 0));
+        tableWrapper.setOpaque(false);
+        tableWrapper.add(tableScroll);
+        tableWrapper.setAlignmentX(Component.CENTER_ALIGNMENT); // Căn giữa khối
+        content.add(tableWrapper);
 
         // ===== NHẬN XÉT CỦA GIÁO VIÊN =====
-        // Load existing nhận xét (per-student, per-NK, per-HK) and show it below the
-        // table. Use permission-aware getter.
         String nx = "";
         if (currentMaHS != -1) {
             try {
-                // use the same resolved user (nd) if available; attempt to resolve again as
-                // fallback
                 com.sgu.qlhs.dto.NguoiDungDTO nd = null;
                 try {
                     java.awt.Window w = javax.swing.SwingUtilities.getWindowAncestor(this);
@@ -1358,7 +1325,6 @@ public class BangDiemChiTietDialog extends JDialog {
                         nd = md.getNguoiDung();
                     }
                 } catch (Exception ex) {
-                    // ignore
                 }
                 String fetched = diemBUS.getNhanXet(currentMaHS, currentMaNK, currentHocKy, nd);
                 nx = fetched != null ? fetched : "";
@@ -1367,8 +1333,21 @@ public class BangDiemChiTietDialog extends JDialog {
             }
         }
         currentNhanXet = nx;
+
+        // SỬA: Bọc khối nhận xét trong panel căn giữa
+        JPanel commentWrapper = new JPanel();
+        commentWrapper.setLayout(new BoxLayout(commentWrapper, BoxLayout.Y_AXIS));
+        commentWrapper.setOpaque(false);
+        commentWrapper.setAlignmentX(Component.CENTER_ALIGNMENT); // Căn giữa khối
+        commentWrapper.setPreferredSize(new Dimension(900, 140)); // Đặt kích thước
+        commentWrapper.setMaximumSize(new Dimension(900, 140));
+
         JLabel lblNhanXet = new JLabel("Nhận xét của giáo viên:");
         lblNhanXet.setFont(new Font("Arial", Font.BOLD, 13));
+        lblNhanXet.setAlignmentX(Component.LEFT_ALIGNMENT);
+        commentWrapper.add(lblNhanXet);
+        commentWrapper.add(Box.createVerticalStrut(6));
+
         txtNhanXet = new JTextArea(5, 80);
         txtNhanXet.setLineWrap(true);
         txtNhanXet.setWrapStyleWord(true);
@@ -1376,11 +1355,12 @@ public class BangDiemChiTietDialog extends JDialog {
         txtNhanXet.setEditable(tableEditing);
         txtNhanXet.setFont(new Font("Arial", Font.PLAIN, 12));
         JScrollPane spNhanXet = new JScrollPane(txtNhanXet);
-        spNhanXet.setPreferredSize(new Dimension(900, 120));
+        spNhanXet.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        commentWrapper.add(spNhanXet);
+
         content.add(Box.createVerticalStrut(10));
-        content.add(lblNhanXet);
-        content.add(Box.createVerticalStrut(6));
-        content.add(spNhanXet);
+        content.add(commentWrapper); // Thêm panel bọc
 
         pnlBangDiem.add(content, BorderLayout.CENTER);
 
@@ -1886,5 +1866,53 @@ public class BangDiemChiTietDialog extends JDialog {
                         JOptionPane.ERROR_MESSAGE);
             }
         }
+    }
+
+    private java.util.List<Double> getClassTBHKs(int maLop, int hocKy, int maNK) {
+        java.util.List<Double> dsDiemTBHK = new java.util.ArrayList<>();
+
+        java.util.List<HocSinhDTO> dsHS = hocSinhBUS.getHocSinhByMaLop(maLop);
+        if (dsHS == null || dsHS.isEmpty()) {
+            return dsDiemTBHK;
+        }
+
+        java.util.List<DiemDTO> allScoresInClass = diemBUS.getDiemFiltered(maLop, null, hocKy, maNK, null, null);
+
+        java.util.Map<Integer, java.util.List<DiemDTO>> diemTheoHS = allScoresInClass.stream()
+                .collect(java.util.stream.Collectors.groupingBy(DiemDTO::getMaHS));
+
+        for (HocSinhDTO hs : dsHS) {
+            java.util.List<DiemDTO> diemCuaHS = diemTheoHS.get(hs.getMaHS());
+            if (diemCuaHS == null || diemCuaHS.isEmpty())
+                continue;
+
+            double tongDiem = 0;
+            int soMon = 0;
+            for (DiemDTO d : diemCuaHS) {
+                if ("TinhDiem".equals(d.getLoaiMon())) {
+                    tongDiem += d.getDiemTB();
+                    soMon++;
+                }
+            }
+            if (soMon > 0)
+                dsDiemTBHK.add(tongDiem / soMon);
+        }
+        return dsDiemTBHK;
+    }
+
+    private double getStudentTBHK(int maHS, int hocKy, int maNK, NguoiDungDTO user) {
+        java.util.List<DiemDTO> diemCuaHS = diemBUS.getDiemByMaHS(maHS, hocKy, maNK, user);
+        if (diemCuaHS == null || diemCuaHS.isEmpty())
+            return 0.0;
+
+        double tongDiem = 0;
+        int soMon = 0;
+        for (DiemDTO d : diemCuaHS) {
+            if ("TinhDiem".equals(d.getLoaiMon())) {
+                tongDiem += d.getDiemTB();
+                soMon++;
+            }
+        }
+        return (soMon > 0) ? (tongDiem / soMon) : 0.0;
     }
 }

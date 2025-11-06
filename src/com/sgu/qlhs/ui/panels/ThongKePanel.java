@@ -965,10 +965,13 @@ public class ThongKePanel extends JPanel {
         filterPanel.setOpaque(false);
         
         filterPanel.add(new JLabel("Loại thống kê:"));
+        
         cboThongKe = new JComboBox<>(new String[]{
                 "Thứ hạng ĐTB theo môn", 
-                "Điểm TB các môn"
+                "Điểm TB các môn",
+                "Xếp hạng TB Chung (Lớp)"
         });
+        
         filterPanel.add(cboThongKe);
 
         filterPanel.add(new JLabel("Học kỳ:"));
@@ -1010,26 +1013,25 @@ public class ThongKePanel extends JPanel {
                 isUpdatingChart = false;
                 return;
             }
-    
+
             String loaiTK = (String) cboThongKe.getSelectedItem();
             int hocKy = (cboHocKy.getSelectedIndex() == 0) ? 1 : 2;
             int maNK = NienKhoaBUS.current();
-    
+
             int maLop = -1;
-            // SỬA LỖI: dùng getMaLop() thay vì getTenLop()
             if (currentHocSinh.getMaLop() != 0) {
                  maLop = currentHocSinh.getMaLop();
             }
-    
+
             if (maLop == -1) {
                 chartContainer.add(new JLabel("Không tìm thấy thông tin lớp của học sinh."), "LopError");
                 chartCards.show(chartContainer, "LopError");
                 isUpdatingChart = false;
                 return;
             }
-    
+
             String cardKey = loaiTK + "_" + hocKy;
-    
+
             if ("Thứ hạng ĐTB theo môn".equals(loaiTK)) {
                 JComponent chart = createRankingChart(currentMaHS, maLop, hocKy, maNK);
                 chartContainer.add(chart, cardKey);
@@ -1037,6 +1039,11 @@ public class ThongKePanel extends JPanel {
             } else if ("Điểm TB các môn".equals(loaiTK)) {
                 JComponent chart = createAverageScoreChart(currentMaHS, hocKy, maNK);
                 chartContainer.add(chart, cardKey);
+                chartCards.show(chartContainer, cardKey);
+            }
+            else if ("Xếp hạng TB Chung (Lớp)".equals(loaiTK)) {
+                JComponent display = createOverallRankingDisplay(currentMaHS, maLop, hocKy, maNK);
+                chartContainer.add(display, cardKey);
                 chartCards.show(chartContainer, cardKey);
             }
         } finally {
@@ -1124,5 +1131,72 @@ public class ThongKePanel extends JPanel {
         
         String title = "Thứ hạng ĐTB theo môn - " + cboHocKy.getSelectedItem();
         return new BarChartCanvas(title, cats, values);
+    }
+    
+    private double tinhDiemTBHKChoMotHS(int maHS, int hocKy, int maNK) {
+        List<DiemDTO> diemCuaHS = diemBUS.getDiemByMaHS(maHS, hocKy, maNK, currentUser);
+        if (diemCuaHS == null || diemCuaHS.isEmpty()) return 0.0;
+        
+        double tongDiem = 0;
+        int soMon = 0;
+        for (DiemDTO d : diemCuaHS) {
+            if ("TinhDiem".equals(d.getLoaiMon())) {
+                tongDiem += d.getDiemTB();
+                soMon++;
+            }
+        }
+        return (soMon > 0) ? (tongDiem / soMon) : 0.0;
+    }
+    
+    private JComponent createOverallRankingDisplay(int maHS, int maLop, int hocKy, int maNK) {
+        // 1. Lấy điểm TBHK của cả lớp
+        List<Double> dsDiemTBHK_Lop = tinhDiemTBHKChoLop(maLop, hocKy, maNK);
+        if (dsDiemTBHK_Lop.isEmpty()) {
+            return new JLabel("Chưa có dữ liệu của lớp để xếp hạng.", SwingConstants.CENTER);
+        }
+
+        // 2. Lấy điểm TBHK của học sinh này
+        double myTBHK = tinhDiemTBHKChoMotHS(maHS, hocKy, maNK);
+
+        // 3. Sắp xếp giảm dần
+        dsDiemTBHK_Lop.sort(Comparator.reverseOrder());
+
+        // 4. Tìm thứ hạng
+        int rank = 0;
+        for (int i = 0; i < dsDiemTBHK_Lop.size(); i++) {
+            // So sánh điểm (với sai số nhỏ)
+            if (Math.abs(dsDiemTBHK_Lop.get(i) - myTBHK) < 0.001) {
+                rank = i + 1;
+                break;
+            }
+        }
+        // Nếu không tìm thấy (ví dụ: HS chưa có điểm), xếp cuối
+        if (rank == 0) {
+            for (int i = 0; i < dsDiemTBHK_Lop.size(); i++) {
+                if (myTBHK >= dsDiemTBHK_Lop.get(i) - 0.001) {
+                    rank = i + 1;
+                    break;
+                }
+            }
+            if (rank == 0) rank = dsDiemTBHK_Lop.size() + 1;
+        }
+
+        int siSo = dsDiemTBHK_Lop.size();
+
+        // 5. Tạo giao diện hiển thị
+        JPanel panel = new JPanel(new GridBagLayout());
+        panel.setOpaque(false);
+        JLabel lblRank = new JLabel(String.format("Hạng: %d / %d (Lớp)", rank, siSo));
+        lblRank.setFont(new Font("Arial", Font.BOLD, 36));
+        lblRank.setForeground(new Color(29, 35, 66));
+        
+        JLabel lblScore = new JLabel(String.format("ĐTB Học kỳ: %.2f", myTBHK));
+        lblScore.setFont(new Font("Arial", Font.PLAIN, 18));
+        
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.gridy = 0; panel.add(lblRank, gbc);
+        gbc.gridy = 1; gbc.insets = new Insets(10, 0, 0, 0); panel.add(lblScore, gbc);
+        
+        return panel;
     }
 }

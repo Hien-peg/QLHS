@@ -6,20 +6,15 @@ import com.sgu.qlhs.dto.PhanCongDayDTO;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
-import java.sql.SQLException; // Thêm import
-import java.sql.Statement; // Thêm import
+import java.sql.SQLException; 
+import java.sql.Statement; 
 import java.util.ArrayList;
 import java.util.List;
 
 public class PhanCongDayDAO {
 
-    // ===========================================
-    // SỬA: Thay đổi tham số (MaNK, HocKy int) -> (NamHoc, HocKy String)
-    // ===========================================
-
     public List<Integer> getDistinctMaLopByGiaoVien(int maGV, String namHoc, String hocKy) throws Exception {
-        // SỬA: Bỏ MaNK, dùng NamHoc và HocKy (String)
-        String sql = "SELECT DISTINCT pc.MaLop FROM PhanCongDay pc WHERE pc.MaGV = ?";
+        String sql = "SELECT DISTINCT pc.MaLop FROM PhanCongDay pc WHERE pc.MaGV = ? AND pc.TrangThai = 1";
         if (namHoc != null && !namHoc.isEmpty())
             sql += " AND pc.NamHoc = ?";
         if (hocKy != null && !hocKy.isEmpty())
@@ -30,9 +25,9 @@ public class PhanCongDayDAO {
             int idx = 1;
             ps.setInt(idx++, maGV);
             if (namHoc != null && !namHoc.isEmpty())
-                ps.setString(idx++, namHoc); // Sửa: setString
+                ps.setString(idx++, namHoc); 
             if (hocKy != null && !hocKy.isEmpty())
-                ps.setString(idx++, hocKy); // Sửa: setString
+                ps.setString(idx++, hocKy); 
             
             try (ResultSet rs = ps.executeQuery()) {
                 List<Integer> out = new ArrayList<>();
@@ -45,8 +40,7 @@ public class PhanCongDayDAO {
     }
 
     public List<Integer> getDistinctMaMonByGiaoVien(int maGV, String namHoc, String hocKy) throws Exception {
-        // SỬA: Bỏ MaNK, dùng NamHoc và HocKy (String)
-        String sql = "SELECT DISTINCT pc.MaMon FROM PhanCongDay pc WHERE pc.MaGV = ?";
+        String sql = "SELECT DISTINCT pc.MaMon FROM PhanCongDay pc WHERE pc.MaGV = ? AND pc.TrangThai = 1";
         if (namHoc != null && !namHoc.isEmpty())
             sql += " AND pc.NamHoc = ?";
         if (hocKy != null && !hocKy.isEmpty())
@@ -57,9 +51,9 @@ public class PhanCongDayDAO {
             int idx = 1;
             ps.setInt(idx++, maGV);
             if (namHoc != null && !namHoc.isEmpty())
-                ps.setString(idx++, namHoc); // Sửa: setString
+                ps.setString(idx++, namHoc); 
             if (hocKy != null && !hocKy.isEmpty())
-                ps.setString(idx++, hocKy); // Sửa: setString
+                ps.setString(idx++, hocKy); 
             
             try (ResultSet rs = ps.executeQuery()) {
                 List<Integer> out = new ArrayList<>();
@@ -71,12 +65,10 @@ public class PhanCongDayDAO {
         }
     }
     
-    // (Các hàm CRUD khác đã đúng theo file bạn cung cấp)
     // ===========================================
     // 🧩 Các hàm CRUD chính cho Phân công dạy
     // ===========================================
 
-    // Lấy toàn bộ danh sách phân công (Trạng thái = 1)
     public List<PhanCongDayDTO> getAll() {
         List<PhanCongDayDTO> list = new ArrayList<>();
         String sql = """
@@ -159,10 +151,7 @@ public class PhanCongDayDAO {
             ps.setInt(4, dto.getMaPhong());
             ps.setString(5, dto.getHocKy());
             ps.setString(6, dto.getNamHoc());
-
-            // 🔹 Nếu trạng thái chưa gán, mặc định là 1 (đang hoạt động)
             ps.setInt(7, dto.getTrangThai() == 0 ? 1 : dto.getTrangThai());
-
             ps.setInt(8, dto.getMaPCD());
 
             return ps.executeUpdate() > 0;
@@ -172,9 +161,9 @@ public class PhanCongDayDAO {
         }
     }
 
-    // ===== Xóa thật (Cascade TKB) =====
+    // ===== Xóa (Delete) =====
     public boolean delete(int maPCD) {
-        String sql = "DELETE FROM PhanCongDay WHERE MaPCD = ?";
+        String sql = "UPDATE PhanCongDay SET TrangThai = 0 WHERE MaPCD = ?";
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, maPCD);
@@ -185,7 +174,6 @@ public class PhanCongDayDAO {
         }
     }
 
-    // ===== Tìm theo ID =====
     public PhanCongDayDTO findById(int maPCD) {
         String sql = """
             SELECT pcd.*, gv.HoTen AS TenGV, mon.TenMon, lop.TenLop, phong.TenPhong
@@ -194,7 +182,7 @@ public class PhanCongDayDAO {
             JOIN MonHoc mon ON mon.MaMon = pcd.MaMon
             JOIN Lop lop ON lop.MaLop = pcd.MaLop
             JOIN PhongHoc phong ON phong.MaPhong = pcd.MaPhong
-            WHERE pcd.MaPCD = ?
+            WHERE pcd.MaPCD = ? AND pcd.TrangThai = 1
         """;
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -222,7 +210,7 @@ public class PhanCongDayDAO {
         return null;
     }
 
-    // ===== Kiểm tra trùng phân công (trùng toàn bộ 5 điều kiện) =====
+    // ===== Kiểm tra trùng =====
     public boolean existsDuplicate(int maGV, int maLop, int maMon, String hocKy, String namHoc) {
         String sql = """
             SELECT COUNT(*) FROM PhanCongDay

@@ -11,17 +11,17 @@ public class ThoiKhoaBieuDAO {
     public List<ThoiKhoaBieuDTO> getAll() {
         List<ThoiKhoaBieuDTO> list = new ArrayList<>();
         String sql = """
-            SELECT tkb.*, pcd.MaGV, pcd.MaLop, pcd.MaPhong, pcd.HocKy, pcd.NamHoc,
-                   gv.HoTen AS TenGV, mon.TenMon, lop.TenLop, phong.TenPhong
-            FROM ThoiKhoaBieu tkb
-            JOIN PhanCongDay pcd ON tkb.MaPCD = pcd.MaPCD
-            JOIN GiaoVien gv ON gv.MaGV = pcd.MaGV
-            JOIN MonHoc mon ON mon.MaMon = pcd.MaMon
-            JOIN Lop lop ON lop.MaLop = pcd.MaLop
-            JOIN PhongHoc phong ON phong.MaPhong = pcd.MaPhong
-            WHERE tkb.TrangThai = 1
-            ORDER BY tkb.Thu, tkb.TietBD
-        """;
+        	    SELECT tkb.*, pcd.MaGV, pcd.MaLop, pcd.MaPhong, pcd.HocKy, pcd.NamHoc,
+        	           gv.HoTen AS TenGV, mon.TenMon, lop.TenLop, phong.TenPhong
+        	    FROM ThoiKhoaBieu tkb
+        	    JOIN PhanCongDay pcd ON tkb.MaPCD = pcd.MaPCD
+        	    JOIN GiaoVien gv ON gv.MaGV = pcd.MaGV
+        	    JOIN MonHoc mon ON mon.MaMon = pcd.MaMon
+        	    JOIN Lop lop ON lop.MaLop = pcd.MaLop
+        	    JOIN PhongHoc phong ON phong.MaPhong = pcd.MaPhong
+        	    WHERE tkb.TrangThai = 1 AND pcd.TrangThai = 1
+        	    ORDER BY tkb.Thu, tkb.TietBD
+        	""";
 
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql);
@@ -166,7 +166,7 @@ public class ThoiKhoaBieuDAO {
             JOIN MonHoc mon ON mon.MaMon = pcd.MaMon
             JOIN Lop lop ON lop.MaLop = pcd.MaLop
             JOIN PhongHoc phong ON phong.MaPhong = pcd.MaPhong
-            WHERE pcd.MaLop = ? AND pcd.HocKy = ? AND pcd.NamHoc = ? AND tkb.TrangThai = 1
+            WHERE pcd.MaLop = ? AND pcd.HocKy = ? AND pcd.NamHoc = ? AND tkb.TrangThai = 1 AND pcd.TrangThai = 1
             ORDER BY FIELD(tkb.Thu, 'Thứ 2','Thứ 3','Thứ 4','Thứ 5','Thứ 6','Thứ 7'), tkb.TietBD;
         """;
         try (Connection conn = DatabaseConnection.getConnection();
@@ -206,7 +206,7 @@ public class ThoiKhoaBieuDAO {
             JOIN MonHoc mon ON mon.MaMon = pcd.MaMon
             JOIN Lop lop ON lop.MaLop = pcd.MaLop
             JOIN PhongHoc phong ON phong.MaPhong = pcd.MaPhong
-            WHERE pcd.MaGV = ? AND pcd.HocKy = ? AND pcd.NamHoc = ? AND tkb.TrangThai = 1
+            WHERE pcd.MaGV = ? AND pcd.HocKy = ? AND pcd.NamHoc = ? AND tkb.TrangThai = 1 AND pcd.TrangThai = 1
             ORDER BY FIELD(tkb.Thu, 'Thứ 2','Thứ 3','Thứ 4','Thứ 5','Thứ 6','Thứ 7'), tkb.TietBD;
         """;
         try (Connection conn = DatabaseConnection.getConnection();
