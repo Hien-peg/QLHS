@@ -1044,6 +1044,37 @@ public class BangDiemChiTietDialog extends JDialog {
 
             boolean canEdit = (!isStudentView) && anyRowEditable;
 
+            // Determine whether current user can edit Hạnh kiểm (admins or chủ nhiệm of the
+            // class)
+            boolean canEditHanhKiem = false;
+            try {
+                if (nd != null) {
+                    if ("quan_tri_vien".equalsIgnoreCase(nd.getVaiTro()) || "Admin".equalsIgnoreCase(nd.getVaiTro())) {
+                        canEditHanhKiem = true;
+                    } else if ("giao_vien".equalsIgnoreCase(nd.getVaiTro())) {
+                        // If dialog was opened from Chủ nhiệm tab, allow editing Hạnh kiểm
+                        if (openedFromChuNhiem) {
+                            canEditHanhKiem = true;
+                        } else {
+                            try {
+                                HocSinhDTO _hs = hocSinhBUS.getHocSinhByMaHS(maHS);
+                                if (_hs != null) {
+                                    com.sgu.qlhs.bus.ChuNhiemBUS cnBUS = new com.sgu.qlhs.bus.ChuNhiemBUS();
+                                    com.sgu.qlhs.dto.ChuNhiemDTO cn = cnBUS.getChuNhiemByGV(nd.getId());
+                                    if (cn != null && cn.getMaLop() == _hs.getMaLop()) {
+                                        canEditHanhKiem = true;
+                                    }
+                                }
+                            } catch (Exception ex) {
+                                // conservative: leave as false on error
+                            }
+                        }
+                    }
+                }
+            } catch (Exception ex) {
+                // ignore and keep canEditHanhKiem = false
+            }
+
             // === SỬA KHỐI HIỂN THỊ HẠNH KIỂM / XẾP HẠNG ===
 
             // --- 1. Lấy dữ liệu Hạnh kiểm ---
