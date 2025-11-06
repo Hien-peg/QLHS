@@ -926,13 +926,19 @@ public class BangDiemChiTietDialog extends JDialog {
             }
 
             com.sgu.qlhs.dto.NguoiDungDTO nd = null;
-            try {
-                java.awt.Window w = javax.swing.SwingUtilities.getWindowAncestor(this);
-                if (w instanceof com.sgu.qlhs.ui.MainDashboard) {
-                    com.sgu.qlhs.ui.MainDashboard md = (com.sgu.qlhs.ui.MainDashboard) w;
-                    nd = md.getNguoiDung();
+            // prefer an injected user (if caller provided one), otherwise resolve
+            // from the window ancestor
+            if (this.injectedNguoiDung != null) {
+                nd = this.injectedNguoiDung;
+            } else {
+                try {
+                    java.awt.Window w = javax.swing.SwingUtilities.getWindowAncestor(this);
+                    if (w instanceof com.sgu.qlhs.ui.MainDashboard) {
+                        com.sgu.qlhs.ui.MainDashboard md = (com.sgu.qlhs.ui.MainDashboard) w;
+                        nd = md.getNguoiDung();
+                    }
+                } catch (Exception ex) {
                 }
-            } catch (Exception ex) {
             }
 
             // Lấy dữ liệu điểm
@@ -949,15 +955,10 @@ public class BangDiemChiTietDialog extends JDialog {
                 rowCanEditList.add(Boolean.FALSE);
             }
             try {
-                com.sgu.qlhs.dto.NguoiDungDTO ndCheck = null;
-                try {
-                    java.awt.Window w = javax.swing.SwingUtilities.getWindowAncestor(this);
-                    if (w instanceof com.sgu.qlhs.ui.MainDashboard) {
-                        com.sgu.qlhs.ui.MainDashboard md = (com.sgu.qlhs.ui.MainDashboard) w;
-                        ndCheck = md.getNguoiDung();
-                    }
-                } catch (Exception ex) {
-                }
+                // prefer the injected user (if provided) for permission checks; fall
+                // back to resolving from the window ancestor was already handled in
+                // the 'nd' variable above
+                com.sgu.qlhs.dto.NguoiDungDTO ndCheck = nd;
                 if (ndCheck != null && "giao_vien".equalsIgnoreCase(ndCheck.getVaiTro())) {
                     for (int i = 0; i < diemList.size(); i++) {
                         DiemDTO d = diemList.get(i);
@@ -1409,16 +1410,20 @@ public class BangDiemChiTietDialog extends JDialog {
             return false;
         }
         try {
-            // resolve current user for permission checks
+            // resolve current user for permission checks: prefer injected user
             com.sgu.qlhs.dto.NguoiDungDTO nd = null;
-            try {
-                java.awt.Window w = javax.swing.SwingUtilities.getWindowAncestor(this);
-                if (w instanceof com.sgu.qlhs.ui.MainDashboard) {
-                    com.sgu.qlhs.ui.MainDashboard md = (com.sgu.qlhs.ui.MainDashboard) w;
-                    nd = md.getNguoiDung();
+            if (this.injectedNguoiDung != null) {
+                nd = this.injectedNguoiDung;
+            } else {
+                try {
+                    java.awt.Window w = javax.swing.SwingUtilities.getWindowAncestor(this);
+                    if (w instanceof com.sgu.qlhs.ui.MainDashboard) {
+                        com.sgu.qlhs.ui.MainDashboard md = (com.sgu.qlhs.ui.MainDashboard) w;
+                        nd = md.getNguoiDung();
+                    }
+                } catch (Exception ex) {
+                    // ignore
                 }
-            } catch (Exception ex) {
-                // ignore
             }
             // validation: check scores for TinhDiem subjects
             java.util.List<String> invalids = new java.util.ArrayList<>();
@@ -1625,6 +1630,14 @@ public class BangDiemChiTietDialog extends JDialog {
     // relax the hạnh kiểm permission check so the chủ nhiệm may edit hạnh kiểm
     // for students in that tab without failing on other assignment checks.
     private boolean openedFromChuNhiem = false;
+    // Optional: caller can inject the currently-logged-in user to ensure the
+    // dialog uses the same user context as the caller (useful when the dialog
+    // is created programmatically from panels).
+    private NguoiDungDTO injectedNguoiDung = null;
+
+    public void setInjectedNguoiDung(NguoiDungDTO nd) {
+        this.injectedNguoiDung = nd;
+    }
 
     public void setOpenedFromChuNhiem(boolean v) {
         this.openedFromChuNhiem = v;
@@ -1759,15 +1772,18 @@ public class BangDiemChiTietDialog extends JDialog {
         printPanel.add(Box.createVerticalStrut(12));
 
         // Hạnh kiểm and teacher comment (permission-aware)
-        com.sgu.qlhs.dto.NguoiDungDTO ndForPrint = null;
-        try {
-            java.awt.Window w = javax.swing.SwingUtilities.getWindowAncestor(this);
-            if (w instanceof com.sgu.qlhs.ui.MainDashboard) {
-                com.sgu.qlhs.ui.MainDashboard md = (com.sgu.qlhs.ui.MainDashboard) w;
-                ndForPrint = md.getNguoiDung();
+        // Prefer injected user for print permission context if provided
+        com.sgu.qlhs.dto.NguoiDungDTO ndForPrint = this.injectedNguoiDung;
+        if (ndForPrint == null) {
+            try {
+                java.awt.Window w = javax.swing.SwingUtilities.getWindowAncestor(this);
+                if (w instanceof com.sgu.qlhs.ui.MainDashboard) {
+                    com.sgu.qlhs.ui.MainDashboard md = (com.sgu.qlhs.ui.MainDashboard) w;
+                    ndForPrint = md.getNguoiDung();
+                }
+            } catch (Exception ex) {
+                // ignore
             }
-        } catch (Exception ex) {
-            // ignore
         }
         HanhKiemDTO hk = hanhKiemBUS.getHanhKiem(currentMaHS, currentMaNK, currentHocKy, ndForPrint);
         String hkStr = hk != null ? hk.getXepLoai() : "(chưa có)";

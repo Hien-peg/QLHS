@@ -296,6 +296,22 @@ public class DiemPanel extends JPanel {
 
             com.sgu.qlhs.ui.dialogs.BangDiemChiTietDialog dlg = new com.sgu.qlhs.ui.dialogs.BangDiemChiTietDialog(w);
             try {
+                // Inject the resolved logged-in user BEFORE calling setInitialMaHS
+                // because setInitialMaHS may call loadBangDiem() which computes
+                // permissions based on the user context.
+                try {
+                    java.awt.Window ww = javax.swing.SwingUtilities.getWindowAncestor(this);
+                    if (ww instanceof com.sgu.qlhs.ui.MainDashboard) {
+                        com.sgu.qlhs.ui.MainDashboard md = (com.sgu.qlhs.ui.MainDashboard) ww;
+                        NguoiDungDTO ndLocal = md.getNguoiDung();
+                        if (ndLocal != null) {
+                            dlg.setInjectedNguoiDung(ndLocal);
+                        }
+                    }
+                } catch (Exception ex2) {
+                    // ignore
+                }
+
                 dlg.setInitialMaHS(targetMaHS);
             } catch (Exception ex) {
                 // ignore selection failure; dialog will still allow manual selection if
@@ -1121,11 +1137,24 @@ public class DiemPanel extends JPanel {
             java.awt.Window w = javax.swing.SwingUtilities.getWindowAncestor(DiemPanel.this);
             com.sgu.qlhs.ui.dialogs.BangDiemChiTietDialog dlg = new com.sgu.qlhs.ui.dialogs.BangDiemChiTietDialog(w);
             try {
-                dlg.setInitialMaHS(maHS);
-                // mark that the dialog was opened from the Chủ nhiệm tab so the
-                // dialog can allow chủ nhiệm-specific edits (hạnh kiểm) without
-                // failing on other assignment checks
+                // Inject current logged-in user and mark openedFromChuNhiem BEFORE
+                // setInitialMaHS so loadBangDiem() has the proper context for
+                // subject and hạnh kiểm permission checks.
+                try {
+                    java.awt.Window ww = javax.swing.SwingUtilities.getWindowAncestor(DiemPanel.this);
+                    if (ww instanceof com.sgu.qlhs.ui.MainDashboard) {
+                        com.sgu.qlhs.ui.MainDashboard md = (com.sgu.qlhs.ui.MainDashboard) ww;
+                        NguoiDungDTO ndLocal = md.getNguoiDung();
+                        if (ndLocal != null) {
+                            dlg.setInjectedNguoiDung(ndLocal);
+                        }
+                    }
+                } catch (Exception ex2) {
+                    // ignore
+                }
+
                 dlg.setOpenedFromChuNhiem(true);
+                dlg.setInitialMaHS(maHS);
             } catch (Exception ex) {
                 // ignore
             }
