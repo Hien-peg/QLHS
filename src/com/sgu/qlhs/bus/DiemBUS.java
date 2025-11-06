@@ -155,7 +155,32 @@ public class DiemBUS {
     public boolean saveNhanXet(int maHS, int maNK, int hocKy, String ghiChu, NguoiDungDTO user) {
         if (user != null && "giao_vien".equalsIgnoreCase(user.getVaiTro())) {
             try {
-                if (!isTeacherAssigned(user.getId(), maHS, null, hocKy, maNK))
+                // Allow saving nhận xét if the teacher is assigned to the student's
+                // class/subject OR the teacher is the Chủ nhiệm (homeroom) of the
+                // student's class. This lets chủ nhiệm add comments even if they
+                // don't have an explicit PhanCongDay entry for that subject.
+                boolean allowed = false;
+                try {
+                    if (isTeacherAssigned(user.getId(), maHS, null, hocKy, maNK))
+                        allowed = true;
+                } catch (Exception ex) {
+                    // ignore inner failure and try chu nhiem fallback
+                }
+                if (!allowed) {
+                    try {
+                        com.sgu.qlhs.bus.HocSinhBUS hsBUS = new com.sgu.qlhs.bus.HocSinhBUS();
+                        com.sgu.qlhs.dto.HocSinhDTO hs = hsBUS.getHocSinhByMaHS(maHS);
+                        if (hs != null) {
+                            com.sgu.qlhs.bus.ChuNhiemBUS cnBUS = new com.sgu.qlhs.bus.ChuNhiemBUS();
+                            com.sgu.qlhs.dto.ChuNhiemDTO cn = cnBUS.getChuNhiemByGV(user.getId());
+                            if (cn != null && cn.getMaLop() == hs.getMaLop())
+                                allowed = true;
+                        }
+                    } catch (Exception ex) {
+                        // ignore
+                    }
+                }
+                if (!allowed)
                     return false;
             } catch (Exception ex) {
                 System.err.println("Lỗi kiểm tra quyền trước khi lưu nhận xét: " + ex.getMessage());
@@ -253,39 +278,108 @@ public class DiemBUS {
         // 1. Chuyển đổi int HocKy (1) -> String HocKy ("HK1")
         String hocKyString = "HK" + hocKyInt;
 
-        // 2. Lấy chuỗi NamHoc (vd: "2024-2025") từ MaNK
-        String namHocString = null;
-        // Dùng NienKhoaBUS đã tạo
+        // 2. We'll lazily resolve NamHoc string only if needed by the fallback
+        // strategy (some schemas store NamHoc as string while others store MaNK as
+        // int).
         NienKhoaBUS nkBUS = new NienKhoaBUS();
-        namHocString = nkBUS.getNamHocString(maNK);
+        String namHocString = null;
 
-        if (namHocString == null) {
-            throw new SQLException("Không tìm thấy Niên Khóa cho MaNK: " + maNK);
+        // 3. Try multiple strategies so permission check works regardless of how
+        // PhanCongDay stores niên khóa / học kỳ:
+        // We'll first detect whether the PhanCongDay table contains MaNK column
+        // to avoid executing a query that will throw on some schemas.
+        boolean phanCongHasMaNK = false;
+        try (Connection conn = DatabaseConnection.getConnection()) {
+            java.sql.DatabaseMetaData md = conn.getMetaData();
+            try (ResultSet cols = md.getColumns(null, null, "PhanCongDay", "MaNK")) {
+                if (cols != null && cols.next()) {
+                    phanCongHasMaNK = true;
+                }
+            }
+        } catch (SQLException ex) {
+            // ignore metadata failures and fall back to trying string-based strategy
+            phanCongHasMaNK = false;
         }
 
-        // 3. Xây dựng câu SQL đúng với schema của init-2.sql
-        String sql = "SELECT COUNT(*) AS cnt FROM PhanCongDay pc JOIN HocSinh hs ON hs.MaLop = pc.MaLop "
+        // Strategy A (only when MaNK exists): pc.MaNK (int) and pc.HocKy (int)
+        if (phanCongHasMaNK) {
+            String sqlA = "SELECT COUNT(*) AS cnt FROM PhanCongDay pc JOIN HocSinh hs ON hs.MaLop = pc.MaLop "
+                    + "WHERE pc.MaGV = ? AND pc.MaNK = ? AND pc.HocKy = ? AND hs.MaHS = ?";
+            if (maMon != null) {
+                sqlA += " AND pc.MaMon = ?";
+            }
+
+            try (Connection conn = DatabaseConnection.getConnection();
+                    PreparedStatement ps = conn.prepareStatement(sqlA)) {
+                int idx = 1;
+                ps.setInt(idx++, maGV);
+                ps.setInt(idx++, maNK);
+                ps.setInt(idx++, hocKyInt);
+                ps.setInt(idx++, maHS);
+                if (maMon != null) {
+                    ps.setInt(idx++, maMon);
+                }
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (rs.next()) {
+                        int cnt = rs.getInt("cnt");
+                        if (cnt > 0)
+                            return true;
+                    }
+                }
+            } catch (SQLException e) {
+                // If this fails, fall through to the string-based strategy below
+            }
+        }
+
+        // Strategy B (string-based): pc.NamHoc (string) and pc.HocKy (string like
+        // "HK1")
+        // Resolve NamHoc string now; if not found, skip this strategy.
+        if (namHocString == null) {
+            try {
+                namHocString = nkBUS.getNamHocString(maNK);
+            } catch (Exception ex) {
+                namHocString = null;
+            }
+        }
+        if (namHocString == null) {
+            // cannot perform fallback without NamHoc string, return no match
+            return false;
+        }
+
+        String sqlB = "SELECT COUNT(*) AS cnt FROM PhanCongDay pc JOIN HocSinh hs ON hs.MaLop = pc.MaLop "
                 + "WHERE pc.MaGV = ? AND pc.NamHoc = ? AND pc.HocKy = ? AND hs.MaHS = ?";
         if (maMon != null) {
-            sql += " AND pc.MaMon = ?";
+            sqlB += " AND pc.MaMon = ?";
         }
 
         try (Connection conn = DatabaseConnection.getConnection();
-                PreparedStatement ps = conn.prepareStatement(sql)) {
+                PreparedStatement ps = conn.prepareStatement(sqlB)) {
             int idx = 1;
             ps.setInt(idx++, maGV);
-            ps.setString(idx++, namHocString); // SỬA: Dùng NamHoc (String)
-            ps.setString(idx++, hocKyString); // SỬA: Dùng HocKy (String)
+            ps.setString(idx++, namHocString);
+            ps.setString(idx++, hocKyString);
             ps.setInt(idx++, maHS);
             if (maMon != null) {
                 ps.setInt(idx++, maMon);
             }
+            System.out.println("[DBG] Strategy B SQL: " + sqlB);
+            System.out.println("[DBG] Strategy B params: maGV=" + maGV + ", NamHoc='" + namHocString + "', hocKy='"
+                    + hocKyString + "', maHS=" + maHS + (maMon != null ? ", maMon=" + maMon : ""));
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
-                    return rs.getInt("cnt") > 0;
+                    int cnt = rs.getInt("cnt");
+                    System.out.println("[DBG] Strategy B result count=" + cnt);
+                    if (cnt > 0) {
+                        System.out.println("[DBG] Strategy B matched - teacher is assigned");
+                        return true;
+                    }
                 }
             }
+        } catch (SQLException e) {
+            System.err.println("[DBG] Strategy B threw SQLException: " + e.getMessage());
         }
+
+        System.out.println("[DBG] No matching assignment found for teacher.");
         return false;
     }
 

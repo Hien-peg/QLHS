@@ -373,7 +373,9 @@ public class DiemPanel extends JPanel {
                     int maNKLocal = NienKhoaBUS.current();
 
                     // default: only admins can edit/delete everything
-                    if (ndLocal == null || "quan_tri_vien".equalsIgnoreCase(ndLocal.getVaiTro())) {
+                    // Accept both canonical 'quan_tri_vien' and legacy 'Admin' role strings
+                    if (ndLocal == null || "quan_tri_vien".equalsIgnoreCase(ndLocal.getVaiTro())
+                            || "admin".equalsIgnoreCase(ndLocal.getVaiTro())) {
                         allowEdit = true;
                         allowDelete = true;
                     } else if ("giao_vien".equalsIgnoreCase(ndLocal.getVaiTro())) {
@@ -1077,8 +1079,18 @@ public class DiemPanel extends JPanel {
         }
         cboMonCN.addActionListener(e -> applyFiltersCN());
 
-        // add a detail button for Chủ nhiệm to open detailed report for a selected
-        // student
+        // add a refresh button and a detail button for Chủ nhiệm
+        // Refresh will reload the Chủ nhiệm data in-place
+        JButton btnRefreshCN = new JButton("Làm mới");
+        btnRefreshCN.addActionListener(ev -> {
+            try {
+                loadChuNhiemData();
+            } catch (Exception ex) {
+                System.err.println("Lỗi khi làm mới dữ liệu Chủ nhiệm: " + ex.getMessage());
+            }
+        });
+
+        // detail button to open detailed report for a selected student
         JButton btnDetailCN = new JButton("Bảng điểm chi tiết");
         btnDetailCN.addActionListener(ev -> {
             int sel = tableCN.getSelectedRow();
@@ -1110,11 +1122,17 @@ public class DiemPanel extends JPanel {
             com.sgu.qlhs.ui.dialogs.BangDiemChiTietDialog dlg = new com.sgu.qlhs.ui.dialogs.BangDiemChiTietDialog(w);
             try {
                 dlg.setInitialMaHS(maHS);
+                // mark that the dialog was opened from the Chủ nhiệm tab so the
+                // dialog can allow chủ nhiệm-specific edits (hạnh kiểm) without
+                // failing on other assignment checks
+                dlg.setOpenedFromChuNhiem(true);
             } catch (Exception ex) {
                 // ignore
             }
             dlg.setVisible(true);
         });
+        top.add(Box.createHorizontalStrut(8));
+        top.add(btnRefreshCN);
         top.add(Box.createHorizontalStrut(8));
         top.add(btnDetailCN);
 
@@ -1233,4 +1251,21 @@ public class DiemPanel extends JPanel {
     }
     // (Removed unused helper parseDoubleOrZero) kept parsing logic centralized in
     // dialogs/DAOs where needed.
+
+    /**
+     * Refresh Chủ nhiệm tab data if this panel is currently showing Chủ nhiệm
+     * data. Public wrapper so external dialogs (e.g. BangDiemChiTietDialog) can
+     * request an immediate refresh after related DB changes (like Hạnh kiểm).
+     */
+    public void refreshChuNhiemIfActive() {
+        try {
+            if (isChuNhiem && tabbedPane != null) {
+                // reload only the chủ nhiệm tab data to avoid flicker for other views
+                loadChuNhiemData();
+            }
+        } catch (Exception ex) {
+            // swallow to avoid disturbing caller; log to stderr for debugging
+            System.err.println("Lỗi khi refresh Chủ nhiệm data: " + ex.getMessage());
+        }
+    }
 }

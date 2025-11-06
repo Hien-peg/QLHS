@@ -74,15 +74,20 @@ public class BangDiemChiTietDialog extends JDialog {
     private JButton btnEdit;
     private JButton btnSave;
     private JButton btnCancel;
+    private JButton btnImport;
     private int initialMaLopContext = -1;
     private int initialMaHS = -1;
     private java.util.List<Boolean> rowCanEditList = new java.util.ArrayList<>();
 
     public BangDiemChiTietDialog(Window owner) {
         super(owner, "Bảng điểm chi tiết học sinh", ModalityType.APPLICATION_MODAL);
-        // increase default size so toolbar/buttons and content fit comfortably
-        setSize(1400, 950);
-        setMinimumSize(new Dimension(1100, 700));
+        // Make dialog occupy the full available screen area (usable bounds)
+        // This makes the dialog appear effectively full-screen on multi-monitor setups
+        java.awt.Rectangle screenBounds = java.awt.GraphicsEnvironment.getLocalGraphicsEnvironment()
+                .getMaximumWindowBounds();
+        setBounds(screenBounds);
+        // keep a sensible minimum so resizing down doesn't make layout unusable
+        setMinimumSize(new Dimension(800, 600));
         setResizable(true);
         setLocationRelativeTo(owner);
         build();
@@ -189,6 +194,7 @@ public class BangDiemChiTietDialog extends JDialog {
         btnSave.setEnabled(false);
         btnCancel = new JButton("Hủy");
         btnCancel.setEnabled(false);
+        btnImport = new JButton("Nhập CSV");
         JButton btnExport = new JButton("Xuất CSV");
         JButton btnPrint = new JButton("In");
         JButton btnClose = new JButton("Đóng");
@@ -202,6 +208,10 @@ public class BangDiemChiTietDialog extends JDialog {
         rightPanel.add(btnSave);
         rightPanel.add(Box.createHorizontalStrut(6));
         rightPanel.add(btnCancel);
+        rightPanel.add(Box.createHorizontalStrut(6));
+        // Import button: visible only to admin or teachers (further per-row checks
+        // will be applied during import). Students won't see it.
+        rightPanel.add(btnImport);
         rightPanel.add(Box.createHorizontalStrut(6));
         rightPanel.add(btnExport);
         rightPanel.add(Box.createHorizontalStrut(6));
@@ -253,7 +263,31 @@ public class BangDiemChiTietDialog extends JDialog {
                     } catch (Exception ex) {
                         // non-fatal: if hiding labels fails, continue with combos hidden
                     }
+                    // Teachers may be allowed to import; show the button but enable it
+                    // only when the loaded dataset contains at least one row they can edit.
+                    try {
+                        btnImport.setVisible(true);
+                        btnImport.setEnabled(false); // per-row enablement happens in loadBangDiem()
+                    } catch (Exception ex) {
+                    }
                 }
+            }
+            // Admin users: enable import immediately
+            try {
+                java.awt.Window w2 = javax.swing.SwingUtilities.getWindowAncestor(this);
+                if (w2 instanceof com.sgu.qlhs.ui.MainDashboard) {
+                    com.sgu.qlhs.ui.MainDashboard md2 = (com.sgu.qlhs.ui.MainDashboard) w2;
+                    NguoiDungDTO nd2 = md2.getNguoiDung();
+                    if (nd2 != null && ("quan_tri_vien".equalsIgnoreCase(nd2.getVaiTro())
+                            || "Admin".equalsIgnoreCase(nd2.getVaiTro()))) {
+                        try {
+                            btnImport.setVisible(true);
+                            btnImport.setEnabled(true);
+                        } catch (Exception ex) {
+                        }
+                    }
+                }
+            } catch (Exception ex) {
             }
         } catch (Exception ex) {
             // ignore and keep full UI for safety
@@ -283,13 +317,53 @@ public class BangDiemChiTietDialog extends JDialog {
                 txtNhanXet.setEditable(true);
                 txtNhanXet.requestFocusInWindow();
             }
-            // allow editing of Hạnh kiểm via inline combobox
+            // allow editing of Hạnh kiểm via inline combobox only when allowed
             if (cboHanhKiemEditor != null) {
-                cboHanhKiemEditor.setEnabled(true);
-                cboHanhKiemEditor.setVisible(true);
-                cboHanhKiemEditor.requestFocusInWindow();
-                if (lblHanhKiemValue != null) {
-                    lblHanhKiemValue.setVisible(false);
+                boolean allowHk = false;
+                try {
+                    com.sgu.qlhs.dto.NguoiDungDTO ndLocal = null;
+                    try {
+                        java.awt.Window w2 = javax.swing.SwingUtilities.getWindowAncestor(this);
+                        if (w2 instanceof com.sgu.qlhs.ui.MainDashboard) {
+                            com.sgu.qlhs.ui.MainDashboard md2 = (com.sgu.qlhs.ui.MainDashboard) w2;
+                            ndLocal = md2.getNguoiDung();
+                        }
+                    } catch (Exception ex) {
+                    }
+                    if (ndLocal != null) {
+                        if ("quan_tri_vien".equalsIgnoreCase(ndLocal.getVaiTro())
+                                || "Admin".equalsIgnoreCase(ndLocal.getVaiTro())) {
+                            allowHk = true;
+                        } else if ("giao_vien".equalsIgnoreCase(ndLocal.getVaiTro())) {
+                            try {
+                                com.sgu.qlhs.bus.ChuNhiemBUS cnBUS = new com.sgu.qlhs.bus.ChuNhiemBUS();
+                                var cn = cnBUS.getChuNhiemByGV(ndLocal.getId());
+                                if (cn != null && cn.getMaLop() > 0 && currentMaHS > 0) {
+                                    com.sgu.qlhs.dto.HocSinhDTO hs = hocSinhBUS.getHocSinhByMaHS(currentMaHS);
+                                    if (hs != null && hs.getMaLop() == cn.getMaLop())
+                                        allowHk = true;
+                                }
+                            } catch (Exception ex) {
+                                // ignore
+                            }
+                        }
+                    }
+                } catch (Exception ex) {
+                }
+
+                if (allowHk) {
+                    cboHanhKiemEditor.setEnabled(true);
+                    cboHanhKiemEditor.setVisible(true);
+                    cboHanhKiemEditor.requestFocusInWindow();
+                    if (lblHanhKiemValue != null) {
+                        lblHanhKiemValue.setVisible(false);
+                    }
+                } else {
+                    // not allowed: keep editor hidden/disabled and keep value label visible
+                    cboHanhKiemEditor.setEnabled(false);
+                    cboHanhKiemEditor.setVisible(false);
+                    if (lblHanhKiemValue != null)
+                        lblHanhKiemValue.setVisible(true);
                 }
             }
         });
@@ -376,6 +450,164 @@ public class BangDiemChiTietDialog extends JDialog {
         });
 
         // ⚡ Tách riêng listener của Export ra:
+        // Import listener (CSV -> bảng điểm). Permission: admin always allowed;
+        // teachers will have per-row permission checks applied when saving.
+        btnImport.addActionListener(e -> {
+            // Generate a sample CSV template and save it to the user's Downloads folder
+            try {
+                java.util.List<com.sgu.qlhs.dto.MonHocDTO> allMons = monBUS.getAllMon();
+                String userHome = System.getProperty("user.home");
+                File downloads = new File(userHome, "Downloads");
+                if (!downloads.exists() || !downloads.isDirectory())
+                    downloads = new File(userHome);
+                String namePart = (currentMaHS > 0) ? String.valueOf(currentMaHS) : "mau";
+                String ts = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
+                File sample = new File(downloads, "bangdiem_mau_" + namePart + "_" + ts + ".csv");
+                try (java.io.FileWriter fw = new java.io.FileWriter(sample)) {
+                    // header
+                    fw.write("STT,Tên môn học,Miệng,15 Phút,1 Tiết,Cuối kỳ,Kết quả,Ghi chú");
+                    fw.write(System.lineSeparator());
+                    int idx = 1;
+                    if (allMons != null) {
+                        for (com.sgu.qlhs.dto.MonHocDTO m : allMons) {
+                            String ten = m.getTenMon() != null ? m.getTenMon() : "";
+                            // quote if needed
+                            if (ten.contains(",") || ten.contains("\"")) {
+                                ten = "\"" + ten.replace("\"", "\"\"") + "\"";
+                            }
+                            java.util.List<String> parts = java.util.Arrays.asList(String.valueOf(idx), ten, "", "", "",
+                                    "", "", "");
+                            fw.write(String.join(",", parts));
+                            fw.write(System.lineSeparator());
+                            idx++;
+                        }
+                    }
+                }
+                int opt = JOptionPane.showConfirmDialog(this,
+                        "Mẫu CSV đã được lưu tại:\n" + sample.getAbsolutePath()
+                                + "\nBạn muốn chọn file để nhập ngay bây giờ?",
+                        "Mẫu CSV", JOptionPane.YES_NO_OPTION);
+                if (opt != JOptionPane.YES_OPTION) {
+                    // user chose not to continue to import now
+                    return;
+                }
+            } catch (Exception ex) {
+                // if template generation fails, continue to import flow but notify user
+                try {
+                    JOptionPane.showMessageDialog(this, "Không thể tạo mẫu CSV: " + ex.getMessage());
+                } catch (Exception ignored) {
+                }
+            }
+
+            if (model == null || model.getRowCount() == 0) {
+                JOptionPane.showMessageDialog(this, "Không có dữ liệu để nhập.");
+                return;
+            }
+            if (currentMaHS == -1) {
+                JOptionPane.showMessageDialog(this, "Vui lòng chọn một học sinh trước khi nhập dữ liệu.");
+                return;
+            }
+            JFileChooser chooser = new JFileChooser();
+            chooser.setDialogTitle("Chọn file CSV để nhập");
+            chooser.setFileFilter(new FileNameExtensionFilter("CSV files", "csv"));
+            int rc = chooser.showOpenDialog(this);
+            if (rc != JFileChooser.APPROVE_OPTION)
+                return;
+            File f = chooser.getSelectedFile();
+            // build name->id map for subjects
+            java.util.List<com.sgu.qlhs.dto.MonHocDTO> allMons = monBUS.getAllMon();
+            java.util.Map<String, Integer> monByName = new java.util.HashMap<>();
+            java.util.Map<Integer, com.sgu.qlhs.dto.MonHocDTO> monById = new java.util.HashMap<>();
+            for (com.sgu.qlhs.dto.MonHocDTO m : allMons) {
+                if (m.getTenMon() != null)
+                    monByName.put(m.getTenMon().trim(), m.getMaMon());
+                monById.put(m.getMaMon(), m);
+            }
+
+            int saved = 0, skippedNoPerm = 0, unmapped = 0, errors = 0;
+            try (java.io.BufferedReader br = new java.io.BufferedReader(new java.io.FileReader(f))) {
+                String header = br.readLine();
+                if (header == null) {
+                    JOptionPane.showMessageDialog(this, "File CSV rỗng hoặc không hợp lệ.");
+                    return;
+                }
+                String line;
+                // resolve current user
+                com.sgu.qlhs.dto.NguoiDungDTO nd = null;
+                try {
+                    java.awt.Window w2 = javax.swing.SwingUtilities.getWindowAncestor(this);
+                    if (w2 instanceof com.sgu.qlhs.ui.MainDashboard) {
+                        com.sgu.qlhs.ui.MainDashboard md2 = (com.sgu.qlhs.ui.MainDashboard) w2;
+                        nd = md2.getNguoiDung();
+                    }
+                } catch (Exception ex) {
+                }
+                boolean isAdmin = nd != null && ("quan_tri_vien".equalsIgnoreCase(nd.getVaiTro())
+                        || "Admin".equalsIgnoreCase(nd.getVaiTro()));
+
+                while ((line = br.readLine()) != null) {
+                    if (line.trim().isEmpty())
+                        continue;
+                    // naive CSV split (export writes simple comma-separated values)
+                    String[] cols = line.split(",");
+                    if (cols.length < 8) {
+                        errors++;
+                        continue;
+                    }
+                    String tenMon = cols[1].trim();
+                    Integer maMon = monByName.get(tenMon);
+                    if (maMon == null) {
+                        unmapped++;
+                        continue;
+                    }
+                    com.sgu.qlhs.dto.MonHocDTO mon = monById.get(maMon);
+                    try {
+                        boolean ok;
+                        if (mon != null && "DanhGia".equalsIgnoreCase(mon.getLoaiMon())) {
+                            String ketQua = cols[6].trim();
+                            String ghiChu = cols.length > 7 ? cols[7].trim() : "";
+                            // Note: DiemBUS expects (ghiChu, ketQuaDanhGia) in that order for the full
+                            // saveOrUpdateDiem signature. Ensure we pass ghiChu first.
+                            ok = diemBUS.saveOrUpdateDiem(currentMaHS, maMon, currentHocKy, currentMaNK,
+                                    null, null, null, null, ghiChu, ketQua.isEmpty() ? null : ketQua, nd);
+                        } else {
+                            Double mieng = parseDoubleSafe(cols[2].trim());
+                            Double p15 = parseDoubleSafe(cols[3].trim());
+                            Double gk = parseDoubleSafe(cols[4].trim());
+                            Double ck = parseDoubleSafe(cols[5].trim());
+                            String ghiChu = cols.length > 7 ? cols[7].trim() : "";
+                            // For numeric-score subjects, ketQuaDanhGia is null; pass ghiChu first.
+                            ok = diemBUS.saveOrUpdateDiem(currentMaHS, maMon, currentHocKy, currentMaNK,
+                                    mieng, p15, gk, ck, ghiChu, null, nd);
+                        }
+                        if (ok) {
+                            saved++;
+                        } else {
+                            // likely permission issue
+                            skippedNoPerm++;
+                        }
+                    } catch (Exception ex) {
+                        errors++;
+                    }
+                }
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(this, "Lỗi khi đọc file: " + ex.getMessage());
+                return;
+            }
+
+            StringBuilder msg = new StringBuilder();
+            msg.append("Kết quả nhập:\n");
+            msg.append("Đã lưu: ").append(saved).append('\n');
+            if (unmapped > 0)
+                msg.append("Bị bỏ qua (môn không khớp): ").append(unmapped).append('\n');
+            if (skippedNoPerm > 0)
+                msg.append("Bị bỏ qua (không có quyền): ").append(skippedNoPerm).append('\n');
+            if (errors > 0)
+                msg.append("Lỗi: ").append(errors).append('\n');
+            JOptionPane.showMessageDialog(this, msg.toString());
+            // refresh view
+            loadBangDiem();
+        });
         btnExport.addActionListener(e -> exportCsv());
         btnPrint.addActionListener(e -> printBangDiem());
         btnClose.addActionListener(e -> dispose());
@@ -772,8 +1004,9 @@ public class BangDiemChiTietDialog extends JDialog {
                         if (ok)
                             anyRowEditable = true;
                     }
-                } else if (ndCheck != null && "quan_tri_vien".equalsIgnoreCase(ndCheck.getVaiTro())) {
-                    // Admin được sửa tất cả
+                } else if (ndCheck != null && ("quan_tri_vien".equalsIgnoreCase(ndCheck.getVaiTro())
+                        || "Admin".equalsIgnoreCase(ndCheck.getVaiTro()))) {
+                    // Admin (may be represented as 'quan_tri_vien' or 'Admin') được sửa tất cả
                     for (int i = 0; i < rowCanEditList.size(); i++)
                         rowCanEditList.set(i, Boolean.TRUE);
                     anyRowEditable = true;
@@ -876,6 +1109,55 @@ public class BangDiemChiTietDialog extends JDialog {
             // compute whether any edit is allowed for the currently loaded dataset
             boolean canEdit = (!isStudentView) && anyRowEditable;
 
+            // compute whether the current user is allowed to edit Hạnh kiểm
+            // Only Admin or the homeroom teacher (Giáo viên chủ nhiệm) of the student's
+            // class may edit Hạnh kiểm
+            boolean canEditHanhKiem = false;
+            try {
+                com.sgu.qlhs.dto.NguoiDungDTO ndForHk = null;
+                try {
+                    java.awt.Window w = javax.swing.SwingUtilities.getWindowAncestor(this);
+                    if (w instanceof com.sgu.qlhs.ui.MainDashboard) {
+                        com.sgu.qlhs.ui.MainDashboard md = (com.sgu.qlhs.ui.MainDashboard) w;
+                        ndForHk = md.getNguoiDung();
+                    }
+                } catch (Exception ex) {
+                }
+                if (ndForHk != null) {
+                    // Admins may edit
+                    if ("quan_tri_vien".equalsIgnoreCase(ndForHk.getVaiTro())
+                            || "Admin".equalsIgnoreCase(ndForHk.getVaiTro())) {
+                        canEditHanhKiem = true;
+                    } else if ("giao_vien".equalsIgnoreCase(ndForHk.getVaiTro())) {
+                        // If dialog was opened from the Chủ nhiệm tab we allow editing as
+                        // the tab itself is only shown to the chủ nhiệm teacher for that
+                        // class. This is a safe, UX-friendly shortcut that avoids failing
+                        // when subtle DB schema/assignment differences exist.
+                        if (this.openedFromChuNhiem) {
+                            canEditHanhKiem = true;
+                        } else {
+                            // Otherwise check explicitly via ChuNhiemBUS that this teacher is
+                            // the homeroom for the student's class.
+                            try {
+                                HocSinhDTO hsForHk = hocSinhBUS.getHocSinhByMaHS(maHS);
+                                if (hsForHk != null) {
+                                    com.sgu.qlhs.dto.ChuNhiemDTO cn = new com.sgu.qlhs.bus.ChuNhiemBUS()
+                                            .getChuNhiemByGV(ndForHk.getId());
+                                    if (cn != null && cn.getMaLop() == hsForHk.getMaLop()) {
+                                        canEditHanhKiem = true;
+                                    }
+                                }
+                            } catch (Exception ex) {
+                                // ignore and keep canEditHanhKiem = false
+                            }
+                        }
+                    }
+                }
+            } catch (Exception ex) {
+                // conservative default: do not allow editing hạnh kiểm if any error
+                canEditHanhKiem = false;
+            }
+
             // ===== Hạnh kiểm =====
             HanhKiemDTO hk = hanhKiemBUS.getHanhKiem(maHS, maNK, hkNum, nd);
             String hanhKiemStr = hk != null ? hk.getXepLoai() : "(chưa có)";
@@ -913,18 +1195,45 @@ public class BangDiemChiTietDialog extends JDialog {
             } else {
                 cboHanhKiemEditor.setSelectedItem("Trung bình");
             }
-            cboHanhKiemEditor.setEnabled(tableEditing);
-            cboHanhKiemEditor.setVisible(tableEditing);
-            // show value label when not editing
-            lblHanhKiemValue.setVisible(!tableEditing);
+            // Hạn chế việc sửa hạnh kiểm chỉ cho GVCN hoặc Admin
+            cboHanhKiemEditor.setEnabled(tableEditing && canEditHanhKiem);
+            cboHanhKiemEditor.setVisible(tableEditing && canEditHanhKiem);
+            // show value label when not editing (or when user not permitted)
+            lblHanhKiemValue.setVisible(!(tableEditing && canEditHanhKiem));
+            if (!canEditHanhKiem) {
+                // provide a helpful tooltip for the user
+                lblHanhKiemValue
+                        .setToolTipText("Chỉ giáo viên chủ nhiệm hoặc quản trị viên mới được chỉnh sửa Hạnh kiểm.");
+            } else {
+                lblHanhKiemValue.setToolTipText(null);
+            }
             pnlHK.add(cboHanhKiemEditor);
             content.add(Box.createVerticalStrut(10));
             content.add(pnlHK);
             // apply computed permission: enable/disable edit actions for teachers
             try {
                 if (btnEdit != null)
-                    btnEdit.setEnabled(canEdit);
-                if (!canEdit) {
+                    // allow Edit when there is any subject-edit permission OR when the
+                    // user is allowed to edit Hạnh kiểm (GVCN or admin)
+                    btnEdit.setEnabled(canEdit || canEditHanhKiem);
+                if (btnImport != null) {
+                    boolean adminNow = false;
+                    try {
+                        java.awt.Window w2 = javax.swing.SwingUtilities.getWindowAncestor(this);
+                        if (w2 instanceof com.sgu.qlhs.ui.MainDashboard) {
+                            com.sgu.qlhs.ui.MainDashboard md2 = (com.sgu.qlhs.ui.MainDashboard) w2;
+                            com.sgu.qlhs.dto.NguoiDungDTO nd2 = md2.getNguoiDung();
+                            if (nd2 != null && ("quan_tri_vien".equalsIgnoreCase(nd2.getVaiTro())
+                                    || "Admin".equalsIgnoreCase(nd2.getVaiTro())))
+                                adminNow = true;
+                        }
+                    } catch (Exception ex) {
+                    }
+                    btnImport.setEnabled(canEdit || adminNow);
+                }
+                // Only hide/disable save/cancel/hanhkiem controls when the user has
+                // neither subject-edit rights nor hạnh kiểm edit rights.
+                if (!canEdit && !canEditHanhKiem) {
                     if (btnSave != null)
                         btnSave.setEnabled(false);
                     if (btnCancel != null)
@@ -1029,7 +1338,8 @@ public class BangDiemChiTietDialog extends JDialog {
 
         JScrollPane tableScroll = new JScrollPane(table);
         tableScroll.setBorder(BorderFactory.createLineBorder(Color.BLACK, 2));
-        tableScroll.setPreferredSize(new Dimension(900, 450));
+        // widen the table area to better use the larger dialog size
+        tableScroll.setPreferredSize(new Dimension(1100, 650));
         content.add(tableScroll);
 
         // ===== NHẬN XÉT CỦA GIÁO VIÊN =====
@@ -1147,8 +1457,9 @@ public class BangDiemChiTietDialog extends JDialog {
                 if ("DanhGia".equals(dto.getLoaiMon())) {
                     // Lấy kết quả Đ/KĐ từ cột 6
                     String ketQua = model.getValueAt(i, 6) != null ? model.getValueAt(i, 6).toString() : null;
+                    // pass ghiChu first, then ketQua as expected by DiemBUS
                     ok = diemBUS.saveOrUpdateDiem(currentMaHS, maMonId, currentHocKy, currentMaNK,
-                            null, null, null, null, ketQua, ghiChu, nd);
+                            null, null, null, null, ghiChu, ketQua, nd);
                 } else {
                     // Lấy điểm số từ cột 2-5
                     Double mieng = parseDoubleSafe(model.getValueAt(i, 2));
@@ -1156,8 +1467,9 @@ public class BangDiemChiTietDialog extends JDialog {
                     Double giuaky = parseDoubleSafe(model.getValueAt(i, 4));
                     Double cuoiky = parseDoubleSafe(model.getValueAt(i, 5));
 
+                    // For numeric-score subjects ketQuaDanhGia is null; pass ghiChu first
                     ok = diemBUS.saveOrUpdateDiem(currentMaHS, maMonId, currentHocKy, currentMaNK,
-                            mieng, p15, giuaky, cuoiky, null, ghiChu, nd);
+                            mieng, p15, giuaky, cuoiky, ghiChu, null, nd);
                 }
 
                 if (!ok)
@@ -1167,17 +1479,69 @@ public class BangDiemChiTietDialog extends JDialog {
             // persist Hạnh kiểm if the inline editor was shown/used
             try {
                 if (cboHanhKiemEditor != null && cboHanhKiemEditor.isVisible()) {
-                    String chosen = (String) cboHanhKiemEditor.getSelectedItem();
-                    if (chosen == null)
-                        chosen = "Trung bình";
-                    HanhKiemDTO newHk = new HanhKiemDTO(currentMaHS, currentMaNK, currentHocKy, chosen, "");
-                    hanhKiemBUS.saveOrUpdate(newHk);
-                    // disable editor after saving (combobox shows saved value) and update label
-                    cboHanhKiemEditor.setEnabled(false);
-                    cboHanhKiemEditor.setVisible(false);
-                    if (lblHanhKiemValue != null) {
-                        lblHanhKiemValue.setText(chosen);
-                        lblHanhKiemValue.setVisible(true);
+                    // double-check permission: only Admin or GVCN (homeroom) may save Hạnh kiểm
+                    com.sgu.qlhs.dto.NguoiDungDTO ndForHk = null;
+                    try {
+                        java.awt.Window w = javax.swing.SwingUtilities.getWindowAncestor(this);
+                        if (w instanceof com.sgu.qlhs.ui.MainDashboard) {
+                            com.sgu.qlhs.ui.MainDashboard md = (com.sgu.qlhs.ui.MainDashboard) w;
+                            ndForHk = md.getNguoiDung();
+                        }
+                    } catch (Exception ex) {
+                    }
+
+                    boolean allowedHkSave = false;
+                    if (ndForHk != null) {
+                        if ("quan_tri_vien".equalsIgnoreCase(ndForHk.getVaiTro())
+                                || "Admin".equalsIgnoreCase(ndForHk.getVaiTro())) {
+                            allowedHkSave = true;
+                        } else if ("giao_vien".equalsIgnoreCase(ndForHk.getVaiTro())) {
+                            try {
+                                HocSinhDTO hsForHk = hocSinhBUS.getHocSinhByMaHS(currentMaHS);
+                                if (hsForHk != null) {
+                                    com.sgu.qlhs.dto.ChuNhiemDTO cn2 = new com.sgu.qlhs.bus.ChuNhiemBUS()
+                                            .getChuNhiemByGV(ndForHk.getId());
+                                    if (cn2 != null && cn2.getMaLop() == hsForHk.getMaLop()) {
+                                        allowedHkSave = true;
+                                    }
+                                }
+                            } catch (Exception ex) {
+                                allowedHkSave = false;
+                            }
+                        }
+                    }
+
+                    if (!allowedHkSave) {
+                        JOptionPane.showMessageDialog(this,
+                                "Bạn không có quyền chỉnh sửa Hạnh kiểm. Chỉ giáo viên chủ nhiệm hoặc quản trị viên mới có quyền này.",
+                                "Không có quyền", JOptionPane.WARNING_MESSAGE);
+                    } else {
+                        String chosen = (String) cboHanhKiemEditor.getSelectedItem();
+                        if (chosen == null)
+                            chosen = "Trung bình";
+                        HanhKiemDTO newHk = new HanhKiemDTO(currentMaHS, currentMaNK, currentHocKy, chosen, "");
+                        hanhKiemBUS.saveOrUpdate(newHk);
+                        // disable editor after saving (combobox shows saved value) and update label
+                        cboHanhKiemEditor.setEnabled(false);
+                        cboHanhKiemEditor.setVisible(false);
+                        if (lblHanhKiemValue != null) {
+                            lblHanhKiemValue.setText(chosen);
+                            lblHanhKiemValue.setVisible(true);
+                        }
+                        // Ask the main DiemPanel (if present) to refresh its Chủ nhiệm data
+                        try {
+                            java.awt.Window w = javax.swing.SwingUtilities.getWindowAncestor(this);
+                            if (w instanceof com.sgu.qlhs.ui.MainDashboard) {
+                                com.sgu.qlhs.ui.MainDashboard md = (com.sgu.qlhs.ui.MainDashboard) w;
+                                // attempt to find DiemPanel in the component tree and refresh
+                                com.sgu.qlhs.ui.panels.DiemPanel dp = findDiemPanel(md.getContentPane());
+                                if (dp != null) {
+                                    dp.refreshChuNhiemIfActive();
+                                }
+                            }
+                        } catch (Exception ex) {
+                            // non-fatal - ignore
+                        }
                     }
                 }
             } catch (Exception ex) {
@@ -1227,6 +1591,32 @@ public class BangDiemChiTietDialog extends JDialog {
         } catch (Exception ex) {
             return 0.0;
         }
+    }
+
+    // Recursively search for the DiemPanel instance inside a container
+    private com.sgu.qlhs.ui.panels.DiemPanel findDiemPanel(java.awt.Container root) {
+        if (root == null)
+            return null;
+        for (java.awt.Component c : root.getComponents()) {
+            if (c instanceof com.sgu.qlhs.ui.panels.DiemPanel)
+                return (com.sgu.qlhs.ui.panels.DiemPanel) c;
+            if (c instanceof java.awt.Container) {
+                com.sgu.qlhs.ui.panels.DiemPanel found = findDiemPanel((java.awt.Container) c);
+                if (found != null)
+                    return found;
+            }
+        }
+        return null;
+    }
+
+    // Flag set by caller to indicate the dialog was opened from the Chủ nhiệm tab
+    // (Chủ nhiệm view already scopes rows to the teacher's class). When true we
+    // relax the hạnh kiểm permission check so the chủ nhiệm may edit hạnh kiểm
+    // for students in that tab without failing on other assignment checks.
+    private boolean openedFromChuNhiem = false;
+
+    public void setOpenedFromChuNhiem(boolean v) {
+        this.openedFromChuNhiem = v;
     }
 
     /** Export current table to CSV file chosen by user. */
