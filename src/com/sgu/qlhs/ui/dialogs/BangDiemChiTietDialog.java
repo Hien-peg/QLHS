@@ -468,7 +468,7 @@ public class BangDiemChiTietDialog extends JDialog {
                 com.sgu.qlhs.ui.MainDashboard md = (com.sgu.qlhs.ui.MainDashboard) w;
                 com.sgu.qlhs.dto.NguoiDungDTO nd = md.getNguoiDung();
                 if (nd != null && "giao_vien".equalsIgnoreCase(nd.getVaiTro())) {
-                    
+
                     // === PHẦN SỬA ===
                     int maNK = com.sgu.qlhs.bus.NienKhoaBUS.current();
                     int selNk = cboNamHoc.getSelectedIndex();
@@ -478,8 +478,8 @@ public class BangDiemChiTietDialog extends JDialog {
 
                     int hkIdx = cboHocKy.getSelectedIndex();
                     // Chuyển Integer (0, 1) -> String ("HK1", "HK2")
-                    String hkParam = (hkIdx >= 0) ? ("HK" + (hkIdx + 1)) : null; 
-                    
+                    String hkParam = (hkIdx >= 0) ? ("HK" + (hkIdx + 1)) : null;
+
                     java.util.List<Integer> lopIdsAssigned = phanCongBUS.getDistinctMaLopByGiaoVien(nd.getId(), namHoc,
                             hkParam);
                     // === KẾT THÚC PHẦN SỬA ===
@@ -704,19 +704,53 @@ public class BangDiemChiTietDialog extends JDialog {
 
             // THAY ĐỔI: getDiemByMaHS giờ trả về DTO đã có LoaiMon
             java.util.List<DiemDTO> diemList = diemBUS.getDiemByMaHS(maHS, hkNum, maNK, nd);
+
+            // Build a combined list: include existing Diem rows plus placeholder rows
+            // for subjects that don't yet have a Diem entry so a teacher can add new
+            // grades. We obtain the full subject list from MonBUS and create placeholder
+            // DiemDTOs when needed.
+            java.util.List<com.sgu.qlhs.dto.MonHocDTO> allMons = monBUS.getAllMon();
+            java.util.Map<Integer, DiemDTO> mapByMon = new java.util.HashMap<>();
+            if (diemList != null) {
+                for (DiemDTO d : diemList) {
+                    mapByMon.put(d.getMaMon(), d);
+                }
+            }
+
+            java.util.List<DiemDTO> combined = new java.util.ArrayList<>();
+            // Ensure we keep the existing Diem rows (so their saved MaDiem/GhiChu etc
+            // remain)
+            if (diemList != null) {
+                combined.addAll(diemList);
+            }
+            // Add placeholders for missing subjects (those in MonHoc but not in Diem)
+            for (com.sgu.qlhs.dto.MonHocDTO m : allMons) {
+                if (!mapByMon.containsKey(m.getMaMon())) {
+                    DiemDTO placeholder = new DiemDTO();
+                    placeholder.setMaDiem(0);
+                    placeholder.setMaHS(maHS);
+                    placeholder.setMaMon(m.getMaMon());
+                    placeholder.setTenMon(m.getTenMon());
+                    placeholder.setLoaiMon(m.getLoaiMon());
+                    // leave numeric fields at default 0.0 and strings null/empty
+                    placeholder.setGhiChu("");
+                    combined.add(placeholder);
+                }
+            }
+
             // store current context so Save can use it
             currentMaHS = maHS;
             currentHocKy = hkNum;
             currentMaNK = maNK;
-            currentDiemList = diemList;
+            currentDiemList = combined;
 
             // Precompute per-row edit permission: for each subject row, allow editing
             // only if the logged-in teacher is assigned to that student's class+subject
             rowCanEditList.clear();
             boolean anyRowEditable = false;
-            // THAY ĐỔI: Cần check LoaiMon từ DTO (đã được BUS nạp)
-            for (int i = 0; i < diemList.size(); i++) {
-                rowCanEditList.add(Boolean.FALSE); // Khởi tạo là false
+            // Initialize all rows to false (will update below)
+            for (int i = 0; i < currentDiemList.size(); i++) {
+                rowCanEditList.add(Boolean.FALSE);
             }
 
             try {
@@ -730,8 +764,8 @@ public class BangDiemChiTietDialog extends JDialog {
                 } catch (Exception ex) {
                 }
                 if (ndCheck != null && "giao_vien".equalsIgnoreCase(ndCheck.getVaiTro())) {
-                    for (int i = 0; i < diemList.size(); i++) {
-                        DiemDTO d = diemList.get(i);
+                    for (int i = 0; i < currentDiemList.size(); i++) {
+                        DiemDTO d = currentDiemList.get(i);
                         boolean ok = diemBUS.isTeacherAssignedPublic(ndCheck.getId(), maHS, d.getMaMon(), hkNum,
                                 maNK);
                         rowCanEditList.set(i, ok);
@@ -791,9 +825,10 @@ public class BangDiemChiTietDialog extends JDialog {
                 }
             };
 
-            // THAY ĐỔI: Lặp và điền dữ liệu dựa trên LoaiMon
-            for (DiemDTO d : diemList) {
+            // THAY ĐỔI: Lặp và điền dữ liệu dựa trên LoaiMon (dùng currentDiemList)
+            for (DiemDTO d : currentDiemList) {
                 String loaiMon = d.getLoaiMon();
+                boolean isPlaceholder = (d.getMaDiem() == 0);
 
                 if ("DanhGia".equals(loaiMon)) {
                     model.addRow(new Object[] {
@@ -803,15 +838,23 @@ public class BangDiemChiTietDialog extends JDialog {
                             null, // 15p
                             null, // 1 Tiết
                             null, // Cuối kỳ
-                            d.getKetQuaDanhGia(), // Kết quả (Đ/KĐ)
+                            isPlaceholder ? null : d.getKetQuaDanhGia(), // Kết quả (Đ/KĐ)
                             d.getGhiChu() != null ? d.getGhiChu() : ""
                     });
                 } else { // Mặc định là TinhDiem
-                    double mieng = d.getDiemMieng();
-                    double p15 = d.getDiem15p();
-                    double gk = d.getDiemGiuaKy();
-                    double ck = d.getDiemCuoiKy();
-                    double tb = Math.round((mieng * 0.10 + p15 * 0.20 + gk * 0.30 + ck * 0.40) * 10.0) / 10.0;
+                    // If placeholder (no saved Diem row), show empty cells instead of 0.0
+                    Object mieng = isPlaceholder ? null : d.getDiemMieng();
+                    Object p15 = isPlaceholder ? null : d.getDiem15p();
+                    Object gk = isPlaceholder ? null : d.getDiemGiuaKy();
+                    Object ck = isPlaceholder ? null : d.getDiemCuoiKy();
+                    Object tb = null;
+                    if (!isPlaceholder) {
+                        double dm = d.getDiemMieng();
+                        double dp = d.getDiem15p();
+                        double dg = d.getDiemGiuaKy();
+                        double dc = d.getDiemCuoiKy();
+                        tb = Math.round((dm * 0.10 + dp * 0.20 + dg * 0.30 + dc * 0.40) * 10.0) / 10.0;
+                    }
                     model.addRow(new Object[] {
                             String.valueOf(idx++),
                             d.getTenMon(),

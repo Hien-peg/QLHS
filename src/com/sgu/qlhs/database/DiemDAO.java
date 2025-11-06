@@ -19,11 +19,11 @@ public class DiemDAO {
                 ResultSet rs = pstmt.executeQuery()) {
 
             while (rs.next()) {
-                Object[] row = new Object[10]; 
+                Object[] row = new Object[10];
                 row[0] = rs.getInt("MaHS");
                 row[1] = rs.getString("HoTen");
                 row[2] = rs.getString("TenMon");
-                row[3] = rs.getString("LoaiMon"); 
+                row[3] = rs.getString("LoaiMon");
                 row[4] = rs.getInt("HocKy");
                 row[5] = rs.getDouble("DiemMieng");
                 row[6] = rs.getDouble("Diem15p");
@@ -109,7 +109,7 @@ public class DiemDAO {
             pstmt.setDouble(7, gk);
             pstmt.setDouble(8, ck);
             pstmt.setString(9, ghiChu);
-            pstmt.setString(10, ketQuaDanhGia); 
+            pstmt.setString(10, ketQuaDanhGia);
             pstmt.executeUpdate();
         } catch (SQLException e) {
             System.err.println("Lỗi upsert điểm (with note): " + e.getMessage());
@@ -144,7 +144,7 @@ public class DiemDAO {
                     row[7] = rs.getDouble("Diem15p");
                     row[8] = rs.getDouble("DiemGiuaKy");
                     row[9] = rs.getDouble("DiemCuoiKy");
-                    row[10] = rs.getString("KetQuaDanhGia"); 
+                    row[10] = rs.getString("KetQuaDanhGia");
                     data.add(row);
                 }
             }
@@ -167,18 +167,18 @@ public class DiemDAO {
             pstmt.setInt(3, maNK);
             try (ResultSet rs = pstmt.executeQuery()) {
                 while (rs.next()) {
-                    Object[] row = new Object[11]; 
+                    Object[] row = new Object[11];
                     row[0] = rs.getInt("MaDiem");
                     row[1] = rs.getInt("MaMon");
                     row[2] = rs.getString("TenMon");
-                    row[3] = rs.getString("LoaiMon"); 
+                    row[3] = rs.getString("LoaiMon");
                     row[4] = rs.getDouble("DiemMieng");
                     row[5] = rs.getDouble("Diem15p");
                     row[6] = rs.getDouble("DiemGiuaKy");
                     row[7] = rs.getDouble("DiemCuoiKy");
                     row[8] = rs.getString("GhiChu");
                     row[9] = rs.getString("KetQuaDanhGia");
-                    row[10] = rs.getDouble("DiemTB"); 
+                    row[10] = rs.getDouble("DiemTB");
                     data.add(row);
                 }
             }
@@ -301,7 +301,7 @@ public class DiemDAO {
                     d.setTenLop(rs.getString("TenLop"));
                     d.setMaMon(rs.getInt("MaMon"));
                     d.setTenMon(rs.getString("TenMon"));
-                    d.setLoaiMon(rs.getString("LoaiMon")); 
+                    d.setLoaiMon(rs.getString("LoaiMon"));
                     d.setHocKy(rs.getInt("HocKy"));
                     d.setDiemMieng(rs.getDouble("DiemMieng"));
                     d.setDiem15p(rs.getDouble("Diem15p"));
@@ -309,13 +309,120 @@ public class DiemDAO {
                     d.setDiemCuoiKy(rs.getDouble("DiemCuoiKy"));
                     d.setDiemTB(rs.getDouble("DiemTB"));
                     d.setXepLoai(rs.getString("XepLoai"));
-                    d.setKetQuaDanhGia(rs.getString("KetQuaDanhGia")); 
+                    d.setKetQuaDanhGia(rs.getString("KetQuaDanhGia"));
                     d.setGhiChu(rs.getString("GhiChu"));
                     result.add(d);
                 }
             }
         } catch (SQLException e) {
             System.err.println("Lỗi khi truy vấn điểm (filtered): " + e.getMessage());
+            e.printStackTrace();
+        }
+
+        return result;
+    }
+
+    /**
+     * Optimized version that accepts multiple MaLop values and uses an IN(...)
+     * clause
+     * to fetch rows for all provided classes in a single query. If maLops is null
+     * or
+     * empty the method returns an empty list.
+     */
+    public List<com.sgu.qlhs.dto.DiemDTO> getDiemFilteredByMaLopList(java.util.List<Integer> maLops, Integer maMon,
+            Integer hocKy, Integer maNK, Integer limit, Integer offset) {
+        List<com.sgu.qlhs.dto.DiemDTO> result = new ArrayList<>();
+
+        if (maLops == null || maLops.isEmpty()) {
+            return result; // nothing to query
+        }
+
+        StringBuilder sb = new StringBuilder();
+        sb.append(
+                "SELECT d.MaDiem, d.MaHS, hs.HoTen, l.MaLop, l.TenLop, mh.MaMon, mh.TenMon, mh.LoaiMon, d.HocKy, d.DiemMieng, d.Diem15p, d.DiemGiuaKy, d.DiemCuoiKy, d.DiemTB, d.XepLoai, d.KetQuaDanhGia, d.GhiChu ");
+        sb.append("FROM Diem d ");
+        sb.append("JOIN HocSinh hs ON d.MaHS = hs.MaHS ");
+        sb.append("LEFT JOIN Lop l ON hs.MaLop = l.MaLop ");
+        sb.append("JOIN MonHoc mh ON d.MaMon = mh.MaMon ");
+        sb.append("WHERE 1=1 ");
+
+        if (maNK != null) {
+            sb.append("AND d.MaNK = ? ");
+        }
+
+        // IN clause for classes
+        sb.append("AND l.MaLop IN (");
+        for (int i = 0; i < maLops.size(); i++) {
+            if (i > 0)
+                sb.append(',');
+            sb.append('?');
+        }
+        sb.append(") ");
+
+        if (maMon != null) {
+            sb.append("AND mh.MaMon = ? ");
+        }
+        if (hocKy != null && hocKy > 0) {
+            sb.append("AND d.HocKy = ? ");
+        }
+
+        sb.append("ORDER BY l.TenLop, hs.HoTen, mh.TenMon ");
+
+        if (limit != null && limit > 0) {
+            sb.append(" LIMIT ? ");
+            if (offset != null && offset >= 0) {
+                sb.append(" OFFSET ? ");
+            }
+        }
+
+        try (Connection conn = DatabaseConnection.getConnection();
+                PreparedStatement pstmt = conn.prepareStatement(sb.toString())) {
+            int idx = 1;
+            if (maNK != null) {
+                pstmt.setInt(idx++, maNK);
+            }
+            // bind MaLop list
+            for (Integer ml : maLops) {
+                pstmt.setInt(idx++, ml);
+            }
+            if (maMon != null) {
+                pstmt.setInt(idx++, maMon);
+            }
+            if (hocKy != null && hocKy > 0) {
+                pstmt.setInt(idx++, hocKy);
+            }
+            if (limit != null && limit > 0) {
+                pstmt.setInt(idx++, limit);
+                if (offset != null && offset >= 0) {
+                    pstmt.setInt(idx++, offset);
+                }
+            }
+
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    com.sgu.qlhs.dto.DiemDTO d = new com.sgu.qlhs.dto.DiemDTO();
+                    d.setMaDiem(rs.getInt("MaDiem"));
+                    d.setMaHS(rs.getInt("MaHS"));
+                    d.setHoTen(rs.getString("HoTen"));
+                    d.setMaLop(rs.getInt("MaLop"));
+                    d.setTenLop(rs.getString("TenLop"));
+                    d.setMaMon(rs.getInt("MaMon"));
+                    d.setTenMon(rs.getString("TenMon"));
+                    d.setLoaiMon(rs.getString("LoaiMon"));
+                    d.setHocKy(rs.getInt("HocKy"));
+                    d.setDiemMieng(rs.getDouble("DiemMieng"));
+                    d.setDiem15p(rs.getDouble("Diem15p"));
+                    d.setDiemGiuaKy(rs.getDouble("DiemGiuaKy"));
+                    d.setDiemCuoiKy(rs.getDouble("DiemCuoiKy"));
+                    d.setDiemTB(rs.getDouble("DiemTB"));
+                    d.setXepLoai(rs.getString("XepLoai"));
+                    d.setKetQuaDanhGia(rs.getString("KetQuaDanhGia"));
+                    d.setGhiChu(rs.getString("GhiChu"));
+                    result.add(d);
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Lỗi khi truy vấn điểm (filtered by lop list): " + e.getMessage());
             e.printStackTrace();
         }
 

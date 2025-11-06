@@ -96,12 +96,12 @@ public class DiemBUS {
             int maDiem = (r[0] instanceof Integer) ? (Integer) r[0] : Integer.parseInt(r[0].toString());
             int maMon = (r[1] instanceof Integer) ? (Integer) r[1] : Integer.parseInt(r[1].toString());
             String tenMon = r[2] != null ? r[2].toString() : "";
-            String loaiMon = r[3] != null ? r[3].toString() : ""; 
-            double mieng = r[4] != null ? Double.parseDouble(r[4].toString()) : 0.0; 
-            double p15 = r[5] != null ? Double.parseDouble(r[5].toString()) : 0.0; 
-            double gk = r[6] != null ? Double.parseDouble(r[6].toString()) : 0.0; 
-            double ck = r[7] != null ? Double.parseDouble(r[7].toString()) : 0.0; 
-            String ghiChu = r[8] != null ? r[8].toString() : ""; 
+            String loaiMon = r[3] != null ? r[3].toString() : "";
+            double mieng = r[4] != null ? Double.parseDouble(r[4].toString()) : 0.0;
+            double p15 = r[5] != null ? Double.parseDouble(r[5].toString()) : 0.0;
+            double gk = r[6] != null ? Double.parseDouble(r[6].toString()) : 0.0;
+            double ck = r[7] != null ? Double.parseDouble(r[7].toString()) : 0.0;
+            String ghiChu = r[8] != null ? r[8].toString() : "";
             String ketQuaDanhGia = r[9] != null ? r[9].toString() : null;
             // === SỬA LỖI: Đọc DiemTB từ r[10] ===
             double diemTB = (r[10] != null) ? Double.parseDouble(r[10].toString()) : 0.0;
@@ -114,13 +114,13 @@ public class DiemBUS {
             d.setHocKy(hocKy);
             d.setMaMon(maMon);
             d.setTenMon(tenMon);
-            d.setLoaiMon(loaiMon); 
+            d.setLoaiMon(loaiMon);
             d.setDiemMieng(mieng);
             d.setDiem15p(p15);
             d.setDiemGiuaKy(gk);
             d.setDiemCuoiKy(ck);
             d.setGhiChu(ghiChu);
-            d.setKetQuaDanhGia(ketQuaDanhGia); 
+            d.setKetQuaDanhGia(ketQuaDanhGia);
             d.setDiemTB(diemTB); // Thêm dòng này
             list.add(d);
         }
@@ -215,7 +215,7 @@ public class DiemBUS {
             return false;
         }
     }
-    
+
     // === KẾT THÚC PHẦN SỬA LỖI ===
 
     public void deleteDiem(int maHS, int maMon, int hocKy, int maNK) {
@@ -249,16 +249,16 @@ public class DiemBUS {
      * If maMon is not null, also require teacher assigned for that subject.
      */
     private boolean isTeacherAssigned(int maGV, int maHS, Integer maMon, int hocKyInt, int maNK) throws SQLException {
-        
+
         // 1. Chuyển đổi int HocKy (1) -> String HocKy ("HK1")
         String hocKyString = "HK" + hocKyInt;
-        
+
         // 2. Lấy chuỗi NamHoc (vd: "2024-2025") từ MaNK
         String namHocString = null;
         // Dùng NienKhoaBUS đã tạo
         NienKhoaBUS nkBUS = new NienKhoaBUS();
         namHocString = nkBUS.getNamHocString(maNK);
-        
+
         if (namHocString == null) {
             throw new SQLException("Không tìm thấy Niên Khóa cho MaNK: " + maNK);
         }
@@ -269,13 +269,13 @@ public class DiemBUS {
         if (maMon != null) {
             sql += " AND pc.MaMon = ?";
         }
-        
+
         try (Connection conn = DatabaseConnection.getConnection();
                 PreparedStatement ps = conn.prepareStatement(sql)) {
             int idx = 1;
             ps.setInt(idx++, maGV);
-            ps.setString(idx++, namHocString);  // SỬA: Dùng NamHoc (String)
-            ps.setString(idx++, hocKyString);   // SỬA: Dùng HocKy (String)
+            ps.setString(idx++, namHocString); // SỬA: Dùng NamHoc (String)
+            ps.setString(idx++, hocKyString); // SỬA: Dùng HocKy (String)
             ps.setInt(idx++, maHS);
             if (maMon != null) {
                 ps.setInt(idx++, maMon);
@@ -289,15 +289,42 @@ public class DiemBUS {
         return false;
     }
 
-
     public List<DiemDTO> getDiemFiltered(Integer maLop, Integer maMon, Integer hocKy, Integer maNK,
             Integer limit, Integer offset) {
         return dao.getDiemFiltered(maLop, maMon, hocKy, maNK, limit, offset);
     }
 
+    public List<DiemDTO> getDiemFilteredByMaLopList(java.util.List<Integer> maLops, Integer maMon, Integer hocKy,
+            Integer maNK, Integer limit, Integer offset) {
+        return dao.getDiemFilteredByMaLopList(maLops, maMon, hocKy, maNK, limit, offset);
+    }
+
     public List<DiemDTO> getDiemFilteredForUser(Integer maLop, Integer maMon, Integer hocKy, Integer maNK,
             Integer limit, Integer offset, NguoiDungDTO user) {
         List<DiemDTO> all = getDiemFiltered(maLop, maMon, hocKy, maNK, limit, offset);
+        if (user == null || !"giao_vien".equalsIgnoreCase(user.getVaiTro()))
+            return all;
+        java.util.List<DiemDTO> filtered = new java.util.ArrayList<>();
+        for (DiemDTO d : all) {
+            try {
+                if (isTeacherAssignedPublic(user.getId(), d.getMaHS(), d.getMaMon(), d.getHocKy(), maNK)) {
+                    filtered.add(d);
+                }
+            } catch (Exception ex) {
+                // on error, be conservative and skip the row
+            }
+        }
+        return filtered;
+    }
+
+    /**
+     * Version that accepts a list of MaLop and returns rows then filters them
+     * according to the provided user (teacher semantics). If user is null or not
+     * a teacher the raw results are returned.
+     */
+    public List<DiemDTO> getDiemFilteredForUserByMaLopList(java.util.List<Integer> maLops, Integer maMon,
+            Integer hocKy, Integer maNK, Integer limit, Integer offset, NguoiDungDTO user) {
+        List<DiemDTO> all = getDiemFilteredByMaLopList(maLops, maMon, hocKy, maNK, limit, offset);
         if (user == null || !"giao_vien".equalsIgnoreCase(user.getVaiTro()))
             return all;
         java.util.List<DiemDTO> filtered = new java.util.ArrayList<>();
