@@ -9433,3 +9433,50 @@ INSERT INTO
         NgayNhanNhiem
     )
 VALUES (101, 3, 1, '2024-09-05');
+
+-- Thêm cột TrangThai cho các bảng chính
+-- (1 = Đang hoạt động, 0 = Đã xóa/ẩn)
+ALTER TABLE HocSinh
+ADD COLUMN TrangThai TINYINT NOT NULL DEFAULT 1;
+ALTER TABLE GiaoVien
+ADD COLUMN TrangThai TINYINT NOT NULL DEFAULT 1;
+ALTER TABLE Lop
+ADD COLUMN TrangThai TINYINT NOT NULL DEFAULT 1;
+ALTER TABLE PhongHoc
+ADD COLUMN TrangThai TINYINT NOT NULL DEFAULT 1;
+ALTER TABLE MonHoc
+ADD COLUMN TrangThai TINYINT NOT NULL DEFAULT 1;
+ALTER TABLE ChuNhiem
+ADD COLUMN TrangThai TINYINT NOT NULL DEFAULT 1;
+ALTER TABLE Diem
+ADD COLUMN TrangThai TINYINT NOT NULL DEFAULT 1;
+ALTER TABLE HanhKiem
+ADD COLUMN TrangThai TINYINT NOT NULL DEFAULT 1;
+ALTER TABLE PhuHuynh
+ADD COLUMN TrangThai TINYINT NOT NULL DEFAULT 1;
+-- Cập nhật lại các View để lọc theo TrangThai = 1
+-- (Ví dụ cho v_TBHocKy_TheoHS)
+CREATE OR REPLACE VIEW v_TBHocKy_TheoHS AS
+SELECT
+    d.MaHS,
+    hs.HoTen AS TenHS,
+    d.MaNK,
+    d.HocKy,
+    ROUND(AVG(d.DiemTB), 1) AS DiemTBHK,
+    CASE
+        WHEN AVG(d.DiemTB) IS NULL THEN NULL
+        WHEN AVG(d.DiemTB) >= 8.0 THEN 'Giỏi'
+        WHEN AVG(d.DiemTB) >= 6.5 THEN 'Khá'
+        WHEN AVG(d.DiemTB) >= 5.0 THEN 'Trung bình'
+        ELSE 'Yếu'
+    END AS XepLoaiHK
+FROM Diem d
+    JOIN HocSinh hs ON hs.MaHS = d.MaHS
+WHERE
+    d.TrangThai = 1 -- Lọc điểm còn hoạt động
+    AND hs.TrangThai = 1 -- Lọc học sinh còn hoạt động
+GROUP BY
+    d.MaHS,
+    hs.HoTen,
+    d.MaNK,
+    d.HocKy;

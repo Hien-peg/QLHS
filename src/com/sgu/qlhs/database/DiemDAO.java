@@ -6,13 +6,14 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class DiemDAO {
-
+    // ... (getAllDiem giữ nguyên, nhưng cập nhật SQL)
     public List<Object[]> getAllDiem() {
         List<Object[]> data = new ArrayList<>();
         String sql = "SELECT hs.MaHS, hs.HoTen, mh.TenMon, mh.LoaiMon, d.HocKy, d.DiemMieng, d.Diem15p, d.DiemGiuaKy, d.DiemCuoiKy, d.KetQuaDanhGia "
                 + "FROM Diem d "
                 + "JOIN HocSinh hs ON d.MaHS = hs.MaHS "
-                + "JOIN MonHoc mh ON d.MaMon = mh.MaMon";
+                + "JOIN MonHoc mh ON d.MaMon = mh.MaMon "
+                + "WHERE d.TrangThai = 1";
 
         try (Connection conn = DatabaseConnection.getConnection();
                 PreparedStatement pstmt = conn.prepareStatement(sql);
@@ -125,7 +126,7 @@ public class DiemDAO {
                 "JOIN HocSinh hs ON d.MaHS = hs.MaHS " +
                 "JOIN MonHoc mh ON d.MaMon = mh.MaMon " +
                 "JOIN Lop l ON hs.MaLop = l.MaLop " +
-                "WHERE l.MaLop = ? AND d.HocKy = ? AND d.MaNK = ?";
+                "WHERE l.MaLop = ? AND d.HocKy = ? AND d.MaNK = ? AND d.TrangThai = 1";
         try (Connection conn = DatabaseConnection.getConnection();
                 PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setInt(1, maLop);
@@ -159,7 +160,7 @@ public class DiemDAO {
         String sql = "SELECT d.MaDiem, mh.MaMon, mh.TenMon, mh.LoaiMon, d.DiemMieng, d.Diem15p, d.DiemGiuaKy, d.DiemCuoiKy, d.GhiChu, d.KetQuaDanhGia, d.DiemTB "
                 +
                 "FROM Diem d JOIN MonHoc mh ON d.MaMon = mh.MaMon " +
-                "WHERE d.MaHS = ? AND d.HocKy = ? AND d.MaNK = ?";
+                "WHERE d.MaHS = ? AND d.HocKy = ? AND d.MaNK = ? AND d.TrangThai = 1";
         try (Connection conn = DatabaseConnection.getConnection();
                 PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setInt(1, maHS);
@@ -245,7 +246,7 @@ public class DiemDAO {
         sb.append("JOIN HocSinh hs ON d.MaHS = hs.MaHS ");
         sb.append("LEFT JOIN Lop l ON hs.MaLop = l.MaLop ");
         sb.append("JOIN MonHoc mh ON d.MaMon = mh.MaMon ");
-        sb.append("WHERE 1=1 ");
+        sb.append("WHERE 1=1 AND d.TrangThai = 1 ");
 
         if (maNK != null) {
             sb.append("AND d.MaNK = ? ");
@@ -430,7 +431,7 @@ public class DiemDAO {
     }
 
     public void deleteDiem(int maHS, int maMon, int hocKy, int maNK) {
-        String sql = "DELETE FROM Diem WHERE MaHS = ? AND MaMon = ? AND HocKy = ? AND MaNK = ?";
+        String sql = "UPDATE Diem SET TrangThai = 0 WHERE MaHS = ? AND MaMon = ? AND HocKy = ? AND MaNK = ?";
         try (Connection conn = DatabaseConnection.getConnection();
                 PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setInt(1, maHS);
@@ -439,7 +440,7 @@ public class DiemDAO {
             pstmt.setInt(4, maNK);
             pstmt.executeUpdate();
         } catch (SQLException e) {
-            System.err.println("Lỗi khi xóa điểm: " + e.getMessage());
+            System.err.println("Lỗi khi xóa mềm điểm: " + e.getMessage());
             e.printStackTrace();
         }
     }

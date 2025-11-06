@@ -18,6 +18,9 @@ import com.sgu.qlhs.ui.dialogs.HocSinhEditDialog;
 import com.sgu.qlhs.ui.dialogs.ThongKeLopSucChuaDialog;
 import com.sgu.qlhs.ui.dialogs.ThongKeGioiTinhDialog;
 import com.sgu.qlhs.ui.dialogs.ThongKeDiemMonDialog;
+// === THÊM IMPORT MỚI ===
+import com.sgu.qlhs.ui.dialogs.ThongKeHocLucDialog;
+// ======================
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -43,10 +46,14 @@ public class DashboardPanel extends JPanel {
                 new SectionItem("Tính TB tất cả môn", IconType.TABLE),
                 new SectionItem("Xem điểm HK/Năm", IconType.BARCHART),
                 new SectionItem("Bảng điểm chi tiết", IconType.ABC) }));
+
+        // === SỬA KHỐI THỐNG KÊ ===
         add(makeSection("Thống kê", new SectionItem[] {
                 new SectionItem("Thống kê giới tính", IconType.CHART),
+                new SectionItem("Xếp loại học lực (Khối)", IconType.PIECHART), // <-- NÚT MỚI
                 new SectionItem("Thống kê điểm TB môn", IconType.BARCHART),
                 new SectionItem("Thống kê sức chứa lớp", IconType.MATRIX) }));
+        // ========================
     }
 
     private JPanel makeSection(String title, SectionItem[] items) {
@@ -121,6 +128,11 @@ public class DashboardPanel extends JPanel {
                     case "Bảng điểm chi tiết" -> new BangDiemChiTietDialog(null).setVisible(true);
 
                     case "Thống kê giới tính" -> new ThongKeGioiTinhDialog(null).setVisible(true);
+                    
+                    // === THÊM CASE MỚI ===
+                    case "Xếp loại học lực (Khối)" -> new ThongKeHocLucDialog(null).setVisible(true);
+                    // =====================
+                    
                     case "Thống kê điểm TB môn" -> new ThongKeDiemMonDialog(null).setVisible(true);
                     case "Thống kê sức chứa lớp" -> new ThongKeLopSucChuaDialog(null).setVisible(true);
 

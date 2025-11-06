@@ -18,7 +18,8 @@ public class HocSinhDeleteDialog extends JDialog {
     private JLabel lblHoTen, lblLop, lblKetQua;
     private JButton btnTim, btnDelete, btnCancel;
 
-    private HocSinhDAO hocSinhDAO = new HocSinhDAO();
+    //private HocSinhDAO hocSinhDAO = new HocSinhDAO();
+    private HocSinhBUS hocSinhBUS = new HocSinhBUS();
 
     public HocSinhDeleteDialog(Window owner) {
         super(owner, "Xóa học sinh", ModalityType.APPLICATION_MODAL);
@@ -132,7 +133,7 @@ public class HocSinhDeleteDialog extends JDialog {
 
         if (confirm == JOptionPane.YES_OPTION) {
             int maHS = Integer.parseInt(maText);
-            boolean success = hocSinhDAO.deleteHocSinh(maHS);
+            boolean success = hocSinhBUS.deleteHocSinh(maHS);
             if (success) {
                 JOptionPane.showMessageDialog(this, "✅ Đã xóa học sinh thành công!");
                 dispose();

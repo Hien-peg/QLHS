@@ -8,4 +8,8 @@ package com.sgu.qlhs.ui.components;
  *
  * @author minho
  */
-public enum IconType { ADD, EDIT, DELETE, HOME, ABC, ROOM, CLIPBOARD, TABLE, PDF, CHART, BARCHART, MATRIX }
+public enum IconType { ADD, EDIT, DELETE, HOME, ABC, ROOM, CLIPBOARD, TABLE, PDF, CHART, BARCHART, MATRIX,
+    // === THÊM DÒNG NÀY ===
+    PIECHART
+    // ====================
+}

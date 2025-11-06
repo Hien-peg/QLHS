@@ -32,6 +32,15 @@ public class ChipIcon extends JComponent {
             case CHART -> { g2.fillRect(s/5, s*2/3, s/7, s/6); g2.fillRect(s/2- s/14, s/2, s/7, s/3); g2.fillRect(s*2/3, s/3, s/7, s/2); }
             case BARCHART -> { g2.drawLine(s/5, s*4/5, s*4/5, s*4/5); g2.fillRect(s/4, s*3/5, s/10, s/5); g2.fillRect(s/2- s/12, s/2, s/10, s*3/10); g2.fillRect(s*3/4- s/12, s/3, s/10, s*1/2); }
             case MATRIX -> { g2.drawRect(s/5, s/5, s*3/5, s*3/5); g2.drawLine(s/5, s/2, s*4/5, s/2); g2.drawLine(s/2, s/5, s/2, s*4/5); }
+            
+            // === THÊM CASE NÀY VÀO ===
+            case PIECHART -> { 
+                g2.setStroke(new BasicStroke(1.5f));
+                g2.drawOval(s/5, s/5, s*3/5, s*3/5); 
+                g2.drawLine(s/2, s/2, s/2, s/5); 
+                g2.drawLine(s/2, s/2, s*4/5, s/2); 
+            }
+            // =========================
         }
         g2.dispose();
     }

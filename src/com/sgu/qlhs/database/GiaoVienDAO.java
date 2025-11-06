@@ -6,10 +6,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class GiaoVienDAO {
-
     public List<Object[]> getAllGiaoVien() {
         List<Object[]> data = new ArrayList<>();
-        String sql = "SELECT MaGV, HoTen, SoDienThoai, Email FROM GiaoVien";
+        String sql = "SELECT MaGV, HoTen, SoDienThoai, Email FROM GiaoVien WHERE TrangThai = 1";
 
         try (Connection conn = DatabaseConnection.getConnection();
                 PreparedStatement pstmt = conn.prepareStatement(sql);
@@ -65,7 +64,7 @@ public class GiaoVienDAO {
     }
 
     public void deleteGiaoVien(int maGV) {
-        String sql = "DELETE FROM GiaoVien WHERE MaGV = ?";
+        String sql = "UPDATE GiaoVien SET TrangThai = 0 WHERE MaGV = ?";
         try (Connection conn = DatabaseConnection.getConnection();
                 PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setInt(1, maGV);

@@ -6,11 +6,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class MonDAO {
-
     public List<Object[]> getAllMon() {
         List<Object[]> data = new ArrayList<>();
-        // <-- CẬP NHẬT CÂU LỆNH SQL -->
-        String sql = "SELECT MaMon, TenMon, SoTiet, GhiChu, LoaiMon FROM MonHoc";
+        String sql = "SELECT MaMon, TenMon, SoTiet, GhiChu, LoaiMon FROM MonHoc WHERE TrangThai = 1";
         try (Connection conn = DatabaseConnection.getConnection();
                 PreparedStatement pstmt = conn.prepareStatement(sql);
                 ResultSet rs = pstmt.executeQuery()) {
@@ -63,7 +61,7 @@ public class MonDAO {
     }
 
     public void deleteMon(int maMon) {
-        String sql = "DELETE FROM MonHoc WHERE MaMon = ?";
+        String sql = "UPDATE MonHoc SET TrangThai = 0 WHERE MaMon = ?";
         try (Connection conn = DatabaseConnection.getConnection();
                 PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setInt(1, maMon);

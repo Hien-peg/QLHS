@@ -81,7 +81,10 @@ public class PieChartCanvas extends JComponent {
             g2.fillRoundRect(legendX, legendY + (i * 30), legendBoxSize, legendBoxSize, 5, 5);
             g2.setColor(Color.BLACK);
             String percent = df.format(values[i] / total);
-            String label = String.format("%s (%d) - %s", labels[i], (int) values[i], percent);
+            
+            // SỬA LỖI: Bỏ (int) values[i] vì labels[i] đã chứa thông tin đó
+            String label = String.format("%s - %s", labels[i], percent);
+            
             g2.drawString(label, legendX + legendBoxSize + 10, legendY + (i * 30) + fm.getAscent());
 
             currentAngle -= arcAngle;
