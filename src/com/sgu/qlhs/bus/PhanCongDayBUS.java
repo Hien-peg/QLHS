@@ -38,6 +38,34 @@ public class PhanCongDayBUS {
         }
     }
 
+    /**
+     * Trả về danh sách MaLop: gồm các lớp giáo viên được phân công dạy trong
+     * (namHoc,hocKy) và (nếu có) lớp chủ nhiệm của giáo viên đó. Kết quả là
+     * một danh sách đã loại trùng, duy trì thứ tự phát hiện (phân công trước,
+     * sau đó bổ sung lớp chủ nhiệm nếu khác).
+     */
+    public List<Integer> getDistinctMaLopWithChuNhiem(int maGV, String namHoc, String hocKy) {
+        java.util.Set<Integer> set = new java.util.LinkedHashSet<>();
+        try {
+            List<Integer> taught = getDistinctMaLopByGiaoVien(maGV, namHoc, hocKy);
+            if (taught != null)
+                set.addAll(taught);
+        } catch (Exception ex) {
+            // ignore and continue
+        }
+        try {
+            // add chu nhiem class if exists
+            com.sgu.qlhs.bus.ChuNhiemBUS cnBus = new com.sgu.qlhs.bus.ChuNhiemBUS();
+            com.sgu.qlhs.dto.ChuNhiemDTO cn = cnBus.getChuNhiemByGV(maGV);
+            if (cn != null && cn.getMaLop() > 0) {
+                set.add(cn.getMaLop());
+            }
+        } catch (Exception ex) {
+            // ignore
+        }
+        return new ArrayList<>(set);
+    }
+
     // ==========================================================
     // 🆕 Các hàm CRUD cho module Phân công dạy
     // ==========================================================
@@ -49,7 +77,8 @@ public class PhanCongDayBUS {
 
     // Thêm mới phân công
     public boolean insert(PhanCongDayDTO dto) {
-        if (dto == null) return false;
+        if (dto == null)
+            return false;
 
         // Kiểm tra trùng phân công (GV + Lớp + Môn + HK + Năm học)
         if (dao.existsDuplicate(dto.getMaGV(), dto.getMaLop(), dto.getMaMon(), dto.getHocKy(), dto.getNamHoc())) {
@@ -65,7 +94,8 @@ public class PhanCongDayBUS {
 
     // Cập nhật phân công
     public boolean update(PhanCongDayDTO dto) {
-        if (dto == null) return false;
+        if (dto == null)
+            return false;
         return dao.update(dto);
     }
 

@@ -470,6 +470,8 @@ public class DiemPanel extends JPanel {
                                 // load class data into the read-only table
                                 loadChuNhiemData();
                             }
+                            // Note: The dedicated HocSinhPanel is used elsewhere (dashboard).
+                            // We intentionally do not add a duplicate "Học sinh" tab here.
                         }
                     } catch (Exception ex) {
                         // ignore failure to detect chủ nhiệm
@@ -1229,7 +1231,6 @@ public class DiemPanel extends JPanel {
         String[] parts = s.trim().split("\\s+");
         return parts.length == 0 ? "" : parts[parts.length - 1];
     }
-
     // (Removed unused helper parseDoubleOrZero) kept parsing logic centralized in
     // dialogs/DAOs where needed.
 }

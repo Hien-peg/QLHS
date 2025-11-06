@@ -14,6 +14,7 @@ import java.awt.*;
 public class ChuNhiemDashboard extends MainDashboard {
 
     private JButton btnLichDay, btnTkbLop, btnDiem, btnThongKe, btnLogout;
+    private JButton btnHs;
     private final ChuNhiemDTO cn;
     private final NguoiDungDTO nd;
 
@@ -47,12 +48,15 @@ public class ChuNhiemDashboard extends MainDashboard {
 
         // ===== Các nút chức năng =====
         btnLichDay = createSidebarButton("Lịch dạy của tôi");
+        btnHs = createSidebarButton("Học sinh");
         btnTkbLop = createSidebarButton("TKB lớp chủ nhiệm");
         btnDiem = createSidebarButton("Điểm lớp chủ nhiệm");
         btnThongKe = createSidebarButton("Thống kê lớp");
         btnLogout = createSidebarButton("Đăng xuất");
 
         sidebar.add(btnLichDay);
+        sidebar.add(Box.createVerticalStrut(8));
+        sidebar.add(btnHs);
         sidebar.add(Box.createVerticalStrut(8));
         sidebar.add(btnTkbLop);
         sidebar.add(Box.createVerticalStrut(8));
@@ -71,6 +75,10 @@ public class ChuNhiemDashboard extends MainDashboard {
         JPanel pnlLichDay = new TKBPanel("GiaoVien", nd.getId(), null);
         centerCards.add(pnlLichDay, "LICHDAY");
 
+        // 1.5️⃣ Danh sách học sinh (dành cho Chủ nhiệm)
+        JPanel pnlHs = new HocSinhPanel();
+        centerCards.add(pnlHs, "HS");
+
         // 2️⃣ TKB lớp chủ nhiệm (TKBPanel lọc theo lớp)
         JPanel pnlTkbLop = new TKBPanel("ChuNhiem", nd.getId(), cn.getMaLop());
         centerCards.add(pnlTkbLop, "TKBLOP");
@@ -87,6 +95,7 @@ public class ChuNhiemDashboard extends MainDashboard {
 
         // ==== Sự kiện các nút ====
         btnLichDay.addActionListener(e -> cards.show(centerCards, "LICHDAY"));
+        btnHs.addActionListener(e -> cards.show(centerCards, "HS"));
         btnTkbLop.addActionListener(e -> cards.show(centerCards, "TKBLOP"));
         btnDiem.addActionListener(e -> cards.show(centerCards, "DIEM"));
         btnThongKe.addActionListener(e -> cards.show(centerCards, "THONGKE"));
