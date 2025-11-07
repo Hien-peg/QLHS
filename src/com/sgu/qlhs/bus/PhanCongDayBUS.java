@@ -13,9 +13,6 @@ public class PhanCongDayBUS {
         dao = new PhanCongDayDAO();
     }
 
-    // ==========================================================
-    // 🧩 SỬA: Thay đổi tham số (MaNK, HocKy int) -> (NamHoc, HocKy String)
-    // ==========================================================
     public List<Integer> getDistinctMaLopByGiaoVien(int maGV, String namHoc, String hocKy) {
         try {
             // SỬA: Truyền tham số String
@@ -38,12 +35,6 @@ public class PhanCongDayBUS {
         }
     }
 
-    /**
-     * Trả về danh sách MaLop: gồm các lớp giáo viên được phân công dạy trong
-     * (namHoc,hocKy) và (nếu có) lớp chủ nhiệm của giáo viên đó. Kết quả là
-     * một danh sách đã loại trùng, duy trì thứ tự phát hiện (phân công trước,
-     * sau đó bổ sung lớp chủ nhiệm nếu khác).
-     */
     public List<Integer> getDistinctMaLopWithChuNhiem(int maGV, String namHoc, String hocKy) {
         java.util.Set<Integer> set = new java.util.LinkedHashSet<>();
         try {
@@ -66,10 +57,7 @@ public class PhanCongDayBUS {
         return new ArrayList<>(set);
     }
 
-    // ==========================================================
-    // 🆕 Các hàm CRUD cho module Phân công dạy
-    // ==========================================================
-
+    // Các hàm CRUD cho module Phân công dạy
     // Lấy toàn bộ danh sách phân công
     public List<PhanCongDayDTO> getAll() {
         return dao.getAll();

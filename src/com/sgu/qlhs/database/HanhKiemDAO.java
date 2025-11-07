@@ -24,10 +24,6 @@ public class HanhKiemDAO {
         return null;
     }
 
-    /**
-     * Batch fetch: returns a map MaHS -> XepLoai for the given students (maHSList)
-     * for the given niên khóa and học kỳ. Missing entries are absent from the map.
-     */
     public java.util.Map<Integer, String> getHanhKiemForStudents(java.util.List<Integer> maHSList, int maNK,
             int hocKy) {
         java.util.Map<Integer, String> result = new java.util.HashMap<>();
@@ -41,7 +37,8 @@ public class HanhKiemDAO {
                 in.append(',');
             in.append('?');
         }
-        String sql = "SELECT MaHS, XepLoai FROM HanhKiem WHERE MaNK = ? AND HocKy = ? AND MaHS IN (" + in + ") AND TrangThai = 1";
+        String sql = "SELECT MaHS, XepLoai FROM HanhKiem WHERE MaNK = ? AND HocKy = ? AND MaHS IN (" + in
+                + ") AND TrangThai = 1";
         try (Connection conn = DatabaseConnection.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
             int idx = 1;
             ps.setInt(idx++, maNK);

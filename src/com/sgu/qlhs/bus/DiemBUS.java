@@ -103,7 +103,6 @@ public class DiemBUS {
             double ck = r[7] != null ? Double.parseDouble(r[7].toString()) : 0.0;
             String ghiChu = r[8] != null ? r[8].toString() : "";
             String ketQuaDanhGia = r[9] != null ? r[9].toString() : null;
-            // === SỬA LỖI: Đọc DiemTB từ r[10] ===
             double diemTB = (r[10] != null) ? Double.parseDouble(r[10].toString()) : 0.0;
 
             DiemDTO d = new DiemDTO();
@@ -155,10 +154,7 @@ public class DiemBUS {
     public boolean saveNhanXet(int maHS, int maNK, int hocKy, String ghiChu, NguoiDungDTO user) {
         if (user != null && "giao_vien".equalsIgnoreCase(user.getVaiTro())) {
             try {
-                // Allow saving nhận xét if the teacher is assigned to the student's
-                // class/subject OR the teacher is the Chủ nhiệm (homeroom) of the
-                // student's class. This lets chủ nhiệm add comments even if they
-                // don't have an explicit PhanCongDay entry for that subject.
+
                 boolean allowed = false;
                 try {
                     if (isTeacherAssigned(user.getId(), maHS, null, hocKy, maNK))

@@ -6,8 +6,8 @@ import com.sgu.qlhs.dto.PhanCongDayDTO;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
-import java.sql.SQLException; 
-import java.sql.Statement; 
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -20,15 +20,15 @@ public class PhanCongDayDAO {
         if (hocKy != null && !hocKy.isEmpty())
             sql += " AND pc.HocKy = ?";
         sql += " ORDER BY pc.MaLop";
-        
+
         try (Connection conn = DatabaseConnection.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
             int idx = 1;
             ps.setInt(idx++, maGV);
             if (namHoc != null && !namHoc.isEmpty())
-                ps.setString(idx++, namHoc); 
+                ps.setString(idx++, namHoc);
             if (hocKy != null && !hocKy.isEmpty())
-                ps.setString(idx++, hocKy); 
-            
+                ps.setString(idx++, hocKy);
+
             try (ResultSet rs = ps.executeQuery()) {
                 List<Integer> out = new ArrayList<>();
                 while (rs.next()) {
@@ -46,15 +46,15 @@ public class PhanCongDayDAO {
         if (hocKy != null && !hocKy.isEmpty())
             sql += " AND pc.HocKy = ?";
         sql += " ORDER BY pc.MaMon";
-        
+
         try (Connection conn = DatabaseConnection.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
             int idx = 1;
             ps.setInt(idx++, maGV);
             if (namHoc != null && !namHoc.isEmpty())
-                ps.setString(idx++, namHoc); 
+                ps.setString(idx++, namHoc);
             if (hocKy != null && !hocKy.isEmpty())
-                ps.setString(idx++, hocKy); 
-            
+                ps.setString(idx++, hocKy);
+
             try (ResultSet rs = ps.executeQuery()) {
                 List<Integer> out = new ArrayList<>();
                 while (rs.next()) {
@@ -64,27 +64,23 @@ public class PhanCongDayDAO {
             }
         }
     }
-    
-    // ===========================================
-    // 🧩 Các hàm CRUD chính cho Phân công dạy
-    // ===========================================
 
     public List<PhanCongDayDTO> getAll() {
         List<PhanCongDayDTO> list = new ArrayList<>();
         String sql = """
-            SELECT pcd.*, gv.HoTen AS TenGV, mon.TenMon, lop.TenLop, phong.TenPhong
-            FROM PhanCongDay pcd
-            JOIN GiaoVien gv ON gv.MaGV = pcd.MaGV
-            JOIN MonHoc mon ON mon.MaMon = pcd.MaMon
-            JOIN Lop lop ON lop.MaLop = pcd.MaLop
-            JOIN PhongHoc phong ON phong.MaPhong = pcd.MaPhong
-            WHERE pcd.TrangThai = 1
-            ORDER BY pcd.MaPCD ASC
-        """;
+                    SELECT pcd.*, gv.HoTen AS TenGV, mon.TenMon, lop.TenLop, phong.TenPhong
+                    FROM PhanCongDay pcd
+                    JOIN GiaoVien gv ON gv.MaGV = pcd.MaGV
+                    JOIN MonHoc mon ON mon.MaMon = pcd.MaMon
+                    JOIN Lop lop ON lop.MaLop = pcd.MaLop
+                    JOIN PhongHoc phong ON phong.MaPhong = pcd.MaPhong
+                    WHERE pcd.TrangThai = 1
+                    ORDER BY pcd.MaPCD ASC
+                """;
 
         try (Connection conn = DatabaseConnection.getConnection();
-             Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery(sql)) {
+                Statement stmt = conn.createStatement();
+                ResultSet rs = stmt.executeQuery(sql)) {
 
             while (rs.next()) {
                 PhanCongDayDTO dto = new PhanCongDayDTO();
@@ -115,11 +111,11 @@ public class PhanCongDayDAO {
     // ===== Thêm mới =====
     public boolean insert(PhanCongDayDTO dto) {
         String sql = """
-            INSERT INTO PhanCongDay (MaGV, MaLop, MaMon, MaPhong, HocKy, NamHoc, TrangThai, NgayTao, NgayCapNhat)
-            VALUES (?, ?, ?, ?, ?, ?, 1, NOW(), NOW())
-        """;
+                    INSERT INTO PhanCongDay (MaGV, MaLop, MaMon, MaPhong, HocKy, NamHoc, TrangThai, NgayTao, NgayCapNhat)
+                    VALUES (?, ?, ?, ?, ?, ?, 1, NOW(), NOW())
+                """;
         try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+                PreparedStatement ps = conn.prepareStatement(sql)) {
 
             ps.setInt(1, dto.getMaGV());
             ps.setInt(2, dto.getMaLop());
@@ -138,12 +134,12 @@ public class PhanCongDayDAO {
     // ===== Cập nhật =====
     public boolean update(PhanCongDayDTO dto) {
         String sql = """
-            UPDATE PhanCongDay
-            SET MaGV=?, MaLop=?, MaMon=?, MaPhong=?, HocKy=?, NamHoc=?, TrangThai=?, NgayCapNhat=NOW()
-            WHERE MaPCD=?
-        """;
+                    UPDATE PhanCongDay
+                    SET MaGV=?, MaLop=?, MaMon=?, MaPhong=?, HocKy=?, NamHoc=?, TrangThai=?, NgayCapNhat=NOW()
+                    WHERE MaPCD=?
+                """;
         try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+                PreparedStatement ps = conn.prepareStatement(sql)) {
 
             ps.setInt(1, dto.getMaGV());
             ps.setInt(2, dto.getMaLop());
@@ -165,7 +161,7 @@ public class PhanCongDayDAO {
     public boolean delete(int maPCD) {
         String sql = "UPDATE PhanCongDay SET TrangThai = 0 WHERE MaPCD = ?";
         try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+                PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, maPCD);
             return ps.executeUpdate() > 0;
         } catch (SQLException e) {
@@ -176,16 +172,16 @@ public class PhanCongDayDAO {
 
     public PhanCongDayDTO findById(int maPCD) {
         String sql = """
-            SELECT pcd.*, gv.HoTen AS TenGV, mon.TenMon, lop.TenLop, phong.TenPhong
-            FROM PhanCongDay pcd
-            JOIN GiaoVien gv ON gv.MaGV = pcd.MaGV
-            JOIN MonHoc mon ON mon.MaMon = pcd.MaMon
-            JOIN Lop lop ON lop.MaLop = pcd.MaLop
-            JOIN PhongHoc phong ON phong.MaPhong = pcd.MaPhong
-            WHERE pcd.MaPCD = ? AND pcd.TrangThai = 1
-        """;
+                    SELECT pcd.*, gv.HoTen AS TenGV, mon.TenMon, lop.TenLop, phong.TenPhong
+                    FROM PhanCongDay pcd
+                    JOIN GiaoVien gv ON gv.MaGV = pcd.MaGV
+                    JOIN MonHoc mon ON mon.MaMon = pcd.MaMon
+                    JOIN Lop lop ON lop.MaLop = pcd.MaLop
+                    JOIN PhongHoc phong ON phong.MaPhong = pcd.MaPhong
+                    WHERE pcd.MaPCD = ? AND pcd.TrangThai = 1
+                """;
         try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+                PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, maPCD);
             ResultSet rs = ps.executeQuery();
             if (rs.next()) {
@@ -213,18 +209,19 @@ public class PhanCongDayDAO {
     // ===== Kiểm tra trùng =====
     public boolean existsDuplicate(int maGV, int maLop, int maMon, String hocKy, String namHoc) {
         String sql = """
-            SELECT COUNT(*) FROM PhanCongDay
-            WHERE MaGV = ? AND MaLop = ? AND MaMon = ? AND HocKy = ? AND NamHoc = ? AND TrangThai = 1
-        """;
+                    SELECT COUNT(*) FROM PhanCongDay
+                    WHERE MaGV = ? AND MaLop = ? AND MaMon = ? AND HocKy = ? AND NamHoc = ? AND TrangThai = 1
+                """;
         try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+                PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, maGV);
             ps.setInt(2, maLop);
             ps.setInt(3, maMon);
             ps.setString(4, hocKy);
             ps.setString(5, namHoc);
             ResultSet rs = ps.executeQuery();
-            if (rs.next()) return rs.getInt(1) > 0;
+            if (rs.next())
+                return rs.getInt(1) > 0;
         } catch (SQLException e) {
             e.printStackTrace();
         }

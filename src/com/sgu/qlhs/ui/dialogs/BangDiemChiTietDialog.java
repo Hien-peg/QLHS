@@ -955,9 +955,7 @@ public class BangDiemChiTietDialog extends JDialog {
                 rowCanEditList.add(Boolean.FALSE);
             }
             try {
-                // prefer the injected user (if provided) for permission checks; fall
-                // back to resolving from the window ancestor was already handled in
-                // the 'nd' variable above
+
                 com.sgu.qlhs.dto.NguoiDungDTO ndCheck = nd;
                 if (ndCheck != null && "giao_vien".equalsIgnoreCase(ndCheck.getVaiTro())) {
                     for (int i = 0; i < diemList.size(); i++) {
@@ -1045,8 +1043,6 @@ public class BangDiemChiTietDialog extends JDialog {
 
             boolean canEdit = (!isStudentView) && anyRowEditable;
 
-            // Determine whether current user can edit Hạnh kiểm (admins or chủ nhiệm of the
-            // class)
             boolean canEditHanhKiem = false;
             try {
                 if (nd != null) {
@@ -1625,14 +1621,9 @@ public class BangDiemChiTietDialog extends JDialog {
         return null;
     }
 
-    // Flag set by caller to indicate the dialog was opened from the Chủ nhiệm tab
     // (Chủ nhiệm view already scopes rows to the teacher's class). When true we
     // relax the hạnh kiểm permission check so the chủ nhiệm may edit hạnh kiểm
-    // for students in that tab without failing on other assignment checks.
     private boolean openedFromChuNhiem = false;
-    // Optional: caller can inject the currently-logged-in user to ensure the
-    // dialog uses the same user context as the caller (useful when the dialog
-    // is created programmatically from panels).
     private NguoiDungDTO injectedNguoiDung = null;
 
     public void setInjectedNguoiDung(NguoiDungDTO nd) {
@@ -1812,10 +1803,6 @@ public class BangDiemChiTietDialog extends JDialog {
         spComment.setPreferredSize(new Dimension(panelWidth - 40, 140));
         printPanel.add(spComment);
 
-        // Prepare printing with pagination and scaling to page width. Split header and
-        // body
-        // so header (title, school info, student info) can be printed on every page.
-        // We'll build headerPanel and bodyPanel separately above to reuse here.
         final JPanel headerPanelPrint = new JPanel();
         headerPanelPrint.setBackground(Color.WHITE);
         headerPanelPrint.setLayout(new BoxLayout(headerPanelPrint, BoxLayout.Y_AXIS));

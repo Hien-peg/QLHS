@@ -323,13 +323,6 @@ public class DiemDAO {
         return result;
     }
 
-    /**
-     * Optimized version that accepts multiple MaLop values and uses an IN(...)
-     * clause
-     * to fetch rows for all provided classes in a single query. If maLops is null
-     * or
-     * empty the method returns an empty list.
-     */
     public List<com.sgu.qlhs.dto.DiemDTO> getDiemFilteredByMaLopList(java.util.List<Integer> maLops, Integer maMon,
             Integer hocKy, Integer maNK, Integer limit, Integer offset) {
         List<com.sgu.qlhs.dto.DiemDTO> result = new ArrayList<>();

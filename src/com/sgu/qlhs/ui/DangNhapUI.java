@@ -80,7 +80,8 @@ public class DangNhapUI extends JFrame {
         btnLogin.addChangeListener(e -> {
             if (btnLogin.getModel().isRollover())
                 btnLogin.setBackground(new Color(25, 70, 145));
-            else btnLogin.setBackground(PRIMARY);
+            else
+                btnLogin.setBackground(PRIMARY);
         });
 
         form.add(btnLogin);
@@ -129,16 +130,16 @@ public class DangNhapUI extends JFrame {
                     case "quan_tri_vien" -> {
                         System.out.println(">> Mở giao diện Quản trị viên");
                         new MainDashboard(nd).setVisible(true);
-                        
+
                     }
 
                     case "giao_vien" -> {
                         System.out.println(">> Kiểm tra giáo viên có là GVCN không...");
-                        
+
                         // === LOGIC CŨ (THEO YÊU CẦU CỦA BẠN) ===
                         // Kiểm tra xem MaGV này có trong bảng ChuNhiem không
                         ChuNhiemBUS cnBus = new ChuNhiemBUS();
-                        ChuNhiemDTO cn = cnBus.getChuNhiemByGV(nd.getId()); 
+                        ChuNhiemDTO cn = cnBus.getChuNhiemByGV(nd.getId());
 
                         if (cn != null) {
                             // Nếu CÓ chủ nhiệm -> Mở ChuNhiemDashboard
@@ -157,7 +158,7 @@ public class DangNhapUI extends JFrame {
 
                         // Khởi tạo BUS để lấy thông tin học sinh
                         HocSinhBUS hsBUS = new HocSinhBUS();
-                        HocSinhDTO hs = hsBUS.getByMaHS(nd.getId());  // ✅ Lấy theo MaHS, không dùng MaTK
+                        HocSinhDTO hs = hsBUS.getByMaHS(nd.getId()); // ✅ Lấy theo MaHS, không dùng MaTK
 
                         if (hs != null) {
                             System.out.println("🟢 Học sinh đăng nhập: " + hs.getHoTen());
@@ -172,8 +173,6 @@ public class DangNhapUI extends JFrame {
                                     "Lỗi đăng nhập", JOptionPane.ERROR_MESSAGE);
                         }
                     }
-
-
 
                     default -> {
                         JOptionPane.showMessageDialog(this,
@@ -207,7 +206,8 @@ public class DangNhapUI extends JFrame {
                         break;
                     }
                 }
-            } catch (Exception ignored) { }
+            } catch (Exception ignored) {
+            }
             new DangNhapUI().setVisible(true);
         });
     }
