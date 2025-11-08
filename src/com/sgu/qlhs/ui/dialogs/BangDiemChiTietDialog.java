@@ -449,166 +449,54 @@ public class BangDiemChiTietDialog extends JDialog {
             btnCancel.setEnabled(false);
         });
 
-        // ⚡ Tách riêng listener của Export ra:
-        // Import listener (CSV -> bảng điểm). Permission: admin always allowed;
-        // teachers will have per-row permission checks applied when saving.
+        // Import/Export using Excel (.xlsx) instead of CSV. Uses Apache POI if
+        // available.
         btnImport.addActionListener(e -> {
-            // Generate a sample CSV template and save it to the user's Downloads folder
-            try {
-                java.util.List<com.sgu.qlhs.dto.MonHocDTO> allMons = monBUS.getAllMon();
-                String userHome = System.getProperty("user.home");
-                File downloads = new File(userHome, "Downloads");
-                if (!downloads.exists() || !downloads.isDirectory())
-                    downloads = new File(userHome);
-                String namePart = (currentMaHS > 0) ? String.valueOf(currentMaHS) : "mau";
-                String ts = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
-                File sample = new File(downloads, "bangdiem_mau_" + namePart + "_" + ts + ".csv");
-                try (java.io.FileWriter fw = new java.io.FileWriter(sample)) {
-                    // header
-                    fw.write("STT,Tên môn học,Miệng,15 Phút,1 Tiết,Cuối kỳ,Kết quả,Ghi chú");
-                    fw.write(System.lineSeparator());
-                    int idx = 1;
-                    if (allMons != null) {
-                        for (com.sgu.qlhs.dto.MonHocDTO m : allMons) {
-                            String ten = m.getTenMon() != null ? m.getTenMon() : "";
-                            // quote if needed
-                            if (ten.contains(",") || ten.contains("\"")) {
-                                ten = "\"" + ten.replace("\"", "\"\"") + "\"";
-                            }
-                            java.util.List<String> parts = java.util.Arrays.asList(String.valueOf(idx), ten, "", "", "",
-                                    "", "", "");
-                            fw.write(String.join(",", parts));
-                            fw.write(System.lineSeparator());
-                            idx++;
-                        }
-                    }
-                }
-                int opt = JOptionPane.showConfirmDialog(this,
-                        "Mẫu CSV đã được lưu tại:\n" + sample.getAbsolutePath()
-                                + "\nBạn muốn chọn file để nhập ngay bây giờ?",
-                        "Mẫu CSV", JOptionPane.YES_NO_OPTION);
-                if (opt != JOptionPane.YES_OPTION) {
-                    // user chose not to continue to import now
-                    return;
-                }
-            } catch (Exception ex) {
-                // if template generation fails, continue to import flow but notify user
-                try {
-                    JOptionPane.showMessageDialog(this, "Không thể tạo mẫu CSV: " + ex.getMessage());
-                } catch (Exception ignored) {
-                }
-            }
-
-            if (model == null || model.getRowCount() == 0) {
-                JOptionPane.showMessageDialog(this, "Không có dữ liệu để nhập.");
-                return;
-            }
+            // Prompt user to choose an .xlsx file to import
             if (currentMaHS == -1) {
-                JOptionPane.showMessageDialog(this, "Vui lòng chọn một học sinh trước khi nhập dữ liệu.");
+                JOptionPane.showMessageDialog(this, "Vui lòng chọn một học sinh trước khi nhập dữ liệu.", "Lỗi",
+                        JOptionPane.ERROR_MESSAGE);
                 return;
             }
             JFileChooser chooser = new JFileChooser();
-            chooser.setDialogTitle("Chọn file CSV để nhập");
-            chooser.setFileFilter(new FileNameExtensionFilter("CSV files", "csv"));
+            chooser.setDialogTitle("Chọn file Excel (.xlsx) để nhập");
+            chooser.setFileFilter(new FileNameExtensionFilter("Excel files", "xlsx"));
             int rc = chooser.showOpenDialog(this);
             if (rc != JFileChooser.APPROVE_OPTION)
                 return;
             File f = chooser.getSelectedFile();
-            // build name->id map for subjects
-            java.util.List<com.sgu.qlhs.dto.MonHocDTO> allMons = monBUS.getAllMon();
-            java.util.Map<String, Integer> monByName = new java.util.HashMap<>();
-            java.util.Map<Integer, com.sgu.qlhs.dto.MonHocDTO> monById = new java.util.HashMap<>();
-            for (com.sgu.qlhs.dto.MonHocDTO m : allMons) {
-                if (m.getTenMon() != null)
-                    monByName.put(m.getTenMon().trim(), m.getMaMon());
-                monById.put(m.getMaMon(), m);
-            }
-
-            int saved = 0, skippedNoPerm = 0, unmapped = 0, errors = 0;
-            try (java.io.BufferedReader br = new java.io.BufferedReader(new java.io.FileReader(f))) {
-                String header = br.readLine();
-                if (header == null) {
-                    JOptionPane.showMessageDialog(this, "File CSV rỗng hoặc không hợp lệ.");
-                    return;
-                }
-                String line;
-                // resolve current user
-                com.sgu.qlhs.dto.NguoiDungDTO nd = null;
-                try {
-                    java.awt.Window w2 = javax.swing.SwingUtilities.getWindowAncestor(this);
-                    if (w2 instanceof com.sgu.qlhs.ui.MainDashboard) {
-                        com.sgu.qlhs.ui.MainDashboard md2 = (com.sgu.qlhs.ui.MainDashboard) w2;
-                        nd = md2.getNguoiDung();
-                    }
-                } catch (Exception ex) {
-                }
-                boolean isAdmin = nd != null && ("quan_tri_vien".equalsIgnoreCase(nd.getVaiTro())
-                        || "Admin".equalsIgnoreCase(nd.getVaiTro()));
-
-                while ((line = br.readLine()) != null) {
-                    if (line.trim().isEmpty())
-                        continue;
-                    // naive CSV split (export writes simple comma-separated values)
-                    String[] cols = line.split(",");
-                    if (cols.length < 8) {
-                        errors++;
-                        continue;
-                    }
-                    String tenMon = cols[1].trim();
-                    Integer maMon = monByName.get(tenMon);
-                    if (maMon == null) {
-                        unmapped++;
-                        continue;
-                    }
-                    com.sgu.qlhs.dto.MonHocDTO mon = monById.get(maMon);
-                    try {
-                        boolean ok;
-                        if (mon != null && "DanhGia".equalsIgnoreCase(mon.getLoaiMon())) {
-                            String ketQua = cols[6].trim();
-                            String ghiChu = cols.length > 7 ? cols[7].trim() : "";
-                            // Note: DiemBUS expects (ghiChu, ketQuaDanhGia) in that order for the full
-                            // saveOrUpdateDiem signature. Ensure we pass ghiChu first.
-                            ok = diemBUS.saveOrUpdateDiem(currentMaHS, maMon, currentHocKy, currentMaNK,
-                                    null, null, null, null, ghiChu, ketQua.isEmpty() ? null : ketQua, nd);
-                        } else {
-                            Double mieng = parseDoubleSafe(cols[2].trim());
-                            Double p15 = parseDoubleSafe(cols[3].trim());
-                            Double gk = parseDoubleSafe(cols[4].trim());
-                            Double ck = parseDoubleSafe(cols[5].trim());
-                            String ghiChu = cols.length > 7 ? cols[7].trim() : "";
-                            // For numeric-score subjects, ketQuaDanhGia is null; pass ghiChu first.
-                            ok = diemBUS.saveOrUpdateDiem(currentMaHS, maMon, currentHocKy, currentMaNK,
-                                    mieng, p15, gk, ck, ghiChu, null, nd);
-                        }
-                        if (ok) {
-                            saved++;
-                        } else {
-                            // likely permission issue
-                            skippedNoPerm++;
-                        }
-                    } catch (Exception ex) {
-                        errors++;
-                    }
-                }
+            try {
+                importXlsx(f);
+                loadBangDiem();
+            } catch (ClassNotFoundException cnf) {
+                JOptionPane.showMessageDialog(this,
+                        "Thư viện Apache POI không được tìm thấy. Vui lòng thêm poi-ooxml jars vào thư mục lib/.",
+                        "Thiếu thư viện", JOptionPane.ERROR_MESSAGE);
             } catch (Exception ex) {
-                JOptionPane.showMessageDialog(this, "Lỗi khi đọc file: " + ex.getMessage());
-                return;
+                JOptionPane.showMessageDialog(this, "Lỗi khi nhập file Excel: " + ex.getMessage(), "Lỗi",
+                        JOptionPane.ERROR_MESSAGE);
             }
-
-            StringBuilder msg = new StringBuilder();
-            msg.append("Kết quả nhập:\n");
-            msg.append("Đã lưu: ").append(saved).append('\n');
-            if (unmapped > 0)
-                msg.append("Bị bỏ qua (môn không khớp): ").append(unmapped).append('\n');
-            if (skippedNoPerm > 0)
-                msg.append("Bị bỏ qua (không có quyền): ").append(skippedNoPerm).append('\n');
-            if (errors > 0)
-                msg.append("Lỗi: ").append(errors).append('\n');
-            JOptionPane.showMessageDialog(this, msg.toString());
-            // refresh view
-            loadBangDiem();
         });
-        btnExport.addActionListener(e -> exportCsv());
+        btnExport.addActionListener(e -> {
+            try {
+                exportXlsx();
+            } catch (ClassNotFoundException cnf) {
+                JOptionPane.showMessageDialog(this,
+                        "Thư viện Apache POI không được tìm thấy. Vui lòng thêm poi-ooxml jars vào thư mục lib/.",
+                        "Thiếu thư viện", JOptionPane.ERROR_MESSAGE);
+            } catch (Exception ex) {
+                // Print full stack to console for debugging and show a more informative
+                // message to the user (include cause if message is null).
+                ex.printStackTrace();
+                String msg = ex.getMessage();
+                if (msg == null && ex.getCause() != null)
+                    msg = ex.getCause().toString();
+                if (msg == null)
+                    msg = ex.toString();
+                JOptionPane.showMessageDialog(this, "Lỗi khi xuất file Excel: " + msg, "Lỗi",
+                        JOptionPane.ERROR_MESSAGE);
+            }
+        });
         btnPrint.addActionListener(e -> printBangDiem());
         btnClose.addActionListener(e -> dispose());
 
@@ -1635,42 +1523,240 @@ public class BangDiemChiTietDialog extends JDialog {
     }
 
     /** Export current table to CSV file chosen by user. */
-    private void exportCsv() {
+    private void exportXlsx() throws Exception {
         if (model == null || model.getRowCount() == 0) {
             JOptionPane.showMessageDialog(this, "Không có dữ liệu để xuất.");
             return;
         }
         JFileChooser chooser = new JFileChooser();
-        chooser.setDialogTitle("Lưu CSV");
-        chooser.setFileFilter(new FileNameExtensionFilter("CSV files", "csv"));
+        chooser.setDialogTitle("Lưu Excel (.xlsx)");
+        chooser.setFileFilter(new FileNameExtensionFilter("Excel files", "xlsx"));
         int rc = chooser.showSaveDialog(this);
         if (rc != JFileChooser.APPROVE_OPTION)
             return;
         File f = chooser.getSelectedFile();
-        if (!f.getName().toLowerCase().endsWith(".csv")) {
-            f = new File(f.getParentFile(), f.getName() + ".csv");
+        if (!f.getName().toLowerCase().endsWith(".xlsx")) {
+            f = new File(f.getParentFile(), f.getName() + ".xlsx");
         }
-        try (FileWriter fw = new FileWriter(f)) {
+
+        // Use reflection to call Apache POI if available. This avoids compile-time
+        // dependency on POI jars. If POI classes are missing, ClassNotFoundException
+        // will be thrown and caller handles it.
+        Class<?> wbClass = Class.forName("org.apache.poi.xssf.usermodel.XSSFWorkbook");
+        Object wb = wbClass.getConstructor().newInstance();
+        java.io.FileOutputStream fos = null;
+        try {
+            fos = new java.io.FileOutputStream(f);
+            java.lang.reflect.Method createSheet = wbClass.getMethod("createSheet", String.class);
+            Object sheet = createSheet.invoke(wb, "Bảng điểm");
+
+            Class<?> sheetClass = sheet.getClass();
+            java.lang.reflect.Method createRow = sheetClass.getMethod("createRow", int.class);
+            java.lang.reflect.Method autoSizeCol = sheetClass.getMethod("autoSizeColumn", int.class);
+
             // header
+            Object hdr = createRow.invoke(sheet, 0);
+            Class<?> rowClass = hdr.getClass();
+            java.lang.reflect.Method createCell = rowClass.getMethod("createCell", int.class);
+            java.lang.reflect.Method setCellValueStr = null;
+            java.lang.reflect.Method setCellValueNum = null;
+            // attempt to find setCellValue methods on cell
+            Object tmpCell = createCell.invoke(hdr, 0);
+            Class<?> cellClass = tmpCell.getClass();
+            try {
+                setCellValueStr = cellClass.getMethod("setCellValue", String.class);
+            } catch (NoSuchMethodException ex) {
+            }
+            try {
+                setCellValueNum = cellClass.getMethod("setCellValue", double.class);
+            } catch (NoSuchMethodException ex) {
+            }
+
             for (int c = 0; c < model.getColumnCount(); c++) {
-                fw.write(model.getColumnName(c));
-                if (c < model.getColumnCount() - 1)
-                    fw.write(",");
+                Object cell = createCell.invoke(hdr, c);
+                if (setCellValueStr != null)
+                    setCellValueStr.invoke(cell, model.getColumnName(c));
+                else
+                    cell.getClass().getMethod("setCellValue", String.class).invoke(cell, model.getColumnName(c));
             }
-            fw.write(System.lineSeparator());
+
+            // rows
             for (int r = 0; r < model.getRowCount(); r++) {
+                Object prow = createRow.invoke(sheet, r + 1);
                 for (int c = 0; c < model.getColumnCount(); c++) {
+                    Object cell = createCell.invoke(prow, c);
                     Object v = model.getValueAt(r, c);
-                    fw.write(v == null ? "" : v.toString());
-                    if (c < model.getColumnCount() - 1)
-                        fw.write(",");
+                    if (v == null) {
+                        if (setCellValueStr != null)
+                            setCellValueStr.invoke(cell, "");
+                    } else if (v instanceof Number) {
+                        if (setCellValueNum != null)
+                            setCellValueNum.invoke(cell, ((Number) v).doubleValue());
+                        else if (setCellValueStr != null)
+                            setCellValueStr.invoke(cell, v.toString());
+                    } else {
+                        if (setCellValueStr != null)
+                            setCellValueStr.invoke(cell, v.toString());
+                    }
                 }
-                fw.write(System.lineSeparator());
             }
-            JOptionPane.showMessageDialog(this, "Xuất CSV thành công: " + f.getAbsolutePath());
-        } catch (IOException ex) {
-            JOptionPane.showMessageDialog(this, "Lỗi khi xuất CSV: " + ex.getMessage());
+
+            // autosize
+            for (int c = 0; c < model.getColumnCount(); c++)
+                autoSizeCol.invoke(sheet, c);
+
+            // write
+            java.lang.reflect.Method write = wbClass.getMethod("write", java.io.OutputStream.class);
+            write.invoke(wb, fos);
+            JOptionPane.showMessageDialog(this, "Xuất Excel thành công: " + f.getAbsolutePath());
+        } finally {
+            try {
+                if (fos != null)
+                    fos.close();
+            } catch (Exception ex) {
+            }
+            try {
+                wbClass.getMethod("close").invoke(wb);
+            } catch (Exception ex) {
+            }
         }
+    }
+
+    /** Import data from an .xlsx file (Apache POI required). */
+    private void importXlsx(File f) throws Exception {
+        if (f == null || !f.exists())
+            throw new java.io.FileNotFoundException("File không tồn tại");
+
+        // Build name->id map for subjects
+        java.util.List<com.sgu.qlhs.dto.MonHocDTO> allMons = monBUS.getAllMon();
+        java.util.Map<String, Integer> monByName = new java.util.HashMap<>();
+        java.util.Map<Integer, com.sgu.qlhs.dto.MonHocDTO> monById = new java.util.HashMap<>();
+        for (com.sgu.qlhs.dto.MonHocDTO m : allMons) {
+            if (m.getTenMon() != null)
+                monByName.put(m.getTenMon().trim(), m.getMaMon());
+            monById.put(m.getMaMon(), m);
+        }
+
+        int saved = 0, skippedNoPerm = 0, unmapped = 0, errors = 0;
+
+        // Use reflection to read .xlsx with Apache POI if available. This avoids
+        // compile-time dependency on POI jars. If POI classes are not present,
+        // Class.forName will throw and caller will surface a friendly message.
+        Class<?> wbClass = Class.forName("org.apache.poi.xssf.usermodel.XSSFWorkbook");
+        java.io.FileInputStream fis = null;
+        Object wb = null;
+        try {
+            fis = new java.io.FileInputStream(f);
+            java.lang.reflect.Constructor<?> ctor = wbClass.getConstructor(java.io.InputStream.class);
+            wb = ctor.newInstance(fis);
+            java.lang.reflect.Method getSheetAt = wbClass.getMethod("getSheetAt", int.class);
+            Object sheet = getSheetAt.invoke(wb, 0);
+            if (sheet == null)
+                throw new Exception("Sheet rỗng trong file Excel");
+
+            // resolve current user
+            com.sgu.qlhs.dto.NguoiDungDTO nd = null;
+            try {
+                java.awt.Window w2 = javax.swing.SwingUtilities.getWindowAncestor(this);
+                if (w2 instanceof com.sgu.qlhs.ui.MainDashboard) {
+                    com.sgu.qlhs.ui.MainDashboard md2 = (com.sgu.qlhs.ui.MainDashboard) w2;
+                    nd = md2.getNguoiDung();
+                }
+            } catch (Exception ex) {
+            }
+
+            java.lang.reflect.Method iteratorMethod = sheet.getClass().getMethod("iterator");
+            Object it = iteratorMethod.invoke(sheet);
+            java.lang.reflect.Method hasNext = it.getClass().getMethod("hasNext");
+            java.lang.reflect.Method next = it.getClass().getMethod("next");
+
+            if (!((Boolean) hasNext.invoke(it)))
+                throw new Exception("File Excel không có header");
+            // skip header
+            next.invoke(it);
+
+            while ((Boolean) hasNext.invoke(it)) {
+                Object row = next.invoke(it);
+                try {
+                    java.lang.reflect.Method getCell = row.getClass().getMethod("getCell", int.class);
+                    Object cTen = getCell.invoke(row, 1);
+                    String tenMon = cTen == null ? "" : cTen.toString().trim();
+                    if (tenMon.isEmpty()) {
+                        continue; // skip empty rows
+                    }
+                    Integer maMon = monByName.get(tenMon);
+                    if (maMon == null) {
+                        unmapped++;
+                        continue;
+                    }
+                    com.sgu.qlhs.dto.MonHocDTO mon = monById.get(maMon);
+                    boolean ok = false;
+                    if (mon != null && "DanhGia".equalsIgnoreCase(mon.getLoaiMon())) {
+                        Object cKet = getCell.invoke(row, 6);
+                        String ketQua = cKet == null ? "" : cKet.toString().trim();
+                        Object cGhi = getCell.invoke(row, 7);
+                        String ghiChu = cGhi == null ? "" : cGhi.toString().trim();
+                        ok = diemBUS.saveOrUpdateDiem(currentMaHS, maMon, currentHocKy, currentMaNK,
+                                null, null, null, null, ghiChu, ketQua.isEmpty() ? null : ketQua, nd);
+                    } else {
+                        Double mieng = null, p15 = null, gk = null, ck = null;
+                        try {
+                            Object cm = getCell.invoke(row, 2);
+                            mieng = (cm == null) ? null : Double.valueOf(cm.toString());
+                        } catch (Exception ex) {
+                        }
+                        try {
+                            Object cp = getCell.invoke(row, 3);
+                            p15 = (cp == null) ? null : Double.valueOf(cp.toString());
+                        } catch (Exception ex) {
+                        }
+                        try {
+                            Object cg = getCell.invoke(row, 4);
+                            gk = (cg == null) ? null : Double.valueOf(cg.toString());
+                        } catch (Exception ex) {
+                        }
+                        try {
+                            Object cc = getCell.invoke(row, 5);
+                            ck = (cc == null) ? null : Double.valueOf(cc.toString());
+                        } catch (Exception ex) {
+                        }
+                        Object cGhi = getCell.invoke(row, 7);
+                        String ghiChu = cGhi == null ? "" : cGhi.toString().trim();
+                        ok = diemBUS.saveOrUpdateDiem(currentMaHS, maMon, currentHocKy, currentMaNK,
+                                mieng, p15, gk, ck, ghiChu, null, nd);
+                    }
+
+                    if (ok)
+                        saved++;
+                    else
+                        skippedNoPerm++;
+                } catch (Exception ex) {
+                    errors++;
+                }
+            }
+        } finally {
+            try {
+                if (fis != null)
+                    fis.close();
+            } catch (Exception ex) {
+            }
+            try {
+                if (wb != null)
+                    wbClass.getMethod("close").invoke(wb);
+            } catch (Exception ex) {
+            }
+        }
+
+        StringBuilder msg = new StringBuilder();
+        msg.append("Kết quả nhập:\n");
+        msg.append("Đã lưu: ").append(saved).append('\n');
+        if (unmapped > 0)
+            msg.append("Bị bỏ qua (môn không khớp): ").append(unmapped).append('\n');
+        if (skippedNoPerm > 0)
+            msg.append("Bị bỏ qua (không có quyền): ").append(skippedNoPerm).append('\n');
+        if (errors > 0)
+            msg.append("Lỗi: ").append(errors).append('\n');
+        JOptionPane.showMessageDialog(this, msg.toString());
     }
 
     private void printBangDiem() {
