@@ -31,6 +31,9 @@ import java.sql.SQLException;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.FileNotFoundException;
 import javax.swing.filechooser.FileNameExtensionFilter;
 
 /**
@@ -194,8 +197,8 @@ public class BangDiemChiTietDialog extends JDialog {
         btnSave.setEnabled(false);
         btnCancel = new JButton("Hủy");
         btnCancel.setEnabled(false);
-        btnImport = new JButton("Nhập CSV");
-        JButton btnExport = new JButton("Xuất CSV");
+        btnImport = new JButton("Nhập (Excel/CSV)");
+        JButton btnExport = new JButton("Xuất Excel");
         JButton btnPrint = new JButton("In");
         JButton btnClose = new JButton("Đóng");
 
@@ -452,28 +455,49 @@ public class BangDiemChiTietDialog extends JDialog {
         // Import/Export using Excel (.xlsx) instead of CSV. Uses Apache POI if
         // available.
         btnImport.addActionListener(e -> {
-            // Prompt user to choose an .xlsx file to import
+            // Prompt user to choose an .xlsx or .csv file to import
             if (currentMaHS == -1) {
                 JOptionPane.showMessageDialog(this, "Vui lòng chọn một học sinh trước khi nhập dữ liệu.", "Lỗi",
                         JOptionPane.ERROR_MESSAGE);
                 return;
             }
             JFileChooser chooser = new JFileChooser();
-            chooser.setDialogTitle("Chọn file Excel (.xlsx) để nhập");
-            chooser.setFileFilter(new FileNameExtensionFilter("Excel files", "xlsx"));
+            chooser.setDialogTitle("Chọn file Excel (.xlsx) hoặc CSV để nhập");
+            chooser.setFileFilter(new FileNameExtensionFilter("Excel or CSV files", "xlsx", "csv"));
             int rc = chooser.showOpenDialog(this);
             if (rc != JFileChooser.APPROVE_OPTION)
                 return;
             File f = chooser.getSelectedFile();
+            if (f == null)
+                return;
+            String name = f.getName().toLowerCase();
             try {
-                importXlsx(f);
+                if (name.endsWith(".xlsx") || name.endsWith(".xls")) {
+                    try {
+                        importXlsx(f);
+                    } catch (ClassNotFoundException cnf) {
+                        JOptionPane.showMessageDialog(this,
+                                "Thư viện Apache POI không được tìm thấy. Vui lòng thêm poi-ooxml jars vào thư mục lib/.",
+                                "Thiếu thư viện", JOptionPane.ERROR_MESSAGE);
+                        return;
+                    }
+                } else if (name.endsWith(".csv")) {
+                    importCsv(f);
+                } else {
+                    JOptionPane.showMessageDialog(this,
+                            "Định dạng file không được hỗ trợ. Vui lòng chọn .xlsx hoặc .csv",
+                            "Lỗi", JOptionPane.ERROR_MESSAGE);
+                    return;
+                }
                 loadBangDiem();
-            } catch (ClassNotFoundException cnf) {
-                JOptionPane.showMessageDialog(this,
-                        "Thư viện Apache POI không được tìm thấy. Vui lòng thêm poi-ooxml jars vào thư mục lib/.",
-                        "Thiếu thư viện", JOptionPane.ERROR_MESSAGE);
             } catch (Exception ex) {
-                JOptionPane.showMessageDialog(this, "Lỗi khi nhập file Excel: " + ex.getMessage(), "Lỗi",
+                ex.printStackTrace();
+                String msg = ex.getMessage();
+                if (msg == null && ex.getCause() != null)
+                    msg = ex.getCause().toString();
+                if (msg == null)
+                    msg = ex.toString();
+                JOptionPane.showMessageDialog(this, "Lỗi khi nhập file: " + msg, "Lỗi",
                         JOptionPane.ERROR_MESSAGE);
             }
         });
@@ -1665,18 +1689,16 @@ public class BangDiemChiTietDialog extends JDialog {
             } catch (Exception ex) {
             }
 
-            java.lang.reflect.Method iteratorMethod = sheet.getClass().getMethod("iterator");
-            Object it = iteratorMethod.invoke(sheet);
-            java.lang.reflect.Method hasNext = it.getClass().getMethod("hasNext");
-            java.lang.reflect.Method next = it.getClass().getMethod("next");
-
-            if (!((Boolean) hasNext.invoke(it)))
+            // Prefer index-based iteration to avoid reflective access to iterator
+            // inner classes that may be encapsulated by the module system.
+            java.lang.reflect.Method getLastRowNum = sheet.getClass().getMethod("getLastRowNum");
+            int lastRow = ((Number) getLastRowNum.invoke(sheet)).intValue();
+            if (lastRow < 0)
                 throw new Exception("File Excel không có header");
-            // skip header
-            next.invoke(it);
 
-            while ((Boolean) hasNext.invoke(it)) {
-                Object row = next.invoke(it);
+            // start from row index 1 to skip header row at index 0
+            for (int rowIndex = 1; rowIndex <= lastRow; rowIndex++) {
+                Object row = sheet.getClass().getMethod("getRow", int.class).invoke(sheet, rowIndex);
                 try {
                     java.lang.reflect.Method getCell = row.getClass().getMethod("getCell", int.class);
                     Object cTen = getCell.invoke(row, 1);
@@ -1757,6 +1779,138 @@ public class BangDiemChiTietDialog extends JDialog {
         if (errors > 0)
             msg.append("Lỗi: ").append(errors).append('\n');
         JOptionPane.showMessageDialog(this, msg.toString());
+    }
+
+    /** Import data from a CSV file (simple parser, supports quoted fields). */
+    private void importCsv(File f) throws Exception {
+        if (f == null || !f.exists())
+            throw new FileNotFoundException("File không tồn tại");
+
+        // Build name->id map for subjects
+        java.util.List<com.sgu.qlhs.dto.MonHocDTO> allMons = monBUS.getAllMon();
+        java.util.Map<String, Integer> monByName = new java.util.HashMap<>();
+        java.util.Map<Integer, com.sgu.qlhs.dto.MonHocDTO> monById = new java.util.HashMap<>();
+        for (com.sgu.qlhs.dto.MonHocDTO m : allMons) {
+            if (m.getTenMon() != null)
+                monByName.put(m.getTenMon().trim(), m.getMaMon());
+            monById.put(m.getMaMon(), m);
+        }
+
+        int saved = 0, skippedNoPerm = 0, unmapped = 0, errors = 0;
+
+        // resolve current user
+        com.sgu.qlhs.dto.NguoiDungDTO nd = null;
+        try {
+            java.awt.Window w2 = javax.swing.SwingUtilities.getWindowAncestor(this);
+            if (w2 instanceof com.sgu.qlhs.ui.MainDashboard) {
+                com.sgu.qlhs.ui.MainDashboard md2 = (com.sgu.qlhs.ui.MainDashboard) w2;
+                nd = md2.getNguoiDung();
+            }
+        } catch (Exception ex) {
+        }
+
+        try (BufferedReader br = new BufferedReader(new FileReader(f))) {
+            String line = br.readLine(); // header
+            if (line == null)
+                throw new Exception("File CSV không có header");
+            while ((line = br.readLine()) != null) {
+                if (line.trim().isEmpty())
+                    continue;
+                try {
+                    String[] cols = parseCsvLine(line);
+                    // read columns: STT(0), TenMon(1), mieng(2), p15(3), gk(4), ck(5), ketqua(6),
+                    // ghichu(7)
+                    String tenMon = cols.length > 1 ? cols[1].trim() : "";
+                    if (tenMon.isEmpty())
+                        continue;
+                    Integer maMon = monByName.get(tenMon);
+                    if (maMon == null) {
+                        unmapped++;
+                        continue;
+                    }
+                    com.sgu.qlhs.dto.MonHocDTO mon = monById.get(maMon);
+                    boolean ok = false;
+                    if (mon != null && "DanhGia".equalsIgnoreCase(mon.getLoaiMon())) {
+                        String ketQua = cols.length > 6 ? cols[6].trim() : "";
+                        String ghiChu = cols.length > 7 ? cols[7].trim() : "";
+                        ok = diemBUS.saveOrUpdateDiem(currentMaHS, maMon, currentHocKy, currentMaNK,
+                                null, null, null, null, ghiChu, ketQua.isEmpty() ? null : ketQua, nd);
+                    } else {
+                        Double mieng = null, p15 = null, gk = null, ck = null;
+                        try {
+                            mieng = (cols.length > 2 && !cols[2].trim().isEmpty()) ? Double.valueOf(cols[2]) : null;
+                        } catch (Exception ex) {
+                        }
+                        try {
+                            p15 = (cols.length > 3 && !cols[3].trim().isEmpty()) ? Double.valueOf(cols[3]) : null;
+                        } catch (Exception ex) {
+                        }
+                        try {
+                            gk = (cols.length > 4 && !cols[4].trim().isEmpty()) ? Double.valueOf(cols[4]) : null;
+                        } catch (Exception ex) {
+                        }
+                        try {
+                            ck = (cols.length > 5 && !cols[5].trim().isEmpty()) ? Double.valueOf(cols[5]) : null;
+                        } catch (Exception ex) {
+                        }
+                        String ghiChu = cols.length > 7 ? cols[7].trim() : "";
+                        ok = diemBUS.saveOrUpdateDiem(currentMaHS, maMon, currentHocKy, currentMaNK,
+                                mieng, p15, gk, ck, ghiChu, null, nd);
+                    }
+
+                    if (ok)
+                        saved++;
+                    else
+                        skippedNoPerm++;
+                } catch (Exception ex) {
+                    errors++;
+                }
+            }
+        }
+
+        StringBuilder msg = new StringBuilder();
+        msg.append("Kết quả nhập:\n");
+        msg.append("Đã lưu: ").append(saved).append('\n');
+        if (unmapped > 0)
+            msg.append("Bị bỏ qua (môn không khớp): ").append(unmapped).append('\n');
+        if (skippedNoPerm > 0)
+            msg.append("Bị bỏ qua (không có quyền): ").append(skippedNoPerm).append('\n');
+        if (errors > 0)
+            msg.append("Lỗi: ").append(errors).append('\n');
+        JOptionPane.showMessageDialog(this, msg.toString());
+    }
+
+    /** Very small CSV parser that handles quoted fields. */
+    private static String[] parseCsvLine(String line) {
+        java.util.List<String> parts = new java.util.ArrayList<>();
+        StringBuilder cur = new StringBuilder();
+        boolean inQuotes = false;
+        for (int i = 0; i < line.length(); i++) {
+            char c = line.charAt(i);
+            if (c == '"') {
+                if (inQuotes && i + 1 < line.length() && line.charAt(i + 1) == '"') {
+                    // escaped quote
+                    cur.append('"');
+                    i++; // skip next
+                } else {
+                    inQuotes = !inQuotes;
+                }
+            } else if (c == ',' && !inQuotes) {
+                parts.add(cur.toString());
+                cur.setLength(0);
+            } else {
+                cur.append(c);
+            }
+        }
+        parts.add(cur.toString());
+        // trim surrounding quotes/spaces
+        for (int i = 0; i < parts.size(); i++) {
+            String s = parts.get(i).trim();
+            if (s.startsWith("\"") && s.endsWith("\"") && s.length() >= 2)
+                s = s.substring(1, s.length() - 1);
+            parts.set(i, s);
+        }
+        return parts.toArray(new String[0]);
     }
 
     private void printBangDiem() {
