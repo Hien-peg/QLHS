@@ -38,21 +38,24 @@ public class PhanCongDayBUS {
     public List<Integer> getDistinctMaLopWithChuNhiem(int maGV, String namHoc, String hocKy) {
         java.util.Set<Integer> set = new java.util.LinkedHashSet<>();
         try {
+            // Lấy danh sách lớp dạy 
             List<Integer> taught = getDistinctMaLopByGiaoVien(maGV, namHoc, hocKy);
             if (taught != null)
                 set.addAll(taught);
         } catch (Exception ex) {
-            // ignore and continue
+            System.err.println("Lỗi khi lấy lớp dạy: " + ex.getMessage());
         }
         try {
-            // add chu nhiem class if exists
+            // Lấy lớp chủ nhiệm
             com.sgu.qlhs.bus.ChuNhiemBUS cnBus = new com.sgu.qlhs.bus.ChuNhiemBUS();
             com.sgu.qlhs.dto.ChuNhiemDTO cn = cnBus.getChuNhiemByGV(maGV);
+            
+            // Chỉ thêm lớp chủ nhiệm nếu nó chưa có trong danh sách lớp dạy
             if (cn != null && cn.getMaLop() > 0) {
                 set.add(cn.getMaLop());
             }
         } catch (Exception ex) {
-            // ignore
+            System.err.println("Lỗi khi lấy lớp chủ nhiệm: " + ex.getMessage());
         }
         return new ArrayList<>(set);
     }

@@ -81,6 +81,8 @@ public class HocSinhPanel extends JPanel {
         // window. When constructed inside MainDashboard, getWindowAncestor may be
         // null during ctor; use a hierarchy listener to perform one-time
         // adjustment once ancestor is available.
+        
+        // ===== SỬA: CẬP NHẬT BỘ LẮNG NGHE NÀY =====
         this.addHierarchyListener(evt -> {
             if (userContextResolved)
                 return;
@@ -92,20 +94,58 @@ public class HocSinhPanel extends JPanel {
                     if (nd != null && "giao_vien".equalsIgnoreCase(nd.getVaiTro())) {
                         ChuNhiemBUS cnBus = new ChuNhiemBUS();
                         var cn = cnBus.getChuNhiemByGV(nd.getId());
+                        
                         if (cn != null && cn.getMaLop() > 0) {
+                            // CASE 1: Teacher IS a Homeroom Teacher (GVCN)
                             // replace innerWrap contents with the tabbed UI
                             innerWrap.removeAll();
                             innerWrap.add(buildTabbedHsPanel(nd.getId(), cn.getMaLop()), BorderLayout.CENTER);
                             innerWrap.revalidate();
                             innerWrap.repaint();
+                        } else {
+                            // CASE 2: Teacher is a Subject Teacher (GVBM)
+                            // The filter was built with default classes (lúc hàm khởi tạo chạy),
+                            // chúng ta cần tải lại danh sách lớp cho đúng.
+                            
+                            LopBUS lopBUS = new LopBUS(); 
+                            PhanCongDayBUS pc = new PhanCongDayBUS(); 
+                            String namHoc = NienKhoaBUS.currentNamHoc();
+                            
+                            // Chỉ lấy các lớp được phân công dạy (KHÔNG lấy lớp chủ nhiệm)
+                            java.util.List<Integer> lopIds = pc.getDistinctMaLopByGiaoVien(nd.getId(), namHoc, null);
+
+                            // Tải lại cboHsLop (ComboBox trong panel đơn)
+                            cboLopMaList.clear();
+                            cboHsLop.removeAllItems();
+                            
+                            // GVBM nên có "Tất cả" để xem tất cả các lớp mình dạy
+                            cboHsLop.addItem("Tất cả"); 
+                            cboLopMaList.add(0); // Thêm 0 để map với "Tất cả"
+
+                            for (Integer ml : lopIds) {
+                                com.sgu.qlhs.dto.LopDTO l = lopBUS.getLopByMa(ml);
+                                if (l != null) {
+                                    cboHsLop.addItem(l.getTenLop());
+                                    cboLopMaList.add(l.getMaLop());
+                                }
+                            }
+                            if (cboHsLop.getItemCount() > 0)
+                                cboHsLop.setSelectedIndex(0);
+                            
+                            // Áp dụng bộ lọc (để tải lại bảng)
+                            applyHsFilters();
                         }
                     }
+                    // Ghi chú: Nếu là Admin, bộ lọc mặc định (có 4-5 lớp mẫu) là chấp nhận được
+                    // vì Admin có thể xem tất cả học sinh.
                 } catch (Exception ex) {
                     // ignore and keep default single view
+                    ex.printStackTrace();
                 }
                 userContextResolved = true;
             }
         });
+        // ============================================
 
         add(outer, BorderLayout.CENTER);
 
@@ -124,6 +164,9 @@ public class HocSinhPanel extends JPanel {
         cboHsLop.setBorder(BorderFactory.createTitledBorder("Lớp"));
 
         try {
+            // Ghi chú: Logic này chạy lúc khởi tạo, Window (w) thường là NULL
+            // nên nó sẽ rơi vào 'else' và tải danh sách lớp mẫu.
+            // Bộ lắng nghe (HierarchyListener) ở trên sẽ sửa lại điều này.
             java.awt.Window w = SwingUtilities.getWindowAncestor(this);
             if (w instanceof com.sgu.qlhs.ui.MainDashboard) {
                 com.sgu.qlhs.ui.MainDashboard md = (com.sgu.qlhs.ui.MainDashboard) w;
@@ -132,22 +175,20 @@ public class HocSinhPanel extends JPanel {
                 PhanCongDayBUS pc = new PhanCongDayBUS();
 
                 if (nd != null && "giao_vien".equalsIgnoreCase(nd.getVaiTro())) {
-                    // For teachers: do NOT show a global "Tất cả"; show only their classes.
-                    // If the teacher is also a chủ nhiệm, include their homeroom class as
-                    // well (union).
                     String namHoc = NienKhoaBUS.currentNamHoc();
                     java.util.List<Integer> lopIds = new java.util.ArrayList<>();
                     try {
-                        // get union of taught classes + chu nhiem if any
                         lopIds = pc.getDistinctMaLopWithChuNhiem(nd.getId(), namHoc, null);
                     } catch (Exception ex) {
-                        // fallback: get only taught classes
                         lopIds = pc.getDistinctMaLopByGiaoVien(nd.getId(), namHoc, null);
                     }
-
-                    // populate combo and mapping list
+                    
+                    // Sửa logic của GV: Thêm "Tất cả"
                     cboLopMaList.clear();
                     cboHsLop.removeAllItems();
+                    cboHsLop.addItem("Tất cả"); 
+                    cboLopMaList.add(0);
+
                     for (Integer ml : lopIds) {
                         com.sgu.qlhs.dto.LopDTO l = lopBUS.getLopByMa(ml);
                         if (l != null) {
@@ -155,10 +196,8 @@ public class HocSinhPanel extends JPanel {
                             cboLopMaList.add(l.getMaLop());
                         }
                     }
-                    if (cboHsLop.getItemCount() > 0)
-                        cboHsLop.setSelectedIndex(0);
                 } else {
-                    // Non-teacher (admin or others): keep a default "Tất cả" + sample
+                    // Admin (hoặc lỗi)
                     cboHsLop.addItem("Tất cả");
                     cboHsLop.addItem("10A1");
                     cboHsLop.addItem("10A2");
@@ -166,6 +205,7 @@ public class HocSinhPanel extends JPanel {
                     cboHsLop.addItem("12A1");
                 }
             } else {
+                // Đây là block thường được chạy lúc khởi tạo
                 cboHsLop.addItem("Tất cả");
                 cboHsLop.addItem("10A1");
                 cboHsLop.addItem("10A2");
@@ -177,7 +217,6 @@ public class HocSinhPanel extends JPanel {
         }
 
         // ... (Phần còn lại của hàm buildFilter() giữ nguyên) ...
-        // Only keep the two realistic options for gender in this app: Nam and Nữ
         cboHsGioiTinh = new JComboBox<>(new String[] { "Tất cả", "Nam", "Nữ" });
         cboHsGioiTinh.setBorder(BorderFactory.createTitledBorder("Giới tính"));
 
@@ -403,11 +442,15 @@ public class HocSinhPanel extends JPanel {
         };
         tblTaught = new JTable(taughtModel);
         tblTaught.setAutoCreateRowSorter(true);
+
+
         taughtSorter = new TableRowSorter<>(tblTaught.getModel());
-        tblTaught.setRowSorter(taughtSorter);
+        // taughtSorter = new TableRowSorter<>(taughtModel); 
+        
+        tblTaught.setRowSorter(taughtSorter); // Gán sorter cho bảng
+        
         tblTaught.setRowHeight(24);
 
-        // populate class list for taught classes (exclude homeroom to avoid dup)
         populateTaughtClassCombo(maGV, chuNhiemMaLop);
 
         cboTaughtLop.addActionListener(e -> {
@@ -420,7 +463,6 @@ public class HocSinhPanel extends JPanel {
             }
         });
 
-        // double-click -> open detail for the selected row
         tblTaught.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
@@ -540,6 +582,7 @@ public class HocSinhPanel extends JPanel {
                 hocSinhData).setVisible(true);
     }
 
+    // ===== SỬA: CẬP NHẬT applyHsFilters =====
     private void applyHsFilters() {
         if (hsSorter == null)
             return;
@@ -553,13 +596,28 @@ public class HocSinhPanel extends JPanel {
         }
 
         // --- Lọc theo lớp ---
-        Object selectedLopObj = cboHsLop.getSelectedItem();
-        if (selectedLopObj != null) {
-            String lop = String.valueOf(selectedLopObj);
-            // If the combo contains a global "Tất cả" item (admins), keep its behavior.
-            // For teachers the combo is populated only with their classes (no "Tất cả").
-            if (!"Tất cả".equals(lop)) {
-                filters.add(RowFilter.regexFilter("^" + Pattern.quote(lop) + "$", 4));
+        int selectedLopIdx = cboHsLop.getSelectedIndex();
+        if (selectedLopIdx >= 0) {
+            // Kiểm tra xem ta đang dùng danh sách MaLop (cho GV) hay danh sách chuỗi (cho Admin)
+            if (cboLopMaList.size() > 0) {
+                // Đang dùng danh sách MaLop (GV)
+                if (selectedLopIdx < cboLopMaList.size()) {
+                    int maLop = cboLopMaList.get(selectedLopIdx);
+                    if (maLop > 0) { // 0 có nghĩa là "Tất cả"
+                        // Lọc theo tên lớp tương ứng
+                        String tenLop = cboHsLop.getSelectedItem().toString();
+                        filters.add(RowFilter.regexFilter("^" + Pattern.quote(tenLop) + "$", 4));
+                    }
+                }
+            } else {
+                // Đang dùng danh sách chuỗi mặc định (Admin)
+                Object selectedLopObj = cboHsLop.getSelectedItem();
+                if (selectedLopObj != null) {
+                    String lop = String.valueOf(selectedLopObj);
+                    if (!"Tất cả".equals(lop)) {
+                        filters.add(RowFilter.regexFilter("^" + Pattern.quote(lop) + "$", 4));
+                    }
+                }
             }
         }
 
@@ -574,4 +632,5 @@ public class HocSinhPanel extends JPanel {
 
         hsSorter.setRowFilter(filters.isEmpty() ? null : RowFilter.andFilter(filters));
     }
+    // =====================================
 }
