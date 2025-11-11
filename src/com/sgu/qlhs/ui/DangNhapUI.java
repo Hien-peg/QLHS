@@ -136,7 +136,6 @@ public class DangNhapUI extends JFrame {
                     case "giao_vien" -> {
                         System.out.println(">> Kiểm tra giáo viên có là GVCN không...");
 
-                        // === LOGIC CŨ (THEO YÊU CẦU CỦA BẠN) ===
                         // Kiểm tra xem MaGV này có trong bảng ChuNhiem không
                         ChuNhiemBUS cnBus = new ChuNhiemBUS();
                         ChuNhiemDTO cn = cnBus.getChuNhiemByGV(nd.getId());
@@ -150,7 +149,6 @@ public class DangNhapUI extends JFrame {
                             System.out.println(">> Là giáo viên bộ môn");
                             new GiaoVienDashboard(nd).setVisible(true);
                         }
-                        // === KẾT THÚC LOGIC ===
                     }
 
                     case "hoc_sinh" -> {
@@ -158,7 +156,7 @@ public class DangNhapUI extends JFrame {
 
                         // Khởi tạo BUS để lấy thông tin học sinh
                         HocSinhBUS hsBUS = new HocSinhBUS();
-                        HocSinhDTO hs = hsBUS.getByMaHS(nd.getId()); // ✅ Lấy theo MaHS, không dùng MaTK
+                        HocSinhDTO hs = hsBUS.getByMaHS(nd.getId()); // Lấy theo MaHS, không dùng MaTK
 
                         if (hs != null) {
                             System.out.println("🟢 Học sinh đăng nhập: " + hs.getHoTen());

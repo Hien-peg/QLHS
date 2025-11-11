@@ -36,6 +36,19 @@ import java.io.FileReader;
 import java.io.FileNotFoundException;
 import javax.swing.filechooser.FileNameExtensionFilter;
 
+// SỬA: Thêm các import cần thiết
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
+import com.sgu.qlhs.dto.MonHocDTO;
+import com.sgu.qlhs.dto.PhanCongDayDTO;
+// ==========================
+
 /**
  * Dialog hiển thị bảng điểm chi tiết của học sinh theo định dạng chính thức
  * (ĐÃ CẬP NHẬT ĐỂ HỖ TRỢ MÔN ĐÁNH GIÁ Đ/KĐ)
@@ -648,9 +661,8 @@ public class BangDiemChiTietDialog extends JDialog {
                         lopIds.clear();
                         if (hs != null && hs.getTenLop() != null) {
                             cboLop.addItem(hs.getTenLop());
-                            // HocSinhDTO does not carry MaLop id; use placeholder 0 and
-                            // short-circuit student loading elsewhere
-                            lopIds.add(0);
+                            // SỬA: Thêm MaLop của học sinh vào lopIds
+                            lopIds.add(hs.getMaLop());
                         } else {
                             cboLop.addItem("(Không xác định)");
                             lopIds.add(0);
@@ -852,9 +864,108 @@ public class BangDiemChiTietDialog extends JDialog {
                 } catch (Exception ex) {
                 }
             }
+            
+            // ========================================================
+            // === SỬA LOGIC TẢI ĐIỂM: Lấy môn học trước, điểm sau ===
+            // ========================================================
+            
+            // 1. Lấy thông tin học sinh và lớp
+            HocSinhDTO hocSinh = hocSinhBUS.getHocSinhByMaHS(maHS);
+            if (hocSinh == null || hocSinh.getMaLop() == 0) {
+                pnlBangDiem.add(new JLabel("Không thể tải môn học. Học sinh chưa được xếp lớp."));
+                pnlBangDiem.revalidate();
+                pnlBangDiem.repaint();
+                return;
+            }
+            int maLopCuaHS = hocSinh.getMaLop();
+            String tenLopCuaHS = hocSinh.getTenLop();
+            String hoTenCuaHS = hocSinh.getHoTen();
 
-            // Lấy dữ liệu điểm
-            java.util.List<DiemDTO> diemList = diemBUS.getDiemByMaHS(maHS, hkNum, maNK, nd);
+            // 2. Lấy danh sách môn học (Map MaMon -> MonHocDTO)
+            Map<Integer, MonHocDTO> allMonHocMap = new HashMap<>();
+            for (MonHocDTO m : monBUS.getAllMon()) {
+                allMonHocMap.put(m.getMaMon(), m);
+            }
+
+            // 3. Lấy danh sách môn học CẦN HIỂN THỊ (dựa trên phân công của lớp)
+            String namHocStr = NienKhoaBUS.currentNamHoc(); // Hoặc lấy từ CBB
+            try {
+                int selNk2 = cboNamHoc.getSelectedIndex();
+                if (selNk2 >= 0 && selNk2 < nienKhoaIds.size()) {
+                    namHocStr = (new NienKhoaBUS()).getNamHocString(nienKhoaIds.get(selNk2));
+                }
+            } catch (Exception ex) {/* fallback to current */}
+            
+            String hocKyStr = "HK" + hkNum;
+
+            // ==================================================
+            // === SỬA LỖI "Effectively Final" TẠI ĐÂY ===
+            // ==================================================
+            // Tạo biến final để lambda có thể truy cập
+            final String finalNamHocStr = namHocStr;
+            final String finalHocKyStr = hocKyStr;
+
+            // Lấy tất cả PCD của lớp này, trong năm, trong học kỳ
+            List<PhanCongDayDTO> pcds = phanCongBUS.getAll().stream()
+                    .filter(p -> p.getMaLop() == maLopCuaHS &&
+                                 java.util.Objects.equals(finalNamHocStr, p.getNamHoc()) && // An toàn
+                                 java.util.Objects.equals(finalHocKyStr, p.getHocKy()))     // An toàn
+                    .collect(Collectors.toList());
+            // ==================================================
+            
+            // Lấy các mã môn duy nhất
+            Set<Integer> monIdsRequired = pcds.stream().map(PhanCongDayDTO::getMaMon).collect(Collectors.toSet());
+            
+            // SỬA: Nếu không có phân công, TẠM THỜI lấy tất cả các môn
+            if (monIdsRequired.isEmpty()) {
+                // Đây là giải pháp tạm thời nếu PhanCongDay không đầy đủ
+                 monIdsRequired.addAll(allMonHocMap.keySet());
+            }
+
+            List<MonHocDTO> requiredSubjects = new ArrayList<>();
+            for(Integer monId : monIdsRequired) {
+                if(allMonHocMap.containsKey(monId)) {
+                    requiredSubjects.add(allMonHocMap.get(monId));
+                }
+            }
+            // Sắp xếp môn học theo tên
+            requiredSubjects.sort(Comparator.comparing(MonHocDTO::getTenMon));
+
+            // 4. Lấy điểm HIỆN CÓ của học sinh
+            java.util.List<DiemDTO> existingDiemList = diemBUS.getDiemByMaHS(maHS, hkNum, maNK, nd);
+            Map<Integer, DiemDTO> existingDiemMap = new HashMap<>();
+            for (DiemDTO d : existingDiemList) {
+                existingDiemMap.put(d.getMaMon(), d);
+            }
+
+            // 5. Tạo danh sách DIEMLIST tổng hợp
+            java.util.List<DiemDTO> diemList = new ArrayList<>(); // Đây là list cuối cùng
+            
+            for (MonHocDTO mon : requiredSubjects) {
+                DiemDTO diem = existingDiemMap.get(mon.getMaMon());
+                if (diem != null) {
+                    // 5a. Đã có điểm
+                    diemList.add(diem);
+                } else {
+                    // 5b. Chưa có điểm -> Tạo placeholder
+                    DiemDTO placeholder = new DiemDTO();
+                    placeholder.setMaDiem(0); // Đánh dấu là placeholder
+                    placeholder.setMaHS(maHS);
+                    placeholder.setHoTen(hoTenCuaHS);
+                    placeholder.setMaLop(maLopCuaHS);
+                    placeholder.setTenLop(tenLopCuaHS);
+                    placeholder.setMaMon(mon.getMaMon());
+                    placeholder.setTenMon(mon.getTenMon());
+                    placeholder.setLoaiMon(mon.getLoaiMon());
+                    placeholder.setHocKy(hkNum);
+                    // (Các trường điểm/kết quả là null/0.0 mặc định)
+                    diemList.add(placeholder);
+                }
+            }
+            
+            // === KẾT THÚC LOGIC TẢI ĐIỂM ===
+            // =================================
+
             currentMaHS = maHS;
             currentHocKy = hkNum;
             currentMaNK = maNK;
@@ -863,29 +974,29 @@ public class BangDiemChiTietDialog extends JDialog {
             // Tính toán quyền sửa
             rowCanEditList.clear();
             boolean anyRowEditable = false;
+            // SỬA: Phải khởi tạo list trước
             for (int i = 0; i < diemList.size(); i++) {
-                rowCanEditList.add(Boolean.FALSE);
+                rowCanEditList.add(Boolean.FALSE); // Khởi tạo là false
             }
+            
             try {
-
                 com.sgu.qlhs.dto.NguoiDungDTO ndCheck = nd;
                 if (ndCheck != null && "giao_vien".equalsIgnoreCase(ndCheck.getVaiTro())) {
                     for (int i = 0; i < diemList.size(); i++) {
                         DiemDTO d = diemList.get(i);
                         boolean ok = diemBUS.isTeacherAssignedPublic(ndCheck.getId(), maHS, d.getMaMon(), hkNum,
                                 maNK);
-                        rowCanEditList.set(i, ok);
+                        rowCanEditList.set(i, ok); // Đặt giá trị
                         if (ok)
                             anyRowEditable = true;
                     }
-                } else if (ndCheck != null && "quan_tri_vien".equalsIgnoreCase(ndCheck.getVaiTro())) {
+                } else if (ndCheck != null && ("quan_tri_vien".equalsIgnoreCase(ndCheck.getVaiTro()) || "admin".equalsIgnoreCase(ndCheck.getVaiTro()) )) {
                     for (int i = 0; i < rowCanEditList.size(); i++)
                         rowCanEditList.set(i, Boolean.TRUE);
                     anyRowEditable = true;
                 }
             } catch (Exception ex) {
-                for (int i = 0; i < rowCanEditList.size(); i++)
-                    rowCanEditList.set(i, Boolean.FALSE);
+                // (rowCanEditList đã được khởi tạo là false)
             }
 
             // Tạo model
@@ -894,11 +1005,14 @@ public class BangDiemChiTietDialog extends JDialog {
                 public boolean isCellEditable(int row, int column) {
                     if (!tableEditing)
                         return false;
+                    // SỬA: Lấy quyền đã tính toán
                     if (row < 0 || row >= rowCanEditList.size())
                         return false;
                     Boolean allowed = rowCanEditList.get(row);
                     if (allowed == null || !allowed.booleanValue())
                         return false;
+                    
+                    // Logic cũ (đã đúng)
                     if (row < 0 || row >= currentDiemList.size())
                         return false;
                     DiemDTO dto = currentDiemList.get(row);
@@ -924,35 +1038,43 @@ public class BangDiemChiTietDialog extends JDialog {
             int idx = 1;
             for (DiemDTO d : diemList) {
                 String loaiMon = d.getLoaiMon();
+                boolean isPlaceholder = (d.getMaDiem() == 0); // Kiểm tra placeholder
+                
                 if ("DanhGia".equals(loaiMon)) {
                     model.addRow(new Object[] {
                             String.valueOf(idx++),
                             d.getTenMon(),
                             null, null, null, null,
-                            d.getKetQuaDanhGia(),
-                            d.getGhiChu() != null ? d.getGhiChu() : ""
+                            isPlaceholder ? null : d.getKetQuaDanhGia(), // SỬA
+                            isPlaceholder ? "" : (d.getGhiChu() != null ? d.getGhiChu() : "") // SỬA
                     });
                 } else {
                     double mieng = d.getDiemMieng();
                     double p15 = d.getDiem15p();
                     double gk = d.getDiemGiuaKy();
                     double ck = d.getDiemCuoiKy();
-                    double tb = Math.round((mieng * 0.10 + p15 * 0.20 + gk * 0.30 + ck * 0.40) * 10.0) / 10.0;
+                    // SỬA: Nếu là placeholder, TB = null
+                    Double tb = isPlaceholder ? null : Math.round((mieng * 0.10 + p15 * 0.20 + gk * 0.30 + ck * 0.40) * 10.0) / 10.0;
+                    
                     model.addRow(new Object[] {
                             String.valueOf(idx++),
                             d.getTenMon(),
-                            mieng, p15, gk, ck,
-                            tb,
-                            d.getGhiChu() != null ? d.getGhiChu() : ""
+                            isPlaceholder ? null : mieng, // SỬA
+                            isPlaceholder ? null : p15,  // SỬA
+                            isPlaceholder ? null : gk,   // SỬA
+                            isPlaceholder ? null : ck,   // SỬA
+                            tb, // Kết quả
+                            isPlaceholder ? "" : (d.getGhiChu() != null ? d.getGhiChu() : "") // SỬA
                     });
                 }
             }
             table = new JTable(model);
 
             // Thêm CellEditor
-            JComboBox<String> danhGiaEditor = new JComboBox<>(new String[] { "Đ", "KĐ" });
+            JComboBox<String> danhGiaEditor = new JComboBox<>(new String[] { "", "Đ", "KĐ" });
             table.getColumnModel().getColumn(6).setCellEditor(new DefaultCellEditor(danhGiaEditor));
 
+            // SỬA: Đổi tên biến canEdit (logic cũ) thành anyRowEditable (từ trên)
             boolean canEdit = (!isStudentView) && anyRowEditable;
 
             boolean canEditHanhKiem = false;
@@ -997,9 +1119,9 @@ public class BangDiemChiTietDialog extends JDialog {
             String hocLucStr = "(chưa có)";
 
             try {
-                HocSinhDTO hs = hocSinhBUS.getHocSinhByMaHS(maHS);
-                if (hs != null && hs.getMaLop() != 0) {
-                    int maLop = hs.getMaLop();
+                // SỬA: Dùng lại biến hocSinh (đã lấy ở trên)
+                if (hocSinh != null && hocSinh.getMaLop() != 0) {
+                    int maLop = hocSinh.getMaLop();
                     myTBHK = getStudentTBHK(maHS, hkNum, maNK, nd);
                     java.util.List<Double> classScores = getClassTBHKs(maLop, hkNum, maNK);
 
@@ -1137,6 +1259,7 @@ public class BangDiemChiTietDialog extends JDialog {
                 if (btnEdit != null)
                     // allow Edit when there is any subject-edit permission OR when the
                     // user is allowed to edit Hạnh kiểm (GVCN or admin)
+                    // SỬA: Cho phép sửa ngay cả khi chưa có điểm (anyRowEditable=true nếu có môn học)
                     btnEdit.setEnabled(canEdit || canEditHanhKiem);
                 if (btnImport != null) {
                     boolean adminNow = false;
@@ -1308,10 +1431,6 @@ public class BangDiemChiTietDialog extends JDialog {
         pnlBangDiem.repaint();
     }
 
-    /**
-     * Save edits made in the table back to the database. Returns true when saved
-     * successfully.
-     */
     private boolean saveBangDiemEdits() {
         if (currentMaHS == -1) {
             JOptionPane.showMessageDialog(this, "Vui lòng chọn một học sinh để lưu.", "Lỗi", JOptionPane.ERROR_MESSAGE);

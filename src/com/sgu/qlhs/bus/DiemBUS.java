@@ -112,7 +112,7 @@ public class DiemBUS {
             d.setTenLop(tenLop);
             d.setHocKy(hocKy);
             d.setMaMon(maMon);
-            d.setTenMon(tenMon);
+d.setTenMon(tenMon);
             d.setLoaiMon(loaiMon);
             d.setDiemMieng(mieng);
             d.setDiem15p(p15);
@@ -263,8 +263,12 @@ public class DiemBUS {
         }
     }
 
+
+    // =================================================================
+    // === SỬA LỖI KIỂM TRA QUYỀN (PERMISSION CHECK) ===
+    // =================================================================
+
     /**
-     * SỬA LỖI: Đây là hàm gây ra lỗi "Unknown column 'pc.MaNK'".
      * Helper: check whether a teacher (maGV) is assigned to teach the class of maHS
      * for the given niên khóa (maNK) and học kỳ (hocKy).
      * If maMon is not null, also require teacher assigned for that subject.
@@ -274,76 +278,26 @@ public class DiemBUS {
         // 1. Chuyển đổi int HocKy (1) -> String HocKy ("HK1")
         String hocKyString = "HK" + hocKyInt;
 
-        // 2. We'll lazily resolve NamHoc string only if needed by the fallback
-        // strategy (some schemas store NamHoc as string while others store MaNK as
-        // int).
+        // 2. Lấy NamHoc string (ví dụ "2024-2025")
         NienKhoaBUS nkBUS = new NienKhoaBUS();
         String namHocString = null;
-
-        // 3. Try multiple strategies so permission check works regardless of how
-        // PhanCongDay stores niên khóa / học kỳ:
-        // We'll first detect whether the PhanCongDay table contains MaNK column
-        // to avoid executing a query that will throw on some schemas.
-        boolean phanCongHasMaNK = false;
-        try (Connection conn = DatabaseConnection.getConnection()) {
-            java.sql.DatabaseMetaData md = conn.getMetaData();
-            try (ResultSet cols = md.getColumns(null, null, "PhanCongDay", "MaNK")) {
-                if (cols != null && cols.next()) {
-                    phanCongHasMaNK = true;
-                }
-            }
-        } catch (SQLException ex) {
-            // ignore metadata failures and fall back to trying string-based strategy
-            phanCongHasMaNK = false;
+        try {
+            namHocString = nkBUS.getNamHocString(maNK);
+        } catch (Exception ex) {
+            namHocString = null;
         }
-
-        // Strategy A (only when MaNK exists): pc.MaNK (int) and pc.HocKy (int)
-        if (phanCongHasMaNK) {
-            String sqlA = "SELECT COUNT(*) AS cnt FROM PhanCongDay pc JOIN HocSinh hs ON hs.MaLop = pc.MaLop "
-                    + "WHERE pc.MaGV = ? AND pc.MaNK = ? AND pc.HocKy = ? AND hs.MaHS = ?";
-            if (maMon != null) {
-                sqlA += " AND pc.MaMon = ?";
-            }
-
-            try (Connection conn = DatabaseConnection.getConnection();
-                    PreparedStatement ps = conn.prepareStatement(sqlA)) {
-                int idx = 1;
-                ps.setInt(idx++, maGV);
-                ps.setInt(idx++, maNK);
-                ps.setInt(idx++, hocKyInt);
-                ps.setInt(idx++, maHS);
-                if (maMon != null) {
-                    ps.setInt(idx++, maMon);
-                }
-                try (ResultSet rs = ps.executeQuery()) {
-                    if (rs.next()) {
-                        int cnt = rs.getInt("cnt");
-                        if (cnt > 0)
-                            return true;
-                    }
-                }
-            } catch (SQLException e) {
-                // If this fails, fall through to the string-based strategy below
-            }
-        }
-
-        // Strategy B (string-based): pc.NamHoc (string) and pc.HocKy (string like
-        // "HK1")
-        // Resolve NamHoc string now; if not found, skip this strategy.
+        
+        // Nếu không tìm thấy năm học string, không thể kiểm tra quyền
         if (namHocString == null) {
-            try {
-                namHocString = nkBUS.getNamHocString(maNK);
-            } catch (Exception ex) {
-                namHocString = null;
-            }
-        }
-        if (namHocString == null) {
-            // cannot perform fallback without NamHoc string, return no match
+            System.err.println("[DBG] isTeacherAssigned: Không tìm thấy NamHoc String cho MaNK=" + maNK);
             return false;
         }
 
+        // 3. Xây dựng câu truy vấn (Chiến lược B - Dùng String)
+        // Bảng PhanCongDay dùng NamHoc (VARCHAR) và HocKy (VARCHAR)
         String sqlB = "SELECT COUNT(*) AS cnt FROM PhanCongDay pc JOIN HocSinh hs ON hs.MaLop = pc.MaLop "
                 + "WHERE pc.MaGV = ? AND pc.NamHoc = ? AND pc.HocKy = ? AND hs.MaHS = ?";
+        
         if (maMon != null) {
             sqlB += " AND pc.MaMon = ?";
         }
@@ -358,26 +312,29 @@ public class DiemBUS {
             if (maMon != null) {
                 ps.setInt(idx++, maMon);
             }
-            System.out.println("[DBG] Strategy B SQL: " + sqlB);
-            System.out.println("[DBG] Strategy B params: maGV=" + maGV + ", NamHoc='" + namHocString + "', hocKy='"
-                    + hocKyString + "', maHS=" + maHS + (maMon != null ? ", maMon=" + maMon : ""));
+            
+            // Debugging (có thể xóa sau)
+            // System.out.println("[DBG] isTeacherAssigned: maGV=" + maGV + ", NamHoc='" + namHocString + "', hocKy='" + hocKyString + "', maHS=" + maHS + (maMon != null ? ", maMon=" + maMon : ""));
+
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
                     int cnt = rs.getInt("cnt");
-                    System.out.println("[DBG] Strategy B result count=" + cnt);
-                    if (cnt > 0) {
-                        System.out.println("[DBG] Strategy B matched - teacher is assigned");
-                        return true;
-                    }
+                    // if (cnt > 0) System.out.println("[DBG] => Quyền được cấp (Count=" + cnt + ")");
+                    return (cnt > 0);
                 }
             }
         } catch (SQLException e) {
-            System.err.println("[DBG] Strategy B threw SQLException: " + e.getMessage());
+            System.err.println("[DBG] Strategy B (String) threw SQLException: " + e.getMessage());
+            throw e; // Ném lỗi ra ngoài để transaction (nếu có) rollback
         }
 
-        System.out.println("[DBG] No matching assignment found for teacher.");
+        // System.out.println("[DBG] => Không có quyền");
         return false;
     }
+    // =================================================================
+    // === KẾT THÚC SỬA LỖI KIỂM TRA QUYỀN ===
+    // =================================================================
+
 
     public List<DiemDTO> getDiemFiltered(Integer maLop, Integer maMon, Integer hocKy, Integer maNK,
             Integer limit, Integer offset) {
