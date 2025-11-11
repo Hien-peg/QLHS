@@ -1,10 +1,10 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package com.sgu.qlhs.ui.panels;
 
 import com.sgu.qlhs.ui.components.*;
+import com.sgu.qlhs.ui.MainDashboard; 
+import com.sgu.qlhs.ui.dialogs.HocSinhAddDialog;
+import com.sgu.qlhs.ui.dialogs.HocSinhEditDialog;
+import com.sgu.qlhs.ui.dialogs.HocSinhDeleteDialog;
 import com.sgu.qlhs.ui.dialogs.LopQuanLyDialog;
 import com.sgu.qlhs.ui.dialogs.MonQuanLyDialog;
 import com.sgu.qlhs.ui.dialogs.PhongQuanLyDialog;
@@ -12,15 +12,10 @@ import com.sgu.qlhs.ui.dialogs.DiemNhapDialog;
 import com.sgu.qlhs.ui.dialogs.DiemTinhXepLoaiDialog;
 import com.sgu.qlhs.ui.dialogs.DiemXemTheoHocKyDialog;
 import com.sgu.qlhs.ui.dialogs.BangDiemChiTietDialog;
-import com.sgu.qlhs.ui.dialogs.HocSinhAddDialog;
-import com.sgu.qlhs.ui.dialogs.HocSinhDeleteDialog;
-import com.sgu.qlhs.ui.dialogs.HocSinhEditDialog;
 import com.sgu.qlhs.ui.dialogs.ThongKeLopSucChuaDialog;
 import com.sgu.qlhs.ui.dialogs.ThongKeGioiTinhDialog;
 import com.sgu.qlhs.ui.dialogs.ThongKeDiemMonDialog;
-// === THÊM IMPORT MỚI ===
 import com.sgu.qlhs.ui.dialogs.ThongKeHocLucDialog;
-// ======================
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -46,14 +41,11 @@ public class DashboardPanel extends JPanel {
                 new SectionItem("Tính TB tất cả môn", IconType.TABLE),
                 new SectionItem("Xem điểm HK/Năm", IconType.BARCHART),
                 new SectionItem("Bảng điểm chi tiết", IconType.ABC) }));
-
-        // === SỬA KHỐI THỐNG KÊ ===
         add(makeSection("Thống kê", new SectionItem[] {
                 new SectionItem("Thống kê giới tính", IconType.CHART),
-                new SectionItem("Xếp loại học lực (Khối)", IconType.PIECHART), // <-- NÚT MỚI
+                new SectionItem("Xếp loại học lực (Khối)", IconType.PIECHART),
                 new SectionItem("Thống kê điểm TB môn", IconType.BARCHART),
                 new SectionItem("Thống kê sức chứa lớp", IconType.MATRIX) }));
-        // ========================
     }
 
     private JPanel makeSection(String title, SectionItem[] items) {
@@ -105,39 +97,55 @@ public class DashboardPanel extends JPanel {
 
             @Override
             public void mouseClicked(java.awt.event.MouseEvent e) {
+                Window parentWindow = SwingUtilities.getWindowAncestor(DashboardPanel.this);
+                
                 switch (item.text) {
 
-                    case "Thêm học sinh" ->
-                        new HocSinhAddDialog(null).setVisible(true);
+                    case "Thêm học sinh" -> {
+                        HocSinhAddDialog dialog = new HocSinhAddDialog(parentWindow);
+                        dialog.setVisible(true);
+                        
+                        if (dialog.isAddSuccessful() && parentWindow instanceof MainDashboard) {
+                            ((MainDashboard) parentWindow).refreshHocSinhPanel();
+                        }
+                    }
 
-                    case "Sửa học sinh" ->
-                        new HocSinhEditDialog(null).setVisible(true);
+                    case "Sửa học sinh" -> {
+                        HocSinhEditDialog dialog = new HocSinhEditDialog(parentWindow);
+                        dialog.setVisible(true);
 
-                    case "Xóa học sinh" ->
-                        new HocSinhDeleteDialog(null).setVisible(true);
+                        if (dialog.isUpdateSuccessful() && parentWindow instanceof MainDashboard) {
+                            ((MainDashboard) parentWindow).refreshHocSinhPanel();
+                        }
+                    }
 
-                    case "Quản lý lớp" -> new LopQuanLyDialog(null).setVisible(true);
-                    case "Quản lý môn" -> new MonQuanLyDialog(null).setVisible(true);
-                    case "Quản lý phòng" -> new PhongQuanLyDialog(null).setVisible(true);
+                    case "Xóa học sinh" -> {
+                        HocSinhDeleteDialog dialog = new HocSinhDeleteDialog(parentWindow);
+                        dialog.setVisible(true);
+                        
+                        if (dialog.isDeleteSuccessful() && parentWindow instanceof MainDashboard) {
+                            ((MainDashboard) parentWindow).refreshHocSinhPanel();
+                        }
+                    }
 
-                    case "Nhập điểm" -> new DiemNhapDialog(null).setVisible(true);
-                    case "Tính TB từng môn" -> new DiemTinhXepLoaiDialog(null).setVisible(true);
+                    case "Quản lý lớp" -> new LopQuanLyDialog(parentWindow).setVisible(true);
+                    case "Quản lý môn" -> new MonQuanLyDialog(parentWindow).setVisible(true);
+                    case "Quản lý phòng" -> new PhongQuanLyDialog(parentWindow).setVisible(true);
+
+                    case "Nhập điểm" -> new DiemNhapDialog(parentWindow).setVisible(true);
+                    case "Tính TB từng môn" -> new DiemTinhXepLoaiDialog(parentWindow).setVisible(true);
                     case "Tính TB tất cả môn" ->
-                        new com.sgu.qlhs.ui.dialogs.DiemTrungBinhTatCaMonDialog(null).setVisible(true);
-                    case "Xem điểm HK/Năm" -> new DiemXemTheoHocKyDialog(null).setVisible(true);
-                    case "Bảng điểm chi tiết" -> new BangDiemChiTietDialog(null).setVisible(true);
+                        new com.sgu.qlhs.ui.dialogs.DiemTrungBinhTatCaMonDialog(parentWindow).setVisible(true);
+                    case "Xem điểm HK/Năm" -> new DiemXemTheoHocKyDialog(parentWindow).setVisible(true);
+                    case "Bảng điểm chi tiết" -> new BangDiemChiTietDialog(parentWindow).setVisible(true);
 
-                    case "Thống kê giới tính" -> new ThongKeGioiTinhDialog(null).setVisible(true);
-                    
-                    // === THÊM CASE MỚI ===
-                    case "Xếp loại học lực (Khối)" -> new ThongKeHocLucDialog(null).setVisible(true);
-                    // =====================
-                    
-                    case "Thống kê điểm TB môn" -> new ThongKeDiemMonDialog(null).setVisible(true);
-                    case "Thống kê sức chứa lớp" -> new ThongKeLopSucChuaDialog(null).setVisible(true);
+                    case "Thống kê giới tính" -> new ThongKeGioiTinhDialog(parentWindow).setVisible(true);
+                    case "Xếp loại học lực (Khối)" -> new ThongKeHocLucDialog(parentWindow).setVisible(true);
+                    case "Thống kê điểm TB môn" -> new ThongKeDiemMonDialog(parentWindow).setVisible(true);
+                    case "Thống kê sức chứa lớp" -> new ThongKeLopSucChuaDialog(parentWindow).setVisible(true);
 
                     default -> {
-                        // No-op for unhandled items. Previously showed a demo popup.
+                        
                     }
                 }
             }

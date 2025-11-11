@@ -26,12 +26,18 @@ public class HocSinhEditDialog extends JDialog {
     private LopBUS lopBUS = new LopBUS();
     private java.util.List<Integer> lopIds = new java.util.ArrayList<>();
 
+    private boolean updateSuccessful = false;
+
     public HocSinhEditDialog(Window owner) {
         super(owner, "Sửa thông tin học sinh", ModalityType.APPLICATION_MODAL);
         setSize(600, 500);
         setLocationRelativeTo(owner);
         setLayout(new BorderLayout(12, 12));
         buildForm();
+    }
+
+    public boolean isUpdateSuccessful() {
+        return this.updateSuccessful;
     }
 
     private void buildForm() {
@@ -50,7 +56,7 @@ public class HocSinhEditDialog extends JDialog {
         txtSdt = new JTextField();
         txtDiaChi = new JTextField();
         txtEmail = new JTextField();
-        cboGioiTinh = new JComboBox<>(new String[] { "Nam", "Nữ", "Khác" });
+        cboGioiTinh = new JComboBox<>(new String[] { "Nam", "Nữ" });
         cboLop = new JComboBox<>();
 
         // load lop list
@@ -174,6 +180,9 @@ public class HocSinhEditDialog extends JDialog {
 
             if (success) {
                 JOptionPane.showMessageDialog(this, "✅ Đã cập nhật thông tin học sinh!");
+                
+                this.updateSuccessful = true;
+                
                 dispose();
             } else {
                 JOptionPane.showMessageDialog(this, "❌ Cập nhật thất bại!");

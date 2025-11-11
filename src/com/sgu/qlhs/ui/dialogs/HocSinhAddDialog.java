@@ -21,6 +21,8 @@ public class HocSinhAddDialog extends JDialog {
     private LopBUS lopBUS = new LopBUS();
     private java.util.List<Integer> lopIds = new ArrayList<>();
 
+    private boolean addSuccessful = false;
+
     public HocSinhAddDialog(Window owner) {
         super(owner, "Thêm học sinh", ModalityType.APPLICATION_MODAL);
         setSize(700, 600);
@@ -29,7 +31,10 @@ public class HocSinhAddDialog extends JDialog {
         buildForm();
     }
 
-    // ... (Hàm buildForm() giữ nguyên y hệt) ...
+    public boolean isAddSuccessful() {
+        return this.addSuccessful;
+    }
+
     private void buildForm() {
         var mainPanel = new JPanel();
         mainPanel.setLayout(new BoxLayout(mainPanel, BoxLayout.Y_AXIS));
@@ -43,7 +48,7 @@ public class HocSinhAddDialog extends JDialog {
         txtSdt = new JTextField();
         txtEmail = new JTextField();
         txtDiaChi = new JTextField();
-        cboGioiTinh = new JComboBox<>(new String[] { "Nam", "Nữ", "Khác" });
+        cboGioiTinh = new JComboBox<>(new String[] { "Nam", "Nữ" });
         cboLop = new JComboBox<>();
 
         try {
@@ -161,8 +166,6 @@ public class HocSinhAddDialog extends JDialog {
         try {
             int maLop = getMaLopByTenLop(tenLop);
 
-            // SỬA LỖI: Gọi qua BUS (hocSinhBUS.saveHocSinh)
-            // SỬA LỖI: Truyền đúng 15 tham số (không còn ph2Email lặp lại)
             boolean success = hocSinhBUS.saveHocSinh(
                     hoTen, ngaySinh, gioiTinh, diaChi, soDienThoai, email, maLop,
                     ph1HoTen, ph1MQH, ph1Sdt, ph1Email,
@@ -171,6 +174,9 @@ public class HocSinhAddDialog extends JDialog {
 
             if (success) {
                 JOptionPane.showMessageDialog(this, "Đã thêm học sinh mới thành công!");
+                
+                this.addSuccessful = true;
+                
                 dispose();
             } else {
                 JOptionPane.showMessageDialog(this, "Lỗi khi thêm học sinh!");

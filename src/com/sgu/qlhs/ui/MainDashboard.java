@@ -43,6 +43,9 @@ public class MainDashboard extends JFrame {
 
     // ===== Sidebar buttons =====
     protected SidebarButton btnDash, btnHs, btnGv, btnLp, btnCn, btnPcd, btntkb, btnDiem, btnTk;
+    
+    protected SidebarButton btnLogout;
+    private SidebarButton[] sideButtons;
 
     // === Constructor ===
     public MainDashboard(NguoiDungDTO nd) {
@@ -104,6 +107,8 @@ public class MainDashboard extends JFrame {
         btnTk = new SidebarButton("Thống kê", false);
         btnTk.setVisible(false);
 
+        btnLogout = new SidebarButton("Đăng xuất", false);
+
         // Thêm vào sidebar
         sidebar.add(btnDash);
         sidebar.add(Box.createVerticalStrut(6));
@@ -124,7 +129,9 @@ public class MainDashboard extends JFrame {
         sidebar.add(btnTk);
         sidebar.add(Box.createVerticalGlue());
 
-        SidebarButton[] sideButtons = { btnDash, btnHs, btnGv, btnLp, btnCn, btnPcd, btntkb, btnDiem, btnTk };
+        sidebar.add(btnLogout);
+
+        this.sideButtons = new SidebarButton[] { btnDash, btnHs, btnGv, btnLp, btnCn, btnPcd, btntkb, btnDiem, btnTk, btnLogout };
 
         // ===== Main area =====
         var mainArea = new JPanel(new BorderLayout());
@@ -142,7 +149,6 @@ public class MainDashboard extends JFrame {
         centerCards.setOpaque(false);
         mainArea.add(centerCards, BorderLayout.CENTER);
 
-        // Thêm các panel chức năng
         centerCards.add(new DashboardPanel(), CARD_DASH);
         centerCards.add(new HocSinhPanel(), CARD_HS);
         centerCards.add(new GiaoVienPanel(), CARD_GV);
@@ -163,15 +169,20 @@ public class MainDashboard extends JFrame {
         root.add(status, BorderLayout.SOUTH);
 
         // ===== Sự kiện sidebar =====
-        btnDash.addActionListener(e -> showCard(CARD_DASH, sideButtons, btnDash));
-        btnHs.addActionListener(e -> showCard(CARD_HS, sideButtons, btnHs));
-        btnGv.addActionListener(e -> showCard(CARD_GV, sideButtons, btnGv));
-        btnLp.addActionListener(e -> showCard(CARD_LP, sideButtons, btnLp));
-        btnCn.addActionListener(e -> showCard(CARD_CN, sideButtons, btnCn));
-        btnPcd.addActionListener(e -> showCard(CARD_PCD, sideButtons, btnPcd));
-        btntkb.addActionListener(e -> showCard(CARD_TKB, sideButtons, btntkb));
-        btnDiem.addActionListener(e -> showCard(CARD_DIEM, sideButtons, btnDiem));
-        btnTk.addActionListener(e -> showCard(CARD_TK, sideButtons, btnTk));
+        btnDash.addActionListener(e -> showCard(CARD_DASH, this.sideButtons, btnDash));
+        btnHs.addActionListener(e -> showCard(CARD_HS, this.sideButtons, btnHs));
+        btnGv.addActionListener(e -> showCard(CARD_GV, this.sideButtons, btnGv));
+        btnLp.addActionListener(e -> showCard(CARD_LP, this.sideButtons, btnLp));
+        btnCn.addActionListener(e -> showCard(CARD_CN, this.sideButtons, btnCn));
+        btnPcd.addActionListener(e -> showCard(CARD_PCD, this.sideButtons, btnPcd));
+        btntkb.addActionListener(e -> showCard(CARD_TKB, this.sideButtons, btntkb));
+        btnDiem.addActionListener(e -> showCard(CARD_DIEM, this.sideButtons, btnDiem));
+        btnTk.addActionListener(e -> showCard(CARD_TK, this.sideButtons, btnTk));
+
+        btnLogout.addActionListener(e -> {
+            this.dispose(); // Đóng cửa sổ MainDashboard
+            DangNhapUI.moLaiDangNhap(); // Mở lại cửa sổ Đăng nhập
+        });
 
         // Hiển thị mặc định Dashboard
         cards.show(centerCards, CARD_DASH);
@@ -189,5 +200,30 @@ public class MainDashboard extends JFrame {
         lbl.setFont(lbl.getFont().deriveFont(Font.BOLD, size));
         lbl.setForeground(color);
         return lbl;
+    }
+
+
+    public void refreshHocSinhPanel() {
+        // Tìm HocSinhPanel hiện tại để xóa
+        Component toRemove = null;
+        for (Component comp : centerCards.getComponents()) {
+            if (comp instanceof HocSinhPanel) {
+                toRemove = comp;
+                break;
+            }
+        }
+        if (toRemove != null) {
+            centerCards.remove(toRemove);
+        }
+        
+        centerCards.add(new HocSinhPanel(), CARD_HS);
+        
+        cards.show(centerCards, CARD_HS);
+        
+        if (sideButtons != null) {
+             for (SidebarButton b : sideButtons)
+                 b.setActive(false);
+             btnHs.setActive(true);
+        }
     }
 }

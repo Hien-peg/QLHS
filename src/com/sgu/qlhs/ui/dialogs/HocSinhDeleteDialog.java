@@ -2,16 +2,8 @@ package com.sgu.qlhs.ui.dialogs;
 
 import javax.swing.*;
 import java.awt.*;
-// import java.sql.Connection; // Bỏ
-// import java.sql.PreparedStatement; // Bỏ
-// import java.sql.ResultSet; // Bỏ
-// import java.sql.SQLException; // Bỏ
-// import java.util.HashMap; // Bỏ
-// import java.util.Map; // Bỏ
 import com.sgu.qlhs.bus.HocSinhBUS;
-// import com.sgu.qlhs.database.HocSinhDAO; // Bỏ
 import com.sgu.qlhs.dto.HocSinhDTO;
-// import com.sgu.qlhs.DatabaseConnection; // Bỏ
 
 public class HocSinhDeleteDialog extends JDialog {
     private JTextField txtMaHS;
@@ -21,6 +13,8 @@ public class HocSinhDeleteDialog extends JDialog {
     //private HocSinhDAO hocSinhDAO = new HocSinhDAO();
     private HocSinhBUS hocSinhBUS = new HocSinhBUS();
 
+    private boolean deleteSuccessful = false;
+
     public HocSinhDeleteDialog(Window owner) {
         super(owner, "Xóa học sinh", ModalityType.APPLICATION_MODAL);
         setSize(420, 300);
@@ -28,6 +22,10 @@ public class HocSinhDeleteDialog extends JDialog {
         setLayout(new BorderLayout(10, 10));
 
         buildForm();
+    }
+
+    public boolean isDeleteSuccessful() {
+        return this.deleteSuccessful;
     }
 
     private void buildForm() {
@@ -97,7 +95,7 @@ public class HocSinhDeleteDialog extends JDialog {
             } else {
                 lblHoTen.setText("-");
                 lblLop.setText("-");
-                // Sửa: Thông báo rõ là không tìm thấy hoặc đã bị xóa
+                // Thông báo rõ là không tìm thấy hoặc đã bị xóa
                 lblKetQua.setText("Không tìm thấy học sinh (hoặc học sinh đã bị xóa)");
                 lblKetQua.setForeground(Color.RED);
                 btnDelete.setEnabled(false);
@@ -128,6 +126,9 @@ public class HocSinhDeleteDialog extends JDialog {
             boolean success = hocSinhBUS.deleteHocSinh(maHS);
             if (success) {
                 JOptionPane.showMessageDialog(this, "✅ Đã xóa học sinh thành công!");
+                
+                this.deleteSuccessful = true;
+                
                 dispose();
             } else {
                 JOptionPane.showMessageDialog(this, "❌ Xóa thất bại! Học sinh có thể không tồn tại.");
