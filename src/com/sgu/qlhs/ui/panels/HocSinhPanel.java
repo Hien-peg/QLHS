@@ -82,7 +82,6 @@ public class HocSinhPanel extends JPanel {
         // null during ctor; use a hierarchy listener to perform one-time
         // adjustment once ancestor is available.
         
-        // ===== SỬA: CẬP NHẬT BỘ LẮNG NGHE NÀY =====
         this.addHierarchyListener(evt -> {
             if (userContextResolved)
                 return;
@@ -104,8 +103,7 @@ public class HocSinhPanel extends JPanel {
                             innerWrap.repaint();
                         } else {
                             // CASE 2: Teacher is a Subject Teacher (GVBM)
-                            // The filter was built with default classes (lúc hàm khởi tạo chạy),
-                            // chúng ta cần tải lại danh sách lớp cho đúng.
+                            // Tải lại danh sách lớp cho đúng.
                             
                             LopBUS lopBUS = new LopBUS(); 
                             PhanCongDayBUS pc = new PhanCongDayBUS(); 
@@ -135,9 +133,28 @@ public class HocSinhPanel extends JPanel {
                             // Áp dụng bộ lọc (để tải lại bảng)
                             applyHsFilters();
                         }
+                    } 
+                    else if (nd != null && ("quan_tri_vien".equalsIgnoreCase(nd.getVaiTro()) || "Admin".equalsIgnoreCase(nd.getVaiTro()))) {
+                        // CASE 3: Admin - Tải tất cả các lớp
+                        LopBUS lopBUS = new LopBUS(); 
+                        java.util.List<LopDTO> allLops = lopBUS.getAllLop();
+
+                        cboLopMaList.clear();
+                        cboHsLop.removeAllItems();
+                        cboHsLop.addItem("Tất cả"); 
+                        cboLopMaList.add(0); // 0 maps to "Tất cả"
+
+                        for (LopDTO l : allLops) {
+                            cboHsLop.addItem(l.getTenLop());
+                            cboLopMaList.add(l.getMaLop());
+                        }
+                        if (cboHsLop.getItemCount() > 0)
+                            cboHsLop.setSelectedIndex(0);
+                        
+                        applyHsFilters(); // Tải lại bảng
                     }
-                    // Ghi chú: Nếu là Admin, bộ lọc mặc định (có 4-5 lớp mẫu) là chấp nhận được
-                    // vì Admin có thể xem tất cả học sinh.
+                    // === KẾT THÚC SỬA LỖI ===
+
                 } catch (Exception ex) {
                     // ignore and keep default single view
                     ex.printStackTrace();
@@ -145,7 +162,6 @@ public class HocSinhPanel extends JPanel {
                 userContextResolved = true;
             }
         });
-        // ============================================
 
         add(outer, BorderLayout.CENTER);
 
