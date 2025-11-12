@@ -61,13 +61,8 @@ public class DiemDAO {
         }
     }
 
-    /**
-     * Insert or update a Diem row identified by (MaHS, MaMon, HocKy, MaNK).
-     * This uses MySQL's ON DUPLICATE KEY UPDATE; requires unique constraint uq_diem
-     * on those columns.
-     */
-    public void upsertDiem(int maHS, int maMon, int hocKy, int maNK, double mieng, double p15, double gk,
-            double ck, String ketQuaDanhGia) {
+    public void upsertDiem(int maHS, int maMon, int hocKy, int maNK, Double mieng, Double p15, Double gk,
+            Double ck, String ketQuaDanhGia) {
         String sql = "INSERT INTO Diem (MaHS, MaMon, HocKy, MaNK, DiemMieng, Diem15p, DiemGiuaKy, DiemCuoiKy, KetQuaDanhGia) "
                 + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) "
                 + "ON DUPLICATE KEY UPDATE DiemMieng = VALUES(DiemMieng), Diem15p = VALUES(Diem15p), "
@@ -78,11 +73,13 @@ public class DiemDAO {
             pstmt.setInt(2, maMon);
             pstmt.setInt(3, hocKy);
             pstmt.setInt(4, maNK);
-            pstmt.setDouble(5, mieng);
-            pstmt.setDouble(6, p15);
-            pstmt.setDouble(7, gk);
-            pstmt.setDouble(8, ck);
-            pstmt.setString(9, ketQuaDanhGia); // Thêm
+            
+            if (mieng != null) pstmt.setDouble(5, mieng); else pstmt.setNull(5, java.sql.Types.DECIMAL);
+            if (p15 != null) pstmt.setDouble(6, p15); else pstmt.setNull(6, java.sql.Types.DECIMAL);
+            if (gk != null) pstmt.setDouble(7, gk); else pstmt.setNull(7, java.sql.Types.DECIMAL);
+            if (ck != null) pstmt.setDouble(8, ck); else pstmt.setNull(8, java.sql.Types.DECIMAL);
+            
+            pstmt.setString(9, ketQuaDanhGia);
             pstmt.executeUpdate();
         } catch (SQLException e) {
             System.err.println("Lỗi upsert điểm: " + e.getMessage());
@@ -93,8 +90,8 @@ public class DiemDAO {
     /**
      * Upsert with teacher note (GhiChu).
      */
-    public void upsertDiemWithNote(int maHS, int maMon, int hocKy, int maNK, double mieng, double p15, double gk,
-            double ck, String ghiChu, String ketQuaDanhGia) {
+    public void upsertDiemWithNote(int maHS, int maMon, int hocKy, int maNK, Double mieng, Double p15, Double gk,
+            Double ck, String ghiChu, String ketQuaDanhGia) {
         String sql = "INSERT INTO Diem (MaHS, MaMon, HocKy, MaNK, DiemMieng, Diem15p, DiemGiuaKy, DiemCuoiKy, GhiChu, KetQuaDanhGia) "
                 + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) "
                 + "ON DUPLICATE KEY UPDATE DiemMieng = VALUES(DiemMieng), Diem15p = VALUES(Diem15p), "
@@ -105,10 +102,12 @@ public class DiemDAO {
             pstmt.setInt(2, maMon);
             pstmt.setInt(3, hocKy);
             pstmt.setInt(4, maNK);
-            pstmt.setDouble(5, mieng);
-            pstmt.setDouble(6, p15);
-            pstmt.setDouble(7, gk);
-            pstmt.setDouble(8, ck);
+            
+            if (mieng != null) pstmt.setDouble(5, mieng); else pstmt.setNull(5, java.sql.Types.DECIMAL);
+            if (p15 != null) pstmt.setDouble(6, p15); else pstmt.setNull(6, java.sql.Types.DECIMAL);
+            if (gk != null) pstmt.setDouble(7, gk); else pstmt.setNull(7, java.sql.Types.DECIMAL);
+            if (ck != null) pstmt.setDouble(8, ck); else pstmt.setNull(8, java.sql.Types.DECIMAL);
+
             pstmt.setString(9, ghiChu);
             pstmt.setString(10, ketQuaDanhGia);
             pstmt.executeUpdate();
@@ -435,6 +434,23 @@ public class DiemDAO {
         } catch (SQLException e) {
             System.err.println("Lỗi khi xóa mềm điểm: " + e.getMessage());
             e.printStackTrace();
+        }
+    }
+    
+    public boolean checkDiemExists(int maHS, int maMon, int hocKy, int maNK) {
+        String sql = "SELECT 1 FROM Diem WHERE MaHS = ? AND MaMon = ? AND HocKy = ? AND MaNK = ? AND TrangThai = 1 LIMIT 1";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, maHS);
+            ps.setInt(2, maMon);
+            ps.setInt(3, hocKy);
+            ps.setInt(4, maNK);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next(); // true nếu tìm thấy (đã tồn tại)
+            }
+        } catch (SQLException e) {
+            System.err.println("Lỗi checkDiemExists: " + e.getMessage());
+            return true; // An toàn, coi như đã tồn tại nếu có lỗi
         }
     }
 }

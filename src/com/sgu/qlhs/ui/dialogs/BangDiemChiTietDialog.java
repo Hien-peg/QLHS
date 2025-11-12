@@ -94,6 +94,8 @@ public class BangDiemChiTietDialog extends JDialog {
     private int initialMaLopContext = -1;
     private int initialMaHS = -1;
     private java.util.List<Boolean> rowCanEditList = new java.util.ArrayList<>();
+    
+    private com.sgu.qlhs.dto.NguoiDungDTO loggedInUser;
 
     public BangDiemChiTietDialog(Window owner) {
         super(owner, "Bảng điểm chi tiết học sinh", ModalityType.APPLICATION_MODAL);
@@ -244,16 +246,19 @@ public class BangDiemChiTietDialog extends JDialog {
             java.awt.Window w = javax.swing.SwingUtilities.getWindowAncestor(this);
             if (w instanceof com.sgu.qlhs.ui.MainDashboard) {
                 com.sgu.qlhs.ui.MainDashboard md = (com.sgu.qlhs.ui.MainDashboard) w;
-                NguoiDungDTO nd = md.getNguoiDung();
-                if (nd != null && "hoc_sinh".equalsIgnoreCase(nd.getVaiTro())) {
+                //NguoiDungDTO nd = md.getNguoiDung();
+                this.loggedInUser = md.getNguoiDung(); // Gán vào biến class
+                //if (nd != null && "hoc_sinh".equalsIgnoreCase(nd.getVaiTro())) {
+                if (this.loggedInUser != null && "hoc_sinh".equalsIgnoreCase(this.loggedInUser.getVaiTro())) {
                     // Student: only viewing permitted; disable edit controls
                     isStudentView = true;
-                    loggedInStudentMaHS = nd.getId(); // mapping assumed: NguoiDung.id -> HocSinh.MaHS
+                    loggedInStudentMaHS = this.loggedInUser.getId(); // mapping assumed: NguoiDung.id -> HocSinh.MaHS
                     btnEdit.setEnabled(false);
                     btnSave.setEnabled(false);
                     btnCancel.setEnabled(false);
                     // keep btnExport/btnPrint enabled so student can export/print their own report
-                } else if (nd != null && "giao_vien".equalsIgnoreCase(nd.getVaiTro())) {
+                //} else if (nd != null && "giao_vien".equalsIgnoreCase(nd.getVaiTro())) {
+                } else if (this.loggedInUser != null && "giao_vien".equalsIgnoreCase(this.loggedInUser.getVaiTro())) {
                     // Teacher: hide or disable filters that are unnecessary when the dialog is
                     // opened from the panel for a specific student. Keep editing controls
                     // available according to permission checks.
@@ -1003,24 +1008,42 @@ public class BangDiemChiTietDialog extends JDialog {
             model = new DefaultTableModel(columns, 0) {
                 @Override
                 public boolean isCellEditable(int row, int column) {
+                    // === THAY THẾ TOÀN BỘ HÀM NÀY ===
+                    
                     if (!tableEditing)
-                        return false;
-                    // SỬA: Lấy quyền đã tính toán
+                        return false; // Không ở chế độ Sửa
+
+                    // 1. Lấy quyền cơ bản (có được phân công dạy môn này không?)
                     if (row < 0 || row >= rowCanEditList.size())
                         return false;
-                    Boolean allowed = rowCanEditList.get(row);
-                    if (allowed == null || !allowed.booleanValue())
-                        return false;
-                    
-                    // Logic cũ (đã đúng)
+                    Boolean allowedByAssignment = rowCanEditList.get(row);
+                    if (allowedByAssignment == null || !allowedByAssignment.booleanValue())
+                        return false; // Không được phân công
+
+                    // 2. Lấy thông tin DTO của dòng này (để kiểm tra MaDiem)
                     if (row < 0 || row >= currentDiemList.size())
                         return false;
                     DiemDTO dto = currentDiemList.get(row);
+
+                    // 3. Kiểm tra vai trò
+                    if (loggedInUser != null && ("quan_tri_vien".equalsIgnoreCase(loggedInUser.getVaiTro()) || "admin".equalsIgnoreCase(loggedInUser.getVaiTro()))) {
+                        // Admin: Được sửa (chỉ cần qua bước 4)
+                    } else if (loggedInUser != null && "giao_vien".equalsIgnoreCase(loggedInUser.getVaiTro())) {
+                        // Giáo viên: Chỉ được sửa nếu MaDiem == 0 (là placeholder)
+                        if (dto.getMaDiem() != 0) {
+                            return false; // Đã có điểm, GV không được sửa
+                        }
+                    } else {
+                        // Vai trò khác (Học sinh, ...)
+                        return false;
+                    }
+
+                    // 4. (Đã qua kiểm tra quyền) Kiểm tra loại cột
                     String loaiMon = dto.getLoaiMon();
                     if ("DanhGia".equals(loaiMon)) {
-                        return (column == 6 || column == 7);
+                        return (column == 6 || column == 7); // Cột "Kết quả" (Đ/KĐ) hoặc Ghi chú
                     } else {
-                        return (column >= 2 && column <= 5) || (column == 7);
+                        return (column >= 2 && column <= 5) || (column == 7); // Cột điểm hoặc Ghi chú
                     }
                 }
 
@@ -1505,10 +1528,10 @@ public class BangDiemChiTietDialog extends JDialog {
                             null, null, null, null, ghiChu, ketQua, nd);
                 } else {
                     // Lấy điểm số từ cột 2-5
-                    Double mieng = parseDoubleSafe(model.getValueAt(i, 2));
-                    Double p15 = parseDoubleSafe(model.getValueAt(i, 3));
-                    Double giuaky = parseDoubleSafe(model.getValueAt(i, 4));
-                    Double cuoiky = parseDoubleSafe(model.getValueAt(i, 5));
+                    Double mieng = parseAsDoubleObject(model.getValueAt(i, 2));
+                    Double p15 = parseAsDoubleObject(model.getValueAt(i, 3));
+                    Double giuaky = parseAsDoubleObject(model.getValueAt(i, 4));
+                    Double cuoiky = parseAsDoubleObject(model.getValueAt(i, 5));
 
                     // For numeric-score subjects ketQuaDanhGia is null; pass ghiChu first
                     ok = diemBUS.saveOrUpdateDiem(currentMaHS, maMonId, currentHocKy, currentMaNK,
@@ -1621,18 +1644,18 @@ public class BangDiemChiTietDialog extends JDialog {
         }
     }
 
-    private double parseDoubleSafe(Object o) {
+    private Double parseAsDoubleObject(Object o) {
         if (o == null)
-            return 0.0; // Trả về 0.0 cho null
+            return null; 
         try {
             if (o instanceof Number)
                 return ((Number) o).doubleValue();
             String s = o.toString().trim();
             if (s.isEmpty())
-                return 0.0; // Trả về 0.0 cho chuỗi rỗng
+                return null; // Trả về null cho chuỗi rỗng
             return Double.parseDouble(s);
         } catch (Exception ex) {
-            return 0.0;
+            return null; // Trả về null nếu không phải số
         }
     }
 

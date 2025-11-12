@@ -225,14 +225,14 @@ public class DiemNhapDialog extends JDialog {
                 }
 
                 // THÊM: Lấy điểm tùy theo LoaiMon
-                double mieng = 0, p15 = 0, gk = 0, ck = 0;
+                Double mieng = null, p15 = null, gk = null, ck = null; 
                 String ketQuaDanhGia = null;
 
                 if ("TinhDiem".equals(currentLoaiMon)) {
-                    mieng = valueToDouble(model.getValueAt(r, 2));
-                    p15 = valueToDouble(model.getValueAt(r, 3));
-                    gk = valueToDouble(model.getValueAt(r, 4));
-                    ck = valueToDouble(model.getValueAt(r, 5));
+                    mieng = parseAsDoubleObject(model.getValueAt(r, 2));
+                    p15 = parseAsDoubleObject(model.getValueAt(r, 3)); 
+                    gk = parseAsDoubleObject(model.getValueAt(r, 4));
+                    ck = parseAsDoubleObject(model.getValueAt(r, 5)); 
                 } else {
                     Object dgObj = model.getValueAt(r, 6);
                     ketQuaDanhGia = (dgObj != null && !dgObj.toString().isEmpty()) ? dgObj.toString() : null;
@@ -240,7 +240,7 @@ public class DiemNhapDialog extends JDialog {
 
                 // Call BUS to save the record (delegates to DAO internally) with permission
                 // check
-                // SỬA: Gọi hàm saveOrUpdateDiem mới
+                // Gọi hàm saveOrUpdateDiem mới
                 boolean ok = diemBUS.saveOrUpdateDiem(maHS, maMon, hocKy, maNK, mieng, p15, gk, ck, ketQuaDanhGia, nd);
                 if (!ok)
                     failedSave++;
@@ -746,15 +746,17 @@ public class DiemNhapDialog extends JDialog {
 
     // subject mapping removed; MonBUS is used dynamically where needed
 
-    private double valueToDouble(Object o) {
+    private Double parseAsDoubleObject(Object o) {
         if (o == null)
-            return 0.0;
+            return null;
         if (o instanceof Number)
             return ((Number) o).doubleValue();
         try {
-            return Double.parseDouble(o.toString());
+            String s = o.toString().trim();
+            if (s.isEmpty()) return null;
+            return Double.parseDouble(s);
         } catch (Exception ex) {
-            return 0.0;
+            return null;
         }
     }
 }

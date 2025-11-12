@@ -317,108 +317,6 @@ public class DiemPanel extends JPanel {
                 applyTextFilter();
             }
         });
-
-        var popup = new JPopupMenu();
-        var miEdit = new JMenuItem("Sửa");
-        var miDelete = new JMenuItem("Xóa");
-        popup.add(miEdit);
-        popup.add(miDelete);
-
-        table.addMouseListener(new java.awt.event.MouseAdapter() {
-            @Override
-            public void mousePressed(java.awt.event.MouseEvent e) {
-                maybeShowPopup(e);
-            }
-
-            @Override
-            public void mouseReleased(java.awt.event.MouseEvent e) {
-                maybeShowPopup(e);
-            }
-
-            private void maybeShowPopup(java.awt.event.MouseEvent e) {
-                if (!e.isPopupTrigger() && !javax.swing.SwingUtilities.isRightMouseButton(e))
-                    return;
-                int viewRow = table.rowAtPoint(e.getPoint());
-                if (viewRow >= 0) {
-                    try {
-                        table.setRowSelectionInterval(viewRow, viewRow);
-                    } catch (Exception ex) {
-                        
-                    }
-                } else {
-                    table.clearSelection();
-                }
-
-                boolean allowEdit = false;
-                boolean allowDelete = false;
-                int[] sel = table.getSelectedRows();
-                if (sel != null && sel.length > 0) {
-                    NguoiDungDTO ndLocal = null;
-                    try {
-                        java.awt.Window w = javax.swing.SwingUtilities.getWindowAncestor(DiemPanel.this);
-                        if (w instanceof com.sgu.qlhs.ui.MainDashboard) {
-                            com.sgu.qlhs.ui.MainDashboard md = (com.sgu.qlhs.ui.MainDashboard) w;
-                            ndLocal = md.getNguoiDung();
-                        }
-                    } catch (Exception ex) {
-                        
-                    }
-                    int maNKLocal = NienKhoaBUS.current();
-
-                    if (ndLocal == null || "quan_tri_vien".equalsIgnoreCase(ndLocal.getVaiTro())
-                            || "admin".equalsIgnoreCase(ndLocal.getVaiTro())) {
-                        allowEdit = true;
-                        allowDelete = true;
-                    } else if ("giao_vien".equalsIgnoreCase(ndLocal.getVaiTro())) {
-                        if (sel.length == 1) {
-                            int v = sel[0];
-                            int modelRow = table.convertRowIndexToModel(v);
-                            if (modelRow >= 0 && modelRow < currentRows.size()) {
-                                var dto = currentRows.get(modelRow);
-                                // Nếu maDiem = 0 (placeholder), nó LUÔN CÓ THỂ "Sửa" (thực ra là Thêm)
-                                if (dto.getMaDiem() == 0) {
-                                    allowEdit = true;
-                                } else {
-                                    try {
-                                        allowEdit = diemBUS.isTeacherAssignedPublic(ndLocal.getId(), dto.getMaHS(),
-                                                dto.getMaMon(), dto.getHocKy(), maNKLocal);
-                                    } catch (Exception ex) {
-                                        allowEdit = false;
-                                    }
-                                }
-                            }
-                        }
-                        boolean allOk = true;
-                        for (int v : sel) {
-                            int modelRow = table.convertRowIndexToModel(v);
-                            if (modelRow < 0 || modelRow >= currentRows.size()) {
-                                allOk = false;
-                                break;
-                            }
-                            var dto = currentRows.get(modelRow);
-                            if (dto.getMaDiem() == 0) { // Không cho xóa placeholder
-                                allOk = false;
-                                break;
-                            }
-                            try {
-                                if (!diemBUS.isTeacherAssignedPublic(ndLocal.getId(), dto.getMaHS(), dto.getMaMon(),
-                                        dto.getHocKy(), maNKLocal)) {
-                                    allOk = false;
-                                    break;
-                                }
-                            } catch (Exception ex) {
-                                allOk = false;
-                                break;
-                            }
-                        }
-                        allowDelete = allOk;
-                    }
-                }
-
-                miEdit.setEnabled(allowEdit);
-                miDelete.setEnabled(allowDelete);
-            }
-        });
         
         this.addHierarchyListener(evt -> {
             if (userContextResolved)
@@ -440,10 +338,6 @@ public class DiemPanel extends JPanel {
                         cboMon.setEnabled(false);
                         txtSearch.setEnabled(false);
                         table.setComponentPopupMenu(null);
-                    } else {
-                        table.setComponentPopupMenu(popup);
-                        miDelete.addActionListener(ev -> doDeleteSelectedRows());
-                        miEdit.addActionListener(ev -> doEditSelectedRow());
                     }
 
                     try {

@@ -205,31 +205,35 @@ d.setTenMon(tenMon);
     public boolean saveOrUpdateDiem(int maHS, int maMon, int hocKy, int maNK,
             Double mieng, Double p15, Double gk, Double ck,
             String ketQuaDanhGia, NguoiDungDTO user) {
-        // Gọi hàm đầy đủ, truyền null cho ghiChu
-        return this.saveOrUpdateDiem(maHS, maMon, hocKy, maNK, mieng, p15, gk, ck, null, ketQuaDanhGia, user);
-    }
-
-    // HÀM MỚI ĐẦY ĐỦ (cho BangDiemChiTietDialog)
-    public boolean saveOrUpdateDiem(int maHS, int maMon, int hocKy, int maNK,
-            Double mieng, Double p15, Double gk, Double ck,
-            String ghiChu, String ketQuaDanhGia, NguoiDungDTO user) {
+        
         if (user != null && "giao_vien".equalsIgnoreCase(user.getVaiTro())) {
             try {
-                // SỬA: Lỗi của bạn ở đây. Truyền hocKy (int) và maNK (int)
-                if (!isTeacherAssigned(user.getId(), maHS, maMon, hocKy, maNK))
-                    return false;
+                // 1. Kiểm tra quyền cơ bản (phải được phân công)
+                if (!isTeacherAssigned(user.getId(), maHS, maMon, hocKy, maNK)) {
+                    System.err.println("GV (ID=" + user.getId() + ") bị từ chối lưu điểm (Không được phân công).");
+                    return false; 
+                }
+                
+                // 2. KIỂM TRA QUYỀN SỬA: GV không được SỬA điểm đã có
+                boolean diemDaTonTai = dao.checkDiemExists(maHS, maMon, hocKy, maNK);
+                if (diemDaTonTai) {
+                    // Nếu điểm đã tồn tại, GV không được SỬA (ghi đè)
+                    System.err.println("GV (ID=" + user.getId() + ") bị từ chối SỬA điểm đã tồn tại cho HS=" + maHS + ", Mon=" + maMon);
+                    return false; // Cấm SỬA
+                }
+                // Nếu điểm chưa tồn tại (GV đang THÊM MỚI), thì tiếp tục
+
             } catch (Exception ex) {
                 System.err.println("Lỗi kiểm tra quyền trước khi lưu điểm (ghi chú): " + ex.getMessage());
                 return false;
             }
         }
+
         try {
-            double dMieng = (mieng != null) ? mieng : 0.0;
-            double dP15 = (p15 != null) ? p15 : 0.0;
-            double dGk = (gk != null) ? gk : 0.0;
-            double dCk = (ck != null) ? ck : 0.0;
-            // Gọi DAO (đã sửa) với 10 tham số
-            dao.upsertDiemWithNote(maHS, maMon, hocKy, maNK, dMieng, dP15, dGk, dCk, ghiChu, ketQuaDanhGia);
+            // Bỏ các dòng (mieng != null) ? mieng : 0.0;
+            // Truyền thẳng mieng, p15, gk, ck (là các đối tượng Double) xuống DAO
+            dao.upsertDiemWithNote(maHS, maMon, hocKy, maNK, mieng, p15, gk, ck, null, ketQuaDanhGia);
+            // === KẾT THÚC SỬA ===
             return true;
         } catch (Exception ex) {
             System.err.println("Lỗi khi lưu điểm (with note): " + ex.getMessage());
@@ -237,23 +241,57 @@ d.setTenMon(tenMon);
         }
     }
 
-    // === KẾT THÚC PHẦN SỬA LỖI ===
+ // HÀM MỚI ĐẦY ĐỦ (cho BangDiemChiTietDialog)
+    public boolean saveOrUpdateDiem(int maHS, int maMon, int hocKy, int maNK,
+            Double mieng, Double p15, Double gk, Double ck,
+            String ghiChu, String ketQuaDanhGia, NguoiDungDTO user) {
+        
+        if (user != null && "giao_vien".equalsIgnoreCase(user.getVaiTro())) {
+            try {
+                // 1. Kiểm tra quyền cơ bản (phải được phân công)
+                if (!isTeacherAssigned(user.getId(), maHS, maMon, hocKy, maNK)) {
+                    System.err.println("GV (ID=" + user.getId() + ") bị từ chối lưu điểm (Không được phân công).");
+                    return false; 
+                }
+                
+                // 2. KIỂM TRA QUYỀN SỬA: GV không được SỬA điểm đã có
+                boolean diemDaTonTai = dao.checkDiemExists(maHS, maMon, hocKy, maNK);
+                if (diemDaTonTai) {
+                    // Nếu điểm đã tồn tại, GV không được SỬA (ghi đè)
+                    System.err.println("GV (ID=" + user.getId() + ") bị từ chối SỬA điểm đã tồn tại cho HS=" + maHS + ", Mon=" + maMon);
+                    return false; // Cấm SỬA
+                }
+                // Nếu điểm chưa tồn tại (GV đang THÊM MỚI), thì tiếp tục
+
+            } catch (Exception ex) {
+                System.err.println("Lỗi kiểm tra quyền trước khi lưu điểm (ghi chú): " + ex.getMessage());
+                return false;
+            }
+        }
+        
+        // Logic lưu (dành cho Admin hoặc GV thêm mới)
+        try {
+            // Truyền thẳng mieng, p15, gk, ck (là các đối tượng Double) xuống DAO
+            dao.upsertDiemWithNote(maHS, maMon, hocKy, maNK, mieng, p15, gk, ck, ghiChu, ketQuaDanhGia);
+            return true;
+        } catch (Exception ex) {
+            System.err.println("Lỗi khi lưu điểm (with note): " + ex.getMessage());
+            return false;
+        }
+    }
 
     public void deleteDiem(int maHS, int maMon, int hocKy, int maNK) {
         dao.deleteDiem(maHS, maMon, hocKy, maNK);
     }
 
     public boolean deleteDiem(int maHS, int maMon, int hocKy, int maNK, NguoiDungDTO user) {
-        if (user != null && "giao_vien".equalsIgnoreCase(user.getVaiTro())) {
-            try {
-                // SỬA: Lỗi của bạn ở đây. Truyền hocKy (int) và maNK (int)
-                if (!isTeacherAssigned(user.getId(), maHS, maMon, hocKy, maNK))
-                    return false;
-            } catch (Exception ex) {
-                System.err.println("Lỗi kiểm tra quyền trước khi xóa điểm: " + ex.getMessage());
-                return false;
-            }
+        // CHỈ ADMIN MỚI ĐƯỢC XÓA
+        if (user == null || !("quan_tri_vien".equalsIgnoreCase(user.getVaiTro()) || "admin".equalsIgnoreCase(user.getVaiTro()))) {
+             System.err.println("Bị từ chối XÓA điểm (Không phải Admin).");
+             return false; // Không phải Admin, cấm xóa
         }
+        
+        // Logic cho Admin
         try {
             dao.deleteDiem(maHS, maMon, hocKy, maNK);
             return true;
@@ -262,17 +300,7 @@ d.setTenMon(tenMon);
             return false;
         }
     }
-
-
-    // =================================================================
-    // === SỬA LỖI KIỂM TRA QUYỀN (PERMISSION CHECK) ===
-    // =================================================================
-
-    /**
-     * Helper: check whether a teacher (maGV) is assigned to teach the class of maHS
-     * for the given niên khóa (maNK) and học kỳ (hocKy).
-     * If maMon is not null, also require teacher assigned for that subject.
-     */
+    
     private boolean isTeacherAssigned(int maGV, int maHS, Integer maMon, int hocKyInt, int maNK) throws SQLException {
 
         // 1. Chuyển đổi int HocKy (1) -> String HocKy ("HK1")
