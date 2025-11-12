@@ -213,7 +213,7 @@ public class DiemPanel extends JPanel {
                 try {
                     table.removeColumn(table.getColumnModel().getColumn(0));
                 } catch (Exception ex) {
-                    
+
                 }
             }
         });
@@ -224,6 +224,8 @@ public class DiemPanel extends JPanel {
         pager.add(btnNext);
         btnPrev.setEnabled(false);
         btnNext.setEnabled(false);
+        // Hide pagination controls by default — show all rows like the HocSinh panel
+        pager.setVisible(false);
         outer.add(pager, BorderLayout.SOUTH);
 
         tabbedPane.addTab("Điểm bộ môn", outer);
@@ -290,20 +292,20 @@ public class DiemPanel extends JPanel {
                         }
                     }
                 } catch (Exception ex2) {
-                    
+
                 }
 
                 dlg.setInitialMaHS(targetMaHS);
             } catch (Exception ex) {
-                
+
             }
-            
+
             dlg.setVisible(true); // <-- Dòng này block cho đến khi dialog đóng
-            
+
             // Sau khi dialog chi tiết đóng, làm mới lại dữ liệu của DiemPanel
-            refreshData(); 
+            refreshData();
         });
-        
+
         txtSearch.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
             public void changedUpdate(javax.swing.event.DocumentEvent e) {
                 applyTextFilter();
@@ -317,7 +319,7 @@ public class DiemPanel extends JPanel {
                 applyTextFilter();
             }
         });
-        
+
         this.addHierarchyListener(evt -> {
             if (userContextResolved)
                 return;
@@ -354,10 +356,10 @@ public class DiemPanel extends JPanel {
                             }
                         }
                     } catch (Exception ex) {
-                        
+
                     }
                 } catch (Exception ex) {
-                    
+
                 }
 
                 loadLopOptions();
@@ -384,23 +386,23 @@ public class DiemPanel extends JPanel {
         cboLop.removeAllItems();
         // SỬA: Thêm "-- Tất cả --" cho mọi vai trò (kể cả giáo viên)
         cboLop.addItem("-- Tất cả --");
-    
+
         try {
             java.awt.Window w = javax.swing.SwingUtilities.getWindowAncestor(this);
             if (w instanceof com.sgu.qlhs.ui.MainDashboard) {
                 com.sgu.qlhs.ui.MainDashboard md = (com.sgu.qlhs.ui.MainDashboard) w;
                 NguoiDungDTO nd = md.getNguoiDung();
                 if (nd != null && "giao_vien".equalsIgnoreCase(nd.getVaiTro())) {
-    
+
                     int maNK = NienKhoaBUS.current();
                     String namHoc = (new NienKhoaBUS()).getNamHocString(maNK); // Lấy chuỗi năm học
                     int hkIdx = cboHK.getSelectedIndex();
                     // Chuyển Integer (1) sang String ("HK1")
                     String hkParam = hkIdx > 0 ? ("HK" + hkIdx) : null;
-    
+
                     java.util.List<Integer> lopIds = phanCongBUS.getDistinctMaLopByGiaoVien(nd.getId(), namHoc,
                             hkParam);
-    
+
                     lopList = new java.util.ArrayList<>();
                     for (Integer ml : lopIds) {
                         var l = lopBUS.getLopByMa(ml);
@@ -424,7 +426,7 @@ public class DiemPanel extends JPanel {
                     cboLop.setEnabled(false);
                     cboMon.setEnabled(false);
                     txtSearch.setEnabled(false);
-                    
+
                     // Cần load lopList cho học sinh
                     lopList = new ArrayList<>();
                     if (hs != null) {
@@ -433,13 +435,13 @@ public class DiemPanel extends JPanel {
                             lopList.add(lopCuaHS);
                         }
                     }
-                    return; 
+                    return;
                 }
             }
         } catch (Exception ex) {
             System.err.println("Lỗi lấy lớp theo giáo viên: " + ex.getMessage());
         }
-    
+
         // fallback: (Admin) show all classes
         lopList = lopBUS.getAllLop();
         for (LopDTO l : lopList) {
@@ -523,14 +525,14 @@ public class DiemPanel extends JPanel {
         Integer selectedMaMon = null;
         Integer selectedHocKy = null; // 1, 2, or null (all)
         int lopIdx = cboLop.getSelectedIndex();
-        
+
         if (!isStudentView && lopIdx > 0 && lopIdx - 1 < lopList.size()) {
-             selectedMaLop = lopList.get(lopIdx - 1).getMaLop();
+            selectedMaLop = lopList.get(lopIdx - 1).getMaLop();
         } else if (isStudentView && lopIdx >= 0 && lopIdx < lopList.size()) {
-             // Học sinh chỉ có 1 lớp, index 0
-             selectedMaLop = lopList.get(lopIdx).getMaLop();
+            // Học sinh chỉ có 1 lớp, index 0
+            selectedMaLop = lopList.get(lopIdx).getMaLop();
         }
-        
+
         int monIdx = cboMon.getSelectedIndex();
         if (monIdx > 0 && monList != null && monIdx - 1 < monList.size()) { // Sửa: monIdx - 1
             selectedMaMon = monList.get(monIdx - 1).getMaMon();
@@ -540,11 +542,10 @@ public class DiemPanel extends JPanel {
             selectedHocKy = hkIdx; // 1 or 2
         }
 
-        // pagination
+        // load all matching rows (no pagination). This makes search find any row
+        // without requiring the user to navigate pages.
         List<com.sgu.qlhs.dto.DiemDTO> rows;
         boolean hasNext = false;
-        int fetchSize = pageSize + 1;
-        int offset = currentPage * pageSize;
 
         if (isStudentView) {
             // student view: only fetch this student's records (may be both HK1/HK2)
@@ -555,22 +556,22 @@ public class DiemPanel extends JPanel {
                 rows.addAll(diemBUS.getDiemByMaHS(currentStudentMaHS, 1, maNK, nd));
                 rows.addAll(diemBUS.getDiemByMaHS(currentStudentMaHS, 2, maNK, nd));
             }
-            
+
             // filter by subject if selected
-            if(selectedMaMon != null) {
+            if (selectedMaMon != null) {
                 // SỬA LỖI: Dùng .equals() để so sánh Integer và int
                 final Integer fSelectedMaMon = selectedMaMon; // Biến final cho lambda
                 rows = rows.stream().filter(d -> fSelectedMaMon.equals(d.getMaMon())).collect(Collectors.toList());
             }
             hasNext = false;
-        
-        // ===============================================
-        // === LOGIC MỚI CHO GIÁO VIÊN BỘ MÔN (GVBM) ===
-        // ===============================================
+
+            // ===============================================
+            // === LOGIC MỚI CHO GIÁO VIÊN BỘ MÔN (GVBM) ===
+            // ===============================================
         } else if (nd != null && "giao_vien".equalsIgnoreCase(nd.getVaiTro())) {
-            
+
             int maGV = nd.getId();
-            
+
             // 1. Lấy TẤT CẢ phân công của GV này trong năm học
             List<PhanCongDayDTO> allAssignments = phanCongBUS.getByGV(maGV).stream()
                     .filter(p -> p.getNamHoc().equals(namHoc))
@@ -580,33 +581,34 @@ public class DiemPanel extends JPanel {
             final Integer fSelectedMaLop = selectedMaLop;
             final Integer fSelectedMaMon = selectedMaMon;
             final Integer fSelectedHocKy = selectedHocKy;
-            
+
             List<PhanCongDayDTO> assignmentsToDisplay = allAssignments.stream()
-                // SỬA LỖI: Dùng .equals() để so sánh Integer và int
-                .filter(p -> fSelectedMaLop == null || fSelectedMaLop.equals(p.getMaLop()))
-                .filter(p -> fSelectedMaMon == null || fSelectedMaMon.equals(p.getMaMon()))
-                .filter(p -> fSelectedHocKy == null || p.getHocKy().equals("HK" + fSelectedHocKy))
-                .collect(Collectors.toList());
+                    // SỬA LỖI: Dùng .equals() để so sánh Integer và int
+                    .filter(p -> fSelectedMaLop == null || fSelectedMaLop.equals(p.getMaLop()))
+                    .filter(p -> fSelectedMaMon == null || fSelectedMaMon.equals(p.getMaMon()))
+                    .filter(p -> fSelectedHocKy == null || p.getHocKy().equals("HK" + fSelectedHocKy))
+                    .collect(Collectors.toList());
 
             // 3. Lấy TẤT CẢ học sinh cho các lớp trong ds phân công ĐÃ LỌC
             Map<Integer, List<HocSinhDTO>> studentsByClass = new HashMap<>();
             Set<Integer> maLopsToFetch = assignmentsToDisplay.stream()
-                                            .map(PhanCongDayDTO::getMaLop)
-                                            .collect(Collectors.toSet());
+                    .map(PhanCongDayDTO::getMaLop)
+                    .collect(Collectors.toSet());
             for (int maLop : maLopsToFetch) {
                 studentsByClass.put(maLop, hocSinhBUS.getHocSinhByMaLop(maLop));
             }
-            
+
             // 4. Lấy TẤT CẢ điểm liên quan (cho các lớp này)
             List<Integer> maLopListForQuery = new ArrayList<>(maLopsToFetch);
-            List<DiemDTO> allScores = diemBUS.getDiemFilteredByMaLopList(maLopListForQuery, null, selectedHocKy, maNK, null, null);
+            List<DiemDTO> allScores = diemBUS.getDiemFilteredByMaLopList(maLopListForQuery, null, selectedHocKy, maNK,
+                    null, null);
 
             // 5. Build Score Map (Key: "MaHS_MaMon_HocKy")
             Map<String, DiemDTO> scoreMap = new HashMap<>();
             for (DiemDTO d : allScores) {
                 scoreMap.put(d.getMaHS() + "_" + d.getMaMon() + "_" + d.getHocKy(), d);
             }
-            
+
             // 6. Build MonHoc Map (Key: MaMon)
             Map<Integer, MonHocDTO> monMap = new HashMap<>();
             for (MonHocDTO mon : monBUS.getAllMon()) {
@@ -615,22 +617,25 @@ public class DiemPanel extends JPanel {
 
             // 7. Xây dựng danh sách rows (gồm cả placeholder)
             List<DiemDTO> finalRows = new ArrayList<>();
-            Set<String> uniqueEntries = new HashSet<>(); 
+            Set<String> uniqueEntries = new HashSet<>();
 
             for (PhanCongDayDTO pcd : assignmentsToDisplay) {
                 int maLop = pcd.getMaLop();
                 int maMon = pcd.getMaMon();
                 int hk = pcd.getHocKy().equals("HK1") ? 1 : 2;
-                
+
                 MonHocDTO mon = monMap.get(maMon);
-                if (mon == null) continue; // Bỏ qua nếu không tìm thấy môn
+                if (mon == null)
+                    continue; // Bỏ qua nếu không tìm thấy môn
 
                 List<HocSinhDTO> studentsInClass = studentsByClass.get(maLop);
-                if (studentsInClass == null) continue; // Bỏ qua nếu lớp không có học sinh
+                if (studentsInClass == null)
+                    continue; // Bỏ qua nếu lớp không có học sinh
 
                 for (HocSinhDTO hs : studentsInClass) {
                     String uniqueKey = hs.getMaHS() + "_" + maMon + "_" + hk;
-                    if (!uniqueEntries.add(uniqueKey)) continue; // Đã thêm (do GV dạy 2 lần 1 môn?)
+                    if (!uniqueEntries.add(uniqueKey))
+                        continue; // Đã thêm (do GV dạy 2 lần 1 môn?)
 
                     DiemDTO diem = scoreMap.get(uniqueKey);
 
@@ -649,34 +654,27 @@ public class DiemPanel extends JPanel {
                         placeholder.setTenMon(mon.getTenMon());
                         placeholder.setLoaiMon(mon.getLoaiMon());
                         placeholder.setHocKy(hk);
-                        
+
                         finalRows.add(placeholder);
                     }
                 }
             }
 
-            // 8. Áp dụng phân trang (client-side)
-            hasNext = finalRows.size() > (offset + pageSize);
-            int end = Math.min(offset + pageSize, finalRows.size());
-            if (offset >= finalRows.size()) offset = 0; // Reset nếu trang không còn
-            if (offset > end) offset = 0;
+            // 8. No pagination: return all built rows so searching covers entire set
+            rows = new ArrayList<>(finalRows);
+            hasNext = false;
 
-            rows = new ArrayList<>(finalRows.subList(offset, end));
-
-
-        } else { 
+        } else {
             // Logic cho Admin (như cũ)
-            List<com.sgu.qlhs.dto.DiemDTO> fetched = diemBUS.getDiemFiltered(selectedMaLop, selectedMaMon, selectedHocKy, maNK, fetchSize, offset);
-            rows = fetched;
-            hasNext = rows.size() > pageSize;
-            if (hasNext) {
-                rows = new java.util.ArrayList<>(rows.subList(0, pageSize));
-            }
+            // Request all matching rows from the BUS/DAO (no pagination parameters)
+            List<com.sgu.qlhs.dto.DiemDTO> fetched = diemBUS.getDiemFiltered(selectedMaLop, selectedMaMon,
+                    selectedHocKy, maNK, null, null);
+            rows = fetched != null ? fetched : new ArrayList<>();
+            hasNext = false;
         }
         currentRows.clear();
         currentRows.addAll(rows);
 
-        
         java.util.Map<Integer, java.util.List<Integer>> hsByHocKy = new java.util.HashMap<>();
         for (var d : rows) {
             hsByHocKy.computeIfAbsent(d.getHocKy(), k -> new java.util.ArrayList<>()).add(d.getMaHS());
@@ -733,7 +731,6 @@ public class DiemPanel extends JPanel {
         applyTextFilter();
     }
 
-
     private void updatePageControls(boolean hasNext) {
         btnPrev.setEnabled(currentPage > 0);
         btnNext.setEnabled(hasNext);
@@ -770,7 +767,7 @@ public class DiemPanel extends JPanel {
         }
         // Sắp xếp giảm dần để xóa từ cuối lên
         modelRowsIndices.sort(java.util.Collections.reverseOrder());
-        
+
         int maNK = NienKhoaBUS.current();
         NguoiDungDTO nd = null;
         try {
@@ -785,12 +782,12 @@ public class DiemPanel extends JPanel {
 
         int failedDelete = 0;
         int placeholderSkipped = 0;
-        
+
         for (int modelRowIndex : modelRowsIndices) {
             if (modelRowIndex < 0 || modelRowIndex >= currentRows.size())
                 continue;
             var dto = currentRows.get(modelRowIndex);
-            
+
             // SỬA: Không xóa placeholder
             if (dto.getMaDiem() == 0) {
                 placeholderSkipped++;
@@ -807,13 +804,13 @@ public class DiemPanel extends JPanel {
                 failedDelete++;
             }
         }
-        
+
         if (failedDelete > 0) {
-             JOptionPane.showMessageDialog(this, "Một số hàng không được xóa do thiếu quyền.", "Chú ý",
-                            JOptionPane.WARNING_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Một số hàng không được xóa do thiếu quyền.", "Chú ý",
+                    JOptionPane.WARNING_MESSAGE);
         } else if (placeholderSkipped == 0) {
             JOptionPane.showMessageDialog(this, "Đã xóa các điểm được chọn.", "Thành công",
-                            JOptionPane.INFORMATION_MESSAGE);
+                    JOptionPane.INFORMATION_MESSAGE);
         }
 
         // Tải lại toàn bộ dữ liệu sau khi xóa
@@ -831,11 +828,11 @@ public class DiemPanel extends JPanel {
         if (modelRow < 0 || modelRow >= currentRows.size())
             return;
         var dto = currentRows.get(modelRow);
-        
+
         // SỬA: Nếu là placeholder (MaDiem=0), hãy mở dialog DiemNhap
         // Nếu là điểm đã có (MaDiem > 0), cũng mở DiemNhap
         // (Logic cũ đã đúng)
-        
+
         // open DiemNhapDialog pre-selected for this class/subject/hk and student
         java.awt.Window w = javax.swing.SwingUtilities.getWindowAncestor(this);
         var dlg = new com.sgu.qlhs.ui.dialogs.DiemNhapDialog(w, dto.getMaLop(), dto.getMaMon(), dto.getHocKy(),
@@ -1195,7 +1192,7 @@ public class DiemPanel extends JPanel {
             System.err.println("Lỗi khi refresh Chủ nhiệm data: " + ex.getMessage());
         }
     }
-    
+
     public void refreshData() {
         System.out.println("DiemPanel: Received refresh request. Reloading data...");
         currentPage = 0; // Reset pagination
